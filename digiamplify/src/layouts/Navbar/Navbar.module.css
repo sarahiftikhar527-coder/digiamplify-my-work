@@ -1,0 +1,161 @@
+.navbarWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 2rem 0 2rem;
+  z-index: 9999;
+  position: relative;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  background-color: #383838;
+  padding: 0.5rem 0.5rem 0.5rem 2rem;
+  border-radius: 50px; 
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+}
+
+.links {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.links a {
+  font-family: var(--font-body);
+  font-size: 0.99rem;
+  font-weight: 600;
+  color: #ffffff;
+  transition: color 0.2s ease;
+}
+
+.links a:hover, .links .activeLink {
+  color: var(--accent-red); 
+}
+
+.loginBtn {
+  background-color: var(--accent-red);
+  color: white;
+  border: none;
+  padding: 0.75rem 2.5rem;
+  border-radius: 50px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.loginBtn:hover {
+  background-color: var(--accent-red-hover);
+}
+
+/* Hamburger Icon (Hidden on Desktop) */
+.menuToggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.links {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.links a {
+  font-family: var(--font-body);
+  font-size: 0.99rem;
+  font-weight: 600;
+  color: #ffffff;
+  transition: color 0.2s ease;
+}
+
+.links a:hover, .links .activeLink {
+  color: var(--accent-red); 
+}
+
+.loginBtn {
+  background-color: var(--accent-red);
+  color: white;
+  border: none;
+  padding: 0.75rem 2.5rem;
+  border-radius: 50px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.loginBtn:hover {
+  background-color: var(--accent-red-hover);
+}
+
+/* Hide the mobile-specific login button on Desktop */
+.mobileLogin {
+  display: none;
+}
+
+/* Mobile Responsiveness (Tablets & Phones) */
+
+@media (max-width: 968px) {
+  .navbar {
+    padding: 0.8rem 1.5rem;
+  }
+
+  /* Show the Hamburger Menu Icon */
+  .menuToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Hide Desktop Login Button */
+  .desktopLogin {
+    display: none;
+  }
+
+  /* Convert .links into a Dropdown Menu */
+  .links {
+    display: none; /* Hidden by default */
+    position: absolute;
+    top: calc(100% + 15px); 
+    left: 0;
+    right: 0;
+    background-color: #2a2a2a; 
+    flex-direction: column;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    gap: 1.5rem;
+  }
+
+  .links.mobileOpen {
+    display: flex !important; 
+  }
+
+  .mobileLogin {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbarWrapper {
+    padding: 1.5rem 1rem 0 1rem;
+  }
+}

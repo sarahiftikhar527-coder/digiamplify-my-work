@@ -1,0 +1,163 @@
+.formContainer {
+  display: grid;
+  grid-template-columns: 0.9fr 1.5fr;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 4rem;
+}
+
+.mapSidebar {
+  position: relative;
+  min-height: 520px;
+  width: 100%;
+  background-color: #0d0d0d;
+}
+
+.mapImage {
+  object-fit: cover;
+  object-position: center;
+}
+
+.mainForm {
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.formTitle {
+  font-size: 1.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.75rem;
+}
+
+.highlight {
+  color: var(--accent-red);
+}
+
+.formSubtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.sphereWrapper {
+  flex-shrink: 0;
+}
+
+.sphereImage {
+  object-fit: contain;
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.leftInputsCard, .rightInputsCard {
+  background-color: #0a0a0a;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.leftInputsCard {
+  gap: 1.2rem;
+}
+
+.rightInputsCard {
+  gap: 1rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.inputGroup label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.inputGroup input {
+  background-color: #000000;
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 0.85rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  width: 100%;
+  font-family: inherit;
+}
+
+.inputGroup textarea {
+  background-color: #111111;
+  border: none;
+  color: white;
+  padding: 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  width: 100%;
+  resize: none;
+  min-height: 130px;
+  font-family: inherit;
+}
+
+.inputGroup input:focus, .inputGroup textarea:focus {
+  outline: 1px solid var(--accent-red);
+  border-color: var(--accent-red);
+}
+
+.inputGroup input::placeholder, 
+.inputGroup textarea::placeholder {
+  color: var(--text-muted);
+  font-family: inherit;
+  font-weight: 400;
+}
+
+.submitBtn {
+  background-color: var(--accent-red);
+  color: white;
+  border: none;
+  width: 100%;
+  padding: 1rem;
+  font-weight: 600;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+
+.submitBtn:hover {
+  background-color: var(--accent-red-hover);
+}
+
+/* Mobile Responsiveness */
+
+@media (max-width: 968px) {
+  .formContainer {
+    grid-template-columns: 1fr;
+  }
+  .mapSidebar {
+    min-height: 350px;
+  }
+  .fieldsGrid {
+    grid-template-columns: 1fr;
+  }
+}

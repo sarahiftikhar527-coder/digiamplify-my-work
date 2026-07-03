@@ -1,0 +1,14 @@
+:root {
+  --bg-primary: #000000;          
+  --bg-secondary: #0c0c0c;       
+  --bg-card: #141414;           
+  --text-main: #ffffff;          
+  --text-muted: #a0a0a0;
+  
+  --accent-red: #be0919;         
+  --accent-red-hover: #990714;    
+  --border-color: #222222;
+
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Glacial Indifference', 'Inter', sans-serif;
+}
