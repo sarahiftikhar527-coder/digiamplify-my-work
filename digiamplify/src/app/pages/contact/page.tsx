@@ -26,7 +26,7 @@ export default function ContactPage() {
                   alt="3D Glowing Cube" 
                   width={200} 
                   height={200}
-                  className="object-contain" 
+                  className="object-contain transition-transform duration-500 ease-out hover:scale-120" 
                 />
               </div>
               <p className="text-[#FFFFFF] text-[0.85rem] leading-[1.8] max-w-[90%] -mr-10 sm:mt-4">
@@ -42,7 +42,7 @@ export default function ContactPage() {
                   src="/assets/office-meeting.jpg" 
                   alt="Team meeting" 
                   fill 
-                  className="object-cover object-center" 
+                  className="object-cover object-center transition-transform duration-500 ease-out hover:scale-110" 
                 />
               </div>
               <div className="absolute -top-12 left-0 w-[42%] h-[38%] border-[4px] border-white z-10 bg-[#222] shadow-2xl">
@@ -50,7 +50,7 @@ export default function ContactPage() {
                   src="/assets/agent-photo.jpg" 
                   alt="Support agent" 
                   fill 
-                  className="object-cover object-center" 
+                  className="object-cover object-center transition-transform duration-500 ease-out hover:scale-110" 
                 />
               </div>
             </div>

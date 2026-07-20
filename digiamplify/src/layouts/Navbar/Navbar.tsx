@@ -50,7 +50,8 @@ export default function Navbar() {
         </button>
         
         <div className={`flex gap-10 items-center max-[968px]:absolute max-[968px]:top-[calc(100%+15px)] max-[968px]:left-0 max-[968px]:right-0 max-[968px]:bg-[#2a2a2a] max-[968px]:flex-col max-[968px]:p-8 max-[968px]:rounded-[20px] max-[968px]:shadow-[0_10px_40px_rgba(0,0,0,0.7)] max-[968px]:gap-6 ${isMenuOpen ? 'max-[968px]:flex' : 'max-[968px]:hidden'}`}>
-          <Link href="/" className={linkClass('/')} onClick={handleLinkClick}>Home</Link>
+          
+          <Link href="/pages/home" className={linkClass('/pages/home')} onClick={handleLinkClick}>Home</Link>
           <Link href="/pages/about" className={linkClass('/pages/about')} onClick={handleLinkClick}>About</Link>
           <Link href="/pages/services" className={linkClass('/pages/services')} onClick={handleLinkClick}>Services</Link>
           <Link href="/pages/projects" className={linkClass('/pages/projects')} onClick={handleLinkClick}>Projects</Link>

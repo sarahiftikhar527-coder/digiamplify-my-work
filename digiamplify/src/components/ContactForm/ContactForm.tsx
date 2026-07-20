@@ -41,7 +41,7 @@ export default function ContactForm() {
               alt="3D Silver Sphere" 
               width={140} 
               height={140} 
-              className="object-contain"
+              className="object-contain transition-transform duration-500 ease-out hover:scale-130"
             />
           </div>
         </div>

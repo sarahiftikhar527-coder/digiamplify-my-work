@@ -84,7 +84,6 @@ export default function AboutPage() {
         {/* --- Hero Section --- */}
         <section className="flex flex-col lg:flex-row justify-between items-stretch gap-12 mb-32 relative min-h-[450px] lg:min-h-[550px]">
           
-          {/* Left Side: Text Content */}
           <div className="w-full my-10 lg:w-[40%] flex flex-col justify-between z-20 py-6 lg:py-10">
             <p className="font-poppins text-[13px] leading-relaxed max-w-md text-[#FFFFFF]">
               We partner with ambitious brands to create meaningful digital experiences that drive growth and lasting impact. Through a blend of strategic thinking, creative excellence, and technical expertise, we deliver solutions designed to help businesses thrive in an increasingly digital world.
@@ -94,7 +93,6 @@ export default function AboutPage() {
             </Title>
           </div>
 
-          {/* Right Side: Sliced Image Composition */}
           <div className="w-full lg:w-[55%] relative h-[400px] sm:h-[500px] lg:h-[550px] z-10">
             
             <div className="absolute inset-0 w-full h-full rounded-sm overflow-hidden">
@@ -107,10 +105,8 @@ export default function AboutPage() {
               />
             </div>
             
-            {/* Vertical Gap 1 */}
             <div className="absolute top-0 left-[31%] w-[3.5%] h-full bg-[#0d0d0d] z-10"></div>
             
-            {/* Vertical Gap 2 */}
             <div className="absolute top-0 left-[65.5%] w-[3.5%] h-full bg-[#0d0d0d] z-10"></div>
 
             <div className="absolute bottom-0 left-0 w-[31%] h-[48%] bg-[#0d0d0d] z-10"></div>
@@ -124,12 +120,10 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* --- Agency Background Section (Bento Box Layout) --- */}
+        {/* --- Agency Background Section --- */}
         <section className="flex flex-col lg:flex-row gap-6 mb-32 items-stretch">
           
-          {/* Left Column */}
           <div className="w-full lg:w-[40%] flex flex-col gap-6">
-            {/* Main Image Box */}
             <div className="border border-[#222] bg-[#050505] rounded-2xl p-4 lg:p-6 flex-grow flex items-center justify-center">
               <div className="relative w-full h-full min-h-[350px] rounded-xl overflow-hidden">
                 <Image 
@@ -141,10 +135,8 @@ export default function AboutPage() {
               </div>
             </div>
             
-            {/* Bottom Floating/Avatar Box */}
             <div className="border border-[#222] bg-[#050505] rounded-2xl p-5 flex items-center gap-4 shrink-0">
               <div className="flex -space-x-3 shrink-0">
-                 {/* Placeholder Avatars */}
                  <div className="w-10 h-10 rounded-full bg-gray-600 border-1 border-white relative z-10 overflow-hidden"><Image src="/assets/person-1.jpg" alt="user1" fill className="object-cover"/></div>
                  <div className="w-10 h-10 rounded-full bg-gray-500 border-2 border-white relative z-20 overflow-hidden"><Image src="/assets/person-2.jpg" alt="user2" fill className="object-cover"/></div>
                  <div className="w-10 h-10 rounded-full bg-gray-400 border-2 border-white relative z-30 overflow-hidden"><Image src="/assets/person-3.jpg" alt="user3" fill className="object-cover"/></div>
@@ -156,20 +148,16 @@ export default function AboutPage() {
             </div>
           </div>
 
-          {/* Right Column */}
           <div className="w-full lg:w-[60%] flex flex-col gap-6">
             
-            {/* Top Heading Box */}
             <div className="border border-[#222] bg-[#050505] rounded-2xl p-8 lg:p-10">
               <h2 className="text-xl lg:text-[28px] font-['Glacial'] leading-relaxed text-white">
                 The agency behind category defining brands built to lead, influence, and leave a lasting impression not simply blend in.
               </h2>
             </div>
 
-            {/* Middle Two Boxes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-grow">
               
-              {/* Background Box */}
               <div className="border border-[#222] bg-[#050505] rounded-2xl p-8 relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#be0919]/15 blur-[50px] rounded-full pointer-events-none"></div>
                 <div className="w-10 h-10 border border-[#333] rounded-xl flex items-center justify-center mb-5 relative z-10 bg-black/50">
@@ -181,7 +169,6 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              {/* Core Identity Box */}
               <div className="border border-[#222] bg-[#050505] rounded-2xl p-8 relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#be0919]/15 blur-[50px] rounded-full pointer-events-none"></div>
                 <div className="w-10 h-10 border border-[#333] rounded-xl flex items-center justify-center mb-5 relative z-10 bg-black/50">
@@ -195,7 +182,6 @@ export default function AboutPage() {
               
             </div>
 
-            {/* Bottom Stats Box */}
             <div className="border border-[#222] bg-[#050505] rounded-2xl p-6 lg:p-8 flex flex-col shrink-0">
               <span className="text-white/50 text-[15px] mb-6">Company Overview</span>
               
@@ -222,7 +208,6 @@ export default function AboutPage() {
         <section className="mb-32">
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-3xl p-8 lg:p-14 w-full">
             
-            {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6">
               <h2 className="text-3xl lg:text-[38px] font-['Glacial'] text-white leading-tight">
                 Our Journey from frustration to<br className="hidden md:block"/> industry Leadership.
@@ -232,9 +217,7 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Timeline Container */}
             <div className="relative w-full">
-              {/* Vertical right line */}
               <div className="hidden md:block absolute right-0 top-0 bottom-0 w-[1px] bg-[#1a1a1a]"></div>
               
               <div className="flex flex-col">
@@ -243,12 +226,10 @@ export default function AboutPage() {
                     key={index} 
                     className="flex flex-col md:flex-row gap-8 lg:gap-16 items-start py-8 border-b border-[#1a1a1a] last:border-b-0 relative pr-0 md:pr-12"
                   >
-                    {/* Year */}
                     <div className="text-[#be0919] font-['Glacial'] font-medium text-xl lg:text-2xl w-[80px] shrink-0 pt-1">
                       {item.year}
                     </div>
                     
-                    {/* Content */}
                     <div className="flex flex-col flex-grow">
                       <h3 className="text-white font-semibold text-[18px] mb-3 tracking-wide">{item.title}</h3>
                       <p className="text-[#FFFFFF] text-[14px] leading-relaxed max-w-3xl">
@@ -269,23 +250,18 @@ export default function AboutPage() {
        {/* --- Vision & Mission Cards --- */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-32">
           
-          {/* Mission Card */}
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-3xl p-10 lg:p-12 relative overflow-hidden flex flex-col min-h-[450px]">
-            {/* Top Left Red Glow */}
             <div className="absolute top-[-50px] left-[-50px] w-56 h-56 bg-[#be0919]/20 blur-[70px] rounded-full pointer-events-none"></div>
             
             <div className="flex justify-between items-center mb-12 relative z-10">
               <span className="text-white/50 text-[18px] font-['Glacial'] tracking-wide">Our Mission</span>
               
-              {/* Custom Target/Crosshair Icon Box */}
               <div className="w-12 h-12 rounded-2xl border-[2px] border-[#be0919]/40 bg-[#be0919]/10 flex items-center justify-center text-[#e6192b] shadow-[0_0_15px_rgba(190,9,25,0.1)]">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  {/* Four outer circles */}
                   <circle cx="7.5" cy="7.5" r="2.5"/>
                   <circle cx="16.5" cy="7.5" r="2.5"/>
                   <circle cx="7.5" cy="16.5" r="2.5"/>
                   <circle cx="16.5" cy="16.5" r="2.5"/>
-                  {/* Center cross and diagonal outer ticks */}
                   <path d="M12 9.5v5M9.5 12h5 M5.7 5.7L3.5 3.5 M18.3 5.7L20.5 3.5 M5.7 18.3L3.5 20.5 M18.3 18.3L20.5 20.5"/>
                 </svg>
               </div>
@@ -301,20 +277,15 @@ export default function AboutPage() {
             </div>
           </div>
 
-          {/* Vision Card */}
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-3xl p-10 lg:p-12 relative overflow-hidden flex flex-col min-h-[450px]">
-            {/* Top Left Red Glow */}
             <div className="absolute top-[-50px] left-[-50px] w-56 h-56 bg-[#be0919]/20 blur-[70px] rounded-full pointer-events-none"></div>
             
             <div className="flex justify-between items-center mb-12 relative z-10">
               <span className="text-white/50 text-[18px] font-['Glacial'] tracking-wide">Our Vision</span>
               
-              {/* Custom Telescope Icon Box */}
               <div className="w-12 h-12 rounded-2xl border-[2px] border-[#be0919]/40 bg-[#be0919]/10 flex items-center justify-center text-[#e6192b] shadow-[0_0_15px_rgba(190,9,25,0.1)]">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  {/* Tripod legs */}
                   <path d="M11.5 14.5L8 22M11.5 14.5L15 22" />
-                  {/* Angled telescope segments */}
                   <g transform="rotate(-25 12 12)">
                     <rect x="4" y="10.5" width="4" height="3" rx="0.5" />
                     <rect x="8" y="9.5" width="5" height="5" rx="0.5" />
@@ -339,10 +310,8 @@ export default function AboutPage() {
 
         {/* --- Image Grid Collage Section --- */}
         <section className="mb-32">
-          {/* Main Container Box */}
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-3xl p-8 lg:p-12 w-full">
             
-            {/* Header Content */}
             <div className="mb-10">
               <span className="text-white/50 text-[18px] tracking-wide mb-2 block">
                 What makes us Different
@@ -352,37 +321,30 @@ export default function AboutPage() {
               </Title>
             </div>
             
-            {/* 3-Column Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 auto-rows-[180px] lg:auto-rows-[160px]">
               
-              {/* Top Left: Huge Keyboard (Spans 2 cols wide, 2 rows tall) */}
               <div className="md:col-span-2 md:row-span-2 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-1.jpg" alt="Red keyboard" fill className="object-cover" />
+                <Image src="/assets/collage-1.jpg" alt="Red keyboard" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
-              {/* Top Right 1: Code Screen (1 col wide, 1 row tall) */}
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-2.jpg" alt="Code screen" fill className="object-cover" />
+                <Image src="/assets/collage-2.jpg" alt="Code screen" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
-              {/* Top Right 2: Abstract red room (1 col wide, 1 row tall) */}
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-3.jpg" alt="Abstract red room" fill className="object-cover" />
+                <Image src="/assets/collage-3.jpg" alt="Abstract red room" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
-              {/* Bottom Left: 3D Shapes (1 col wide, 1 row tall) */}
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-4.jpg" alt="3D shapes" fill className="object-cover" />
+                <Image src="/assets/collage-4.jpg" alt="3D shapes" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
-              {/* Bottom Middle: Red Light Grid (1 col wide, 1 row tall) */}
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-5.jpg" alt="Red light grid" fill className="object-cover" />
+                <Image src="/assets/collage-5.jpg" alt="Red light grid" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
-              {/* Bottom Right: AI Brain (1 col wide, 1 row tall) */}
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-6.jpg" alt="AI Brain" fill className="object-cover" />
+                <Image src="/assets/collage-6.jpg" alt="AI Brain" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
             </div>
@@ -393,7 +355,6 @@ export default function AboutPage() {
         {/* --- Core Values Section --- */}
         <section className="mb-32 relative flex flex-col items-center">
           
-          {/* Floating 3D Dark Crystals */}
           <div className="absolute left-[-160px] lg:left-[-150px] bottom-[-120px] hidden lg:block opacity-90 z-0 pointer-events-none">
             <Image src="/assets/photoroom.png" alt="3D dark crystal left" width={380} height={380} className="object-contain" />
           </div>
@@ -407,19 +368,16 @@ export default function AboutPage() {
               The Force that shape every decision we make
             </Title>
 
-            {/* Cards Container */}
             <div className="flex flex-wrap justify-center gap-6 lg:gap-8 w-full max-w-[1000px]">
               {valuesData.map((val, i) => (
                 <div 
                   key={i} 
                   className="w-[150px] h-[170px] lg:w-[160px] lg:h-[180px] bg-[#050505] border border-[#1f1f1f] rounded-2xl flex flex-col items-center justify-center gap-5 hover:border-[#333] hover:shadow-[0_0_30px_rgba(255,255,255,0.03)] transition-all duration-300 cursor-pointer group"
                 >
-                  {/* Icon Wrapper */}
                   <div className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#be0919] group-hover:scale-110 transition-transform duration-300">
                     {val.icon}
                   </div>
                   
-                  {/* Text and Red Line */}
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-[0.85rem] text-white font-poppins tracking-wide">
                       {val.title}

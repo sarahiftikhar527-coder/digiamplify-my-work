@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button';
 export default function Newsletter() {
   return (
     <div className="w-full">
-      <section className="mt-20 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl py-10 px-8 lg:px-12 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 w-full">
+      <section className="mt-20 bg-[#0a0a0a] border border-white/20 rounded-2xl py-10 px-8 lg:px-12 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 w-full">
         <div className="max-w-xl">
           <Title as="h3" className="mb-2 text-white">
             The Quarterly note for ambitious brands

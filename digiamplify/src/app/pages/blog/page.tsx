@@ -45,7 +45,7 @@ export default function BlogPage() {
               alt="3D Silver Ring" 
               width={228} 
               height={222} 
-              className="object-contain -rotate-100"
+              className="object-contain -rotate-100 n hover:scale-105 transition-transform duration-700 animate-[spin_30s_linear_infinite] -rotate-[25deg]"
             />
           </div>
         </div>
