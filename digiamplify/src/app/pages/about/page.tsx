@@ -391,7 +391,7 @@ export default function AboutPage() {
           
         </section>
 
-        {/* --- Reusable Newsletter Component --- */}
+        {/* --- Newsletter Component --- */}
         <Newsletter />
 
       </div>
