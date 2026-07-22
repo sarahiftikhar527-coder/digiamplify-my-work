@@ -58,14 +58,24 @@ export default function Navbar() {
           <Link href="/blog" className={linkClass('/blog')} onClick={handleLinkClick}>Blog</Link>
           <Link href="/contact" className={linkClass('/contact')} onClick={handleLinkClick}>Contact Us</Link>
           
-          <Button variant="secondary" className="hidden max-[968px]:flex w-full mt-4">
-            Login
-          </Button>
+          <div className="hidden max-[968px]:flex flex-col gap-3 w-full mt-4">
+            <Button variant="secondary" className="w-full">
+              Login
+            </Button>
+            <Button variant="secondary" className="w-full">
+              Signup
+            </Button>
+          </div>
         </div>
         
-        <Button variant="secondary" className="max-[968px]:hidden">
-          Login
-        </Button>
+        <div className="flex gap-3 max-[968px]:hidden mr-2">
+          <Button variant="secondary">
+            Login
+          </Button>
+          <Button variant="secondary">
+            Signup
+          </Button>
+        </div>
 
       </nav>
     </div>
