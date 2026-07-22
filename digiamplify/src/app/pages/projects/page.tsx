@@ -6,13 +6,13 @@ export default function ProjectsPage() {
   const filters = ["All", "Website", "Design", "Poster", "Ad campaign"];
 
   const otherProjects = [
-    { id: "01", title: "Website Payment gateway", desc: "Develop a fully functional e-commerce website where users can browsers products.", image: "/assets/project-thumb-1.jpg" },
-    { id: "02", title: "Website Payment gateway", desc: "Develop a fully functional e-commerce website where users can browsers products.", image: "/assets/project-thumb-2.jpg" },
-    { id: "03", title: "Website Payment gateway", desc: "Develop a fully functional e-commerce website where users can browsers products.", image: "/assets/project-thumb-3.jpg" },
-    { id: "04", title: "Website Payment gateway", desc: "Develop a fully functional e-commerce website where users can browsers products.", image: "/assets/project-thumb-4.jpg" },
-    { id: "05", title: "Website Payment gateway", desc: "Develop a fully functional e-commerce website where users can browsers products.", image: "/assets/project-thumb-5.jpg" },
-    { id: "06", title: "Website Payment gateway", desc: "Develop a fully functional e-commerce website where users can browsers products.", image: "/assets/project-thumb-6.jpg" },
-  ];
+  { id: "01", title: "AI Analytics Dashboard", desc: "Build an intuitive real-time dashboard for tracking complex platform metrics.", image: "/assets/project-thumb-1.jpg" },
+  { id: "02", title: "E-Commerce Shopping App", desc: "Design a modern mobile store with seamless checkout and product discovery.", image: "/assets/project-thumb-2.jpg" },
+  { id: "03", title: "SaaS Workflow Manager", desc: "Create a scalable automation platform to streamline team task management.", image: "/assets/project-thumb-3.jpg" },
+  { id: "04", title: "Fintech Mobile Wallet", desc: "Engineer a secure digital wallet supporting instant peer-to-peer transfers.", image: "/assets/project-thumb-4.jpg" },
+  { id: "05", title: "Healthcare Booking Hub", desc: "Develop a secure healthcare platform for effortless appointment scheduling.", image: "/assets/project-thumb-5.jpg" },
+  { id: "06", title: "Real Estate Portal App", desc: "Construct an interactive property platform featuring advanced filter search.", image: "/assets/project-thumb-6.jpg" },
+];
 
   return (
     <div className="w-full bg-[#0d0d0d] min-h-screen text-white font-poppins overflow-x-hidden">

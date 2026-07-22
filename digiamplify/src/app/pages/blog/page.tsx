@@ -5,7 +5,33 @@ import Newsletter from '@/components/ui/Newsletter';
 
 export default function BlogPage() {
   const categories = ["View All", "Design", "Social Media", "AI Automation", "Marketing", "Video Editing"];
-  const blogPosts = [1, 2, 3, 4, 5, 6];
+  
+  const blogPosts = [
+    {
+      title: "UI/UX Design Review",
+      desc: "Our design process focuses on blending aesthetic appeal with seamless functionality to create engaging digital platforms. Every interface is crafted with deep understanding of user behavior, ensuring intuitive navigation always."
+    },
+    {
+      title: "Social Media Strategy",
+      desc: "Our marketing approach centers on building authentic connections with your audience across multiple digital channels. Every campaign is developed with clear performance metrics in mind, driving meaningful engagement and growth."
+    },
+    {
+      title: "AI Automation Basics",
+      desc: "Our automation solutions streamline complex business workflows to improve overall efficiency and reduce manual overhead. Every system is implemented with strict security protocols in place, guaranteeing safe operations and scalability."
+    },
+    {
+      title: "Future Of Marketing",
+      desc: "Our advertising methodology relies on analyzing deep consumer insights to craft highly targeted promotional materials. Every initiative is optimized with real-time conversion data, maximizing return on investment and market reach."
+    },
+    {
+      title: "Video Editing Trends",
+      desc: "Our production team excels at transforming raw visual footage into compelling narratives that captivate viewers. Every video is polished with advanced color grading techniques, delivering cinematic quality and brand consistency."
+    },
+    {
+      title: "Web Development Guide",
+      desc: "Our engineering standards prioritize building robust architectures that guarantee fast load times and cross-browser compatibility. Every application is tested with rigorous quality assurance processes, providing reliable performance and user satisfaction."
+    }
+  ];
 
   return (
     <div className="w-full bg-[#0d0d0d] min-h-screen text-white">
@@ -69,7 +95,7 @@ export default function BlogPage() {
 
         {/* Blog Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-          {blogPosts.map((_, index) => (
+          {blogPosts.map((post, index) => (
             <div key={index} className="flex flex-col group cursor-pointer">
              
               {/* Image Card */}
@@ -93,10 +119,11 @@ export default function BlogPage() {
               </div>
               
               {/* Content */}
-              <h3 className="text-[16px] font-semibold text-white mb-3 tracking-wide">UI/UX design Review</h3>
+              <h3 className="text-[16px] font-semibold text-white mb-3 tracking-wide">{post.title}</h3>
               <p className="text-white/50 text-[13px] leading-relaxed mb-4">
-                Our portfolio showcases a carefully curated selection of projects that reflect our creativity, strategy, and technical expertise. Each work is designed with a focus on performance, user experience, and measurable results.
+                {post.desc}
               </p>
+              
               <div className="flex items-center gap-1 text-white text-[0.85rem] font-medium transition-colors group-hover:text-[#be0919]">
                 Read Post 
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

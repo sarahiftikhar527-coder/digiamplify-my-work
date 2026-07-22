@@ -36,32 +36,32 @@ const expertiseList = [
 const serviceCards = [
     {
         title: "Social Media Management",
-        desc: "UX research, wireframes, and high- fidelity UI that balances aesthetic and usability. Transforming ideas into seamless, intuitive, and visually captivating digital experiences..",
+        desc: "Crafting engaging content strategies, managing community growth, and executing data-driven campaigns to elevate brand presence across all social platforms.",
         span: "md:col-span-7"
     },
     {
         title: "Video Editing",
-        desc: "Transforming designs into responsive, user-centric interfaces with clean code delivering fast, aesthetic, and accessible experiences across all devices and browsers.",
+        desc: "Producing high-impact video content with seamless transitions, sound design, and color grading that turns raw footage into captivating brand narratives.",
         span: "md:col-span-5"
     },
     {
         title: "AI Automation",
-        desc: "Transforming designs into responsive, user-centric interfaces with clean code delivering fast, aesthetic, and accessible experiences across all devices and browsers.",
+        desc: "Integrating smart workflows, custom chatbots, and automated pipelines to optimize business processes, reduce overhead, and boost operational efficiency.",
         span: "md:col-span-5"
     },
     {
         title: "UI/UX & Graphic Designing",
-        desc: "UX research, wireframes, and high- fidelity UI that balances aesthetic and usability. Transforming ideas into seamless, intuitive, and visually captivating digital experiences..",
+        desc: "Conducting user research, wireframing, and crafting high-fidelity interface designs that combine visual aesthetics with intuitive digital usability.",
         span: "md:col-span-7"
     },
     {
-        title: "Google /Meta Ads",
-        desc: "UX research, wireframes, and high- fidelity UI that balances aesthetic and usability. Transforming ideas into seamless, intuitive, and visually captivating digital experiences..",
+        title: "Google / Meta Ads",
+        desc: "Building targeted paid ad campaigns across Google and Meta platforms to maximize ROI, drive qualified traffic, and scale customer acquisition.",
         span: "md:col-span-7"
     },
     {
-        title: "B2B,B2C Marketing",
-        desc: "Transforming designs into responsive, user-centric interfaces with clean code delivering fast, aesthetic, and accessible experiences across all devices and browsers.",
+        title: "B2B, B2C Marketing",
+        desc: "Developing comprehensive marketing strategies tailored for business and consumer audiences to foster brand loyalty, leads, and sustainable revenue.",
         span: "md:col-span-5"
     }
 ];
@@ -71,25 +71,25 @@ const metricsData = [
         icon: Share2,
         title: "Qualified pipelines",
         value: "+214%",
-        desc: "We use smart planning, innovation, and execution to create solutions that deliver measurable results and lasting impact."
+        desc: "Accelerating inbound revenue opportunities through targeted outbound strategies and high-converting funnel optimizations."
     },
     {
         icon: RotateCw,
         title: "Retention Lift",
         value: "+37%",
-        desc: "We use smart planning, innovation, and execution to create solutions that deliver measurable results and lasting impact."
+        desc: "Improving customer lifetime value by optimizing user onboarding experiences and building engaging product feature flows."
     },
     {
         icon: Settings,
         title: "Lead Quality",
         value: "+62%",
-        desc: "We use smart planning, innovation, and execution to create solutions that deliver measurable results and lasting impact."
+        desc: "Filtering prospect traffic to deliver highly intent-driven leads directly to your sales development pipeline."
     },
     {
         icon: Rocket,
         title: "Launch velocity",
         value: "2.8x",
-        desc: "We use smart planning, innovation, and execution to create solutions that deliver measurable results and lasting impact."
+        desc: "Streamlining product development cycles to ship scalable digital products faster without sacrificing overall quality."
     }
 ];
 

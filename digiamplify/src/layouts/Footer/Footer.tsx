@@ -26,10 +26,10 @@ export default function Footer() {
             <h4 className="text-[#777777] text-[0.9rem] uppercase tracking-wider font-medium">Company</h4>
             <ul className="flex flex-col gap-3.5 w-full">
               <li><Link href="/" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Home</Link></li>
-              <li><Link href="/pages/about" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">About</Link></li>
-              <li><Link href="/pages/services" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Service</Link></li>
-              <li><Link href="/pages/projects" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Projects</Link></li>
-              <li><Link href="/pages/blog" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Blog</Link></li>
+              <li><Link href="/about" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">About</Link></li>
+              <li><Link href="/services" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Service</Link></li>
+              <li><Link href="/projects" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Projects</Link></li>
+              <li><Link href="/blog" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Blog</Link></li>
             </ul>
           </div>
 
@@ -49,7 +49,7 @@ export default function Footer() {
           <div className="flex flex-col gap-5 items-center text-center">
             <h4 className="text-[#777777] text-[0.9rem] uppercase tracking-wider font-medium">Support</h4>
             <ul className="flex flex-col gap-3.5 w-full">
-              <li><Link href="/pages/contact" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Contact</Link></li>
+              <li><Link href="/contact" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Contact</Link></li>
               <li><Link href="https://linkedin.com" target="_blank" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">LinkedIn</Link></li>
               <li><Link href="/privacy" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Privacy Policy</Link></li>
               <li><Link href="/terms" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Terms</Link></li>
