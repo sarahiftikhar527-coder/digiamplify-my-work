@@ -24,6 +24,18 @@ const nextConfig: NextConfig = {
         source: '/services',
         destination: '/pages/services',
       },
+      {
+        source: '/login',
+        destination: '/pages/login',
+      },
+      {
+        source: '/signup',
+        destination: '/pages/signup',
+      },
+      {
+        source: '/portal/dashboard',
+        destination: '/pages/portal/dashboard',
+      },
     ];
   },
 };
