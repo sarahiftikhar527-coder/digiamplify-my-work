@@ -13,6 +13,85 @@ model User {
   password  String
   role      String   @default("Employee")
   pin       String
+  profile   Profile?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Profile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Personal Details
+  fullName         String?
+  userName         String?
+  dateOfBirth      String?
+  gender           String?
+  nationality      String?
+  language         String?
+  
+  // Contact
+  email            String?
+  workEmail        String?
+  phone            String?
+  emergencyPhone   String?
+  
+  // Address & Education
+  currentAddress   String?
+  permanentAddress String?
+  country          String?
+  city             String?
+  education        String?
+
+  // Job Details
+  jobTitle         String?
+  department       String?
+  team             String?
+  manager          String?
+  jobLevel         String?
+  probationPeriod  String?
+  dateOfJoining    String?
+  confirmationDate String?
+  annualLeave      String?
+  jobType          String?
+  workType         String?
+  shift            String?
+  workingDays      String? // comma-separated e.g. "Mon,Tue"
+  weeklyOff        String?
+  noticePeriod     String?
+
+  // Payment Details
+  bankName         String?
+  accountHolderName String?
+  accountNumber    String?
+  currency         String?
+  bonus            String?
+  annualSalary     String?
+  salaryType       String?
+  salary           String?
+  deductionPerAbsence String?
+  paymentDate      String?
+
+  // Documents
+  cnicFileName     String?
+  cnicContent      String?  @db.LongText
+  cnicStatus       String?
+
+  cvFileName       String?
+  cvContent        String?  @db.LongText
+  cvStatus         String?
+
+  contractFileName String?
+  contractContent  String?  @db.LongText
+  contractStatus   String?
+
+  pictureUrl       String?  @db.LongText
+  pictureStatus    String?
+
+  portfolioUrl     String?  @db.LongText
+  portfolioStatus  String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

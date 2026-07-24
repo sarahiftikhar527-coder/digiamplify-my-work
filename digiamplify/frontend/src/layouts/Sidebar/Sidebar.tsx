@@ -20,24 +20,47 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; role: string; picture?: string; jobTitle?: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+
+  const loadUserData = () => {
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('user');
+      const storedPicture = localStorage.getItem('profilePicture');
+      const storedJobTitle = localStorage.getItem('jobTitle');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          setUser({
+            ...parsed,
+            picture: storedPicture || parsed.picture || undefined,
+            jobTitle: storedJobTitle || parsed.jobTitle || undefined,
+          });
+        } catch (e) {
+          console.error('Failed to parse user details', e);
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          console.error('Failed to parse user details', e);
-        }
-      }
-    }
+    loadUserData();
+
+    const handleProfileUpdate = () => {
+      loadUserData();
+    };
+
+    window.addEventListener('profileUpdate', handleProfileUpdate);
+    window.addEventListener('storage', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdate', handleProfileUpdate);
+      window.removeEventListener('storage', handleProfileUpdate);
+    };
   }, []);
 
   const handleSignout = () => {
@@ -60,6 +83,7 @@ export default function Sidebar() {
 
   // Helper to retrieve role name
   const getDisplayRole = () => {
+    if (user?.jobTitle) return user.jobTitle;
     if (!user || !user.role) return 'App Developer';
     return user.role.charAt(0).toUpperCase() + user.role.slice(1);
   };
@@ -67,7 +91,7 @@ export default function Sidebar() {
   const navItems = [
     { name: 'Dashboard', path: '/portal/dashboard', icon: LayoutDashboard },
     { name: 'Task', path: '#', icon: ClipboardList },
-    { name: 'Profile', path: '#', icon: User },
+    { name: 'Profile', path: '/portal/profile', icon: User },
     { name: 'Finance', path: '#', icon: Coins },
     { name: 'Calendar', path: '#', icon: Calendar },
     { name: 'Chat', path: '#', icon: MessageSquare },
@@ -85,7 +109,6 @@ export default function Sidebar() {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Backdrop overlay for mobile */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden transition-opacity duration-300"
@@ -148,8 +171,17 @@ export default function Sidebar() {
         {/* Bottom Section: Profile Panel */}
         <div className="flex items-center justify-between border-t border-neutral-900 pt-6 mt-auto">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-              <User className="w-5 h-5 text-neutral-400" />
+            {/* Simple User Logo or Uploaded Profile Image */}
+            <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.4)] overflow-hidden shrink-0">
+              {user?.picture ? (
+                <img
+                  src={user.picture}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-5 h-5 text-neutral-400" />
+              )}
             </div>
 
             <div className="flex flex-col min-w-0">

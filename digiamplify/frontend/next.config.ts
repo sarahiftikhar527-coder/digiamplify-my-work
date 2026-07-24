@@ -36,6 +36,10 @@ const nextConfig: NextConfig = {
         source: '/portal/dashboard',
         destination: '/pages/portal/dashboard',
       },
+      {
+        source: '/portal/profile',
+        destination: '/pages/portal/profile',
+      },
     ];
   },
 };
