@@ -25,7 +25,9 @@ import {
   Coins,
   MoreVertical,
   ChevronDown,
-  Camera
+  Camera,
+  Check,
+  MessageSquare
 } from 'lucide-react';
 
 const formatDocDate = (dateStr: string | null | undefined) => {
@@ -43,6 +45,33 @@ const formatDocDate = (dateStr: string | null | undefined) => {
     return { date, time };
   } catch {
     return { date: '13 July, 2026', time: '10:30 AM' };
+  }
+};
+
+const formatLastLogin = (dateStr: any) => {
+  if (!dateStr) return 'Never';
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.getDate() === now.getDate() && 
+                    d.getMonth() === now.getMonth() && 
+                    d.getFullYear() === now.getFullYear();
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const timeStr = `${hours}:${minutes} ${ampm}`;
+
+    if (isToday) {
+      return `Today, ${timeStr}`;
+    }
+    const day = d.getDate();
+    const standardMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = standardMonths[d.getMonth()];
+    return `${day} ${month}, ${timeStr}`;
+  } catch (e) {
+    return 'Never';
   }
 };
 
@@ -124,12 +153,302 @@ export default function ProfilePage() {
     portfolioUrl: '',
     portfolioStatus: 'Verified',
   });
-
   const [activeTab, setActiveTab] = useState<'personal' | 'documents' | 'job' | 'payment'>('personal');
   const [isEditing, setIsEditing] = useState(false);
+  const [isViewingProfile, setIsViewingProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchAllUsers = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/profile/all', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch users list');
+      }
+
+      setUsersList(data);
+    } catch (err: any) {
+      setError(err.message || 'Error occurred while loading users');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditUser = async (userId: string) => {
+    setSelectedUserId(userId);
+    setIsLoading(true);
+    setError('');
+    setIsViewingProfile(false);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/profile/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 404) {
+        setProfile({ notFound: true, userId } as any);
+        setFormData(null);
+        setIsEditing(true);
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch user profile');
+      }
+
+      setProfile(data);
+      setFormData(data);
+      setIsEditing(true);
+    } catch (err: any) {
+      setError(err.message || 'Error loading profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViewUser = async (userId: string) => {
+    setSelectedUserId(userId);
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/profile/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 404) {
+        setProfile({ notFound: true, userId } as any);
+        setFormData(null);
+        setIsViewingProfile(true);
+        setIsEditing(false);
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch user profile');
+      }
+
+      setProfile(data);
+      setFormData(data);
+      setIsViewingProfile(true);
+      setIsEditing(false);
+    } catch (err: any) {
+      setError(err.message || 'Error loading profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    setSelectedUserId(null);
+    setIsEditing(false);
+    setIsViewingProfile(false);
+    setProfile(null);
+    fetchAllUsers();
+  };
+
+  const handleApproveUser = async (userId: string) => {
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/profile/approve/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to approve user');
+      }
+
+      setSuccess('User request approved successfully!');
+      fetchAllUsers();
+    } catch (err: any) {
+      setError(err.message || 'Error approving user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRejectUser = async (userId: string) => {
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/profile/reject/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reject user');
+      }
+
+      setSuccess('User request rejected successfully!');
+      fetchAllUsers();
+    } catch (err: any) {
+      setError(err.message || 'Error rejecting user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRequestEdit = async () => {
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/profile/request-edit', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to request edit permission');
+      }
+
+      setSuccess('Edit request sent to admin successfully!');
+      fetchProfile();
+    } catch (err: any) {
+      setError(err.message || 'Error occurred requesting edit');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApproveEdit = async (userId: string) => {
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/profile/approve-edit/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to approve edit request');
+      }
+
+      setSuccess('Edit permission approved successfully!');
+      fetchAllUsers();
+    } catch (err: any) {
+      setError(err.message || 'Error occurred approving edit');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyDocument = async (userId: string, docType: 'cnic' | 'cv' | 'contract' | 'picture' | 'portfolio') => {
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/profile/verify-doc/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ docType })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to verify document');
+      }
+
+      setSuccess('Document verified successfully!');
+      if (isAdmin && selectedUserId) {
+        handleViewUser(selectedUserId);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error occurred verifying document');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchProfile = async () => {
     setIsLoading(true);
@@ -148,7 +467,62 @@ export default function ProfilePage() {
       });
 
       if (response.status === 404) {
-        // First-time setup, show editor
+        setProfile({ userId: '' } as any);
+        setFormData({
+          fullName: '',
+          userName: '',
+          dateOfBirth: '',
+          gender: '',
+          nationality: '',
+          language: '',
+          email: '',
+          workEmail: '',
+          phone: '',
+          emergencyPhone: '',
+          currentAddress: '',
+          permanentAddress: '',
+          country: '',
+          city: '',
+          education: '',
+          jobTitle: '',
+          department: '',
+          team: '',
+          manager: '',
+          jobLevel: '',
+          probationPeriod: '',
+          dateOfJoining: '',
+          confirmationDate: '',
+          annualLeave: '',
+          jobType: '',
+          workType: '',
+          shift: '',
+          workingDays: '',
+          weeklyOff: '',
+          noticePeriod: '',
+          bankName: '',
+          accountHolderName: '',
+          accountNumber: '',
+          currency: '',
+          bonus: '',
+          annualSalary: '',
+          salaryType: '',
+          salary: '',
+          deductionPerAbsence: '',
+          paymentDate: '',
+          cnicFileName: '',
+          cnicContent: '',
+          cnicStatus: 'Pending',
+          cvFileName: '',
+          cvContent: '',
+          cvStatus: 'Pending',
+          contractFileName: '',
+          contractContent: '',
+          contractStatus: 'Pending',
+          pictureUrl: '',
+          pictureStatus: 'Pending',
+          portfolioUrl: '',
+          portfolioStatus: 'Pending',
+        });
         setIsEditing(true);
         setIsLoading(false);
         return;
@@ -162,7 +536,6 @@ export default function ProfilePage() {
       setProfile(data);
       setFormData(data);
 
-      // Update local storage settings so sidebar picks them up reactively
       if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
       if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
       window.dispatchEvent(new Event('profileUpdate'));
@@ -176,13 +549,52 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    fetchProfile();
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      if (parsed.role?.toLowerCase() === 'admin') {
+        setIsAdmin(true);
+        fetchAllUsers();
+      } else {
+        setIsAdmin(false);
+        fetchProfile();
+      }
+    } else {
+      window.location.href = '/login';
+    }
   }, []);
   const handleFieldChange = (field: string, value: any) => {
     setFormData((prev: any) => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const renderDocStatus = (docType: 'cnic' | 'cv' | 'contract' | 'picture' | 'portfolio', statusValue: string | null | undefined, hasFile: boolean) => {
+    if (!hasFile) return null;
+    const isVerified = statusValue === 'Verified';
+
+    return (
+      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+        <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold border ${
+          isVerified 
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+            : 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
+        }`}>
+          {isVerified ? 'Verified' : 'Not Verified'}
+        </span>
+        {isAdmin && isViewingProfile && !isVerified && (
+          <button
+            type="button"
+            onClick={() => handleVerifyDocument(profile.userId, docType)}
+            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1 px-2.5 rounded cursor-pointer transition-colors shadow-sm"
+          >
+            <Check className="w-3 h-3" />
+            <span>Verify</span>
+          </button>
+        )}
+      </div>
+    );
   };
 
   const handleProfilePictureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,7 +620,11 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile', {
+      const url = isAdmin && selectedUserId
+        ? `http://localhost:5000/api/profile/${selectedUserId}`
+        : 'http://localhost:5000/api/profile';
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -225,10 +641,12 @@ export default function ProfilePage() {
       setProfile(data);
       setFormData(data);
 
-      // Sync with Sidebar
-      if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
-      if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
-      window.dispatchEvent(new Event('profileUpdate'));
+      // Sync with Sidebar (only if not admin)
+      if (!isAdmin) {
+        if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
+        if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
+        window.dispatchEvent(new Event('profileUpdate'));
+      }
 
       if (activeTab === 'personal') {
         setSuccess('Personal details saved! Moving to Documents...');
@@ -253,6 +671,9 @@ export default function ProfilePage() {
         setTimeout(() => {
           setIsEditing(false);
           setSuccess('');
+          if (isAdmin) {
+            handleBack();
+          }
         }, 1200);
       }
     } catch (err: any) {
@@ -287,13 +708,19 @@ export default function ProfilePage() {
           <div className="text-neutral-500 font-light text-sm flex items-center gap-1.5">
             <span className="text-red-500 font-medium">Profile</span>
             <span>/</span>
-            <span>Dashboard</span>
+            <span>{isAdmin ? 'Admin Portal' : 'Dashboard'}</span>
           </div>
         </div>
 
         {/* Global Loading / Errors / Success alerts */}
-        {isLoading && !profile && (
+        {isLoading && !profile && !isAdmin && (
           <div className="text-center py-20 text-neutral-400 text-sm font-light">Loading profile details...</div>
+        )}
+        {isLoading && isAdmin && !selectedUserId && (
+          <div className="text-center py-20 text-neutral-400 text-sm font-light">Loading users list...</div>
+        )}
+        {isLoading && isAdmin && selectedUserId && !profile && (
+          <div className="text-center py-20 text-neutral-400 text-sm font-light">Loading user profile...</div>
         )}
 
         {error && (
@@ -308,7 +735,188 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {isEditing && !isLoading && (
+        {isAdmin && !selectedUserId && !isLoading && (
+          <>
+            {/* Pending Registration Requests */}
+            <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md mb-8">
+              <h2 className="text-xl font-bold text-white tracking-wide">Pending Registration Requests</h2>
+              <p className="text-xs text-neutral-500 font-light mt-1 mb-6">Review and approve or reject employee registration requests.</p>
+
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-neutral-900 text-neutral-400 text-xs font-semibold uppercase tracking-wider">
+                      <th className="py-4 px-4">User</th>
+                      <th className="py-4 px-4">Requested Role</th>
+                      <th className="py-4 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-900 text-xs">
+                    {usersList.filter((u: any) => u.status === 'PENDING' && u.role.toLowerCase() !== 'admin').map((u: any) => (
+                      <tr key={u.id} className="hover:bg-white/2 transition-colors">
+                        <td className="py-4 px-4 text-white font-medium">{u.email}</td>
+                        <td className="py-4 px-4 text-neutral-300 font-light">{u.role}</td>
+                        <td className="py-4 px-4 text-right flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => handleApproveUser(u.id)}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectUser(u.id)}
+                            className="bg-[#be0919] hover:bg-[#990714] text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {usersList.filter((u: any) => u.status === 'PENDING' && u.role.toLowerCase() !== 'admin').length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-8 text-center text-neutral-500 font-light">No pending registration requests.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Users Directory */}
+            <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-wide">Users Directory</h2>
+                  <p className="text-xs text-neutral-500 font-light mt-1">Manage and edit user profiles in the portal.</p>
+                </div>
+                
+                <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-2.5 w-full sm:max-w-[300px] focus-within:border-[#be0919] transition-all">
+                  <input 
+                    type="text" 
+                    placeholder="Search by email or name..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-transparent border-none outline-none text-white text-xs w-full font-light"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-neutral-900 text-neutral-400 text-xs font-semibold uppercase tracking-wider">
+                      <th className="py-4 px-4">User</th>
+                      <th className="py-4 px-4">Role</th>
+                      <th className="py-4 px-4">Full Name</th>
+                      <th className="py-4 px-4">Department</th>
+                      <th className="py-4 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-900 text-xs">
+                    {usersList.filter((u: any) => u.status !== 'PENDING' || u.role.toLowerCase() === 'admin').filter((u: any) => {
+                      const q = searchQuery.toLowerCase();
+                      const emailMatch = u.email?.toLowerCase().includes(q);
+                      const nameMatch = u.profile?.fullName?.toLowerCase().includes(q);
+                      const deptMatch = u.profile?.department?.toLowerCase().includes(q);
+                      return emailMatch || nameMatch || deptMatch;
+                    }).map((u: any) => (
+                      <tr key={u.id} className="hover:bg-white/2 transition-colors">
+                        <td className="py-4 px-4 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
+                            {u.profile?.pictureUrl ? (
+                              <img src={u.profile.pictureUrl} alt="User picture" className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-4 h-4 text-neutral-400" />
+                            )}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-white font-medium truncate max-w-[150px] sm:max-w-[200px]">{u.email}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+                            u.role.toLowerCase() === 'admin' 
+                              ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20' 
+                              : 'bg-neutral-800 text-neutral-300 border border-neutral-700/50'
+                          }`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-neutral-300 font-light">
+                          {u.profile?.fullName || '—'}
+                        </td>
+                        <td className="py-4 px-4 text-neutral-300 font-light">
+                          {u.profile?.department || '—'}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            {u.editRequestStatus === 'PENDING' && (
+                              <button
+                                onClick={() => handleApproveEdit(u.id)}
+                                className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Approve Edit</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleViewUser(u.id)}
+                              className="inline-flex items-center gap-1.5 border border-neutral-800 text-neutral-300 hover:text-white hover:bg-white/5 text-[11px] font-bold py-1.5 px-4 rounded transition-all cursor-pointer"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>View Profile</span>
+                            </button>
+                            <button
+                              onClick={() => handleEditUser(u.id)}
+                              className="inline-flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {usersList.filter((u: any) => u.status !== 'PENDING' || u.role.toLowerCase() === 'admin').filter((u: any) => {
+                      const q = searchQuery.toLowerCase();
+                      const emailMatch = u.email?.toLowerCase().includes(q);
+                      const nameMatch = u.profile?.fullName?.toLowerCase().includes(q);
+                      const deptMatch = u.profile?.department?.toLowerCase().includes(q);
+                      return emailMatch || nameMatch || deptMatch;
+                    }).length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-neutral-500 font-light">No users found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {isEditing && !isLoading && profile && (profile as any).notFound && (
+          <div className="max-w-xl mx-auto mt-12 animate-fadeIn">
+            <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-8 text-center shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-[#be0919]/10 border border-[#be0919]/20 flex items-center justify-center mx-auto mb-6">
+                <User className="w-8 h-8 text-[#be0919]" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">No Profile Information Found</h3>
+              <p className="text-xs text-neutral-400 font-light leading-relaxed mb-8">
+                This employee has not completed their profile setup yet. Once the user logs in and completes their initial profile details, you will be able to manage and edit their information here.
+              </p>
+              <button
+                type="button"
+                onClick={handleBack}
+                className="py-3 px-8 rounded-lg border border-neutral-800 text-neutral-300 hover:text-white text-xs font-bold hover:bg-white/5 transition-all cursor-pointer"
+              >
+                Back to Users List
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isEditing && !isLoading && (isAdmin ? !!selectedUserId : true) && (!profile || !(profile as any).notFound) && (
           <div className="space-y-8 animate-fadeIn">
 
             {/* Header section card */}
@@ -456,7 +1064,7 @@ export default function ProfilePage() {
                 <PersonalDetails data={formData} onChange={handleFieldChange} />
               )}
               {activeTab === 'documents' && (
-                <Documents data={formData} onChange={handleFieldChange} />
+                <Documents data={formData} onChange={handleFieldChange} isAdmin={isAdmin} />
               )}
               {activeTab === 'job' && (
                 <JobDetails data={formData} onChange={handleFieldChange} />
@@ -467,16 +1075,20 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-center justify-end gap-4 border-t border-neutral-900 pt-6">
-              {profile && (
+              {(profile || isAdmin) && (
                 <button
                   type="button"
                   onClick={() => {
-                    setFormData(profile);
-                    setIsEditing(false);
+                    if (isAdmin) {
+                      handleBack();
+                    } else {
+                      setFormData(profile);
+                      setIsEditing(false);
+                    }
                   }}
                   className="py-3 px-8 rounded-lg border border-neutral-800 text-neutral-400 hover:text-white text-xs font-bold hover:bg-white/5 transition-all cursor-pointer"
                 >
-                  Cancel
+                  {isAdmin ? 'Back to List' : 'Cancel'}
                 </button>
               )}
               <button
@@ -495,79 +1107,220 @@ export default function ProfilePage() {
         {!isEditing && profile && (
           <div className="space-y-8 animate-fadeIn max-w-[1200px]">
 
-            <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl overflow-hidden relative shadow-lg">
+            {isAdmin && isViewingProfile ? (
+              <>
+                {/* Admin Header Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={handleBack}
+                      className="p-2.5 bg-[#0a0a0a] hover:bg-neutral-900 border border-neutral-900 rounded-lg text-white transition-all cursor-pointer flex items-center justify-center"
+                      title="Back to Directory"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                      <h2 className="text-xl font-bold text-white tracking-wide">Employee Profile</h2>
+                      <p className="text-xs text-neutral-500 font-light mt-1">Complete overview and details about the employee.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsViewingProfile(false);
+                      setIsEditing(true);
+                    }}
+                    className="bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-8 rounded-lg transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0"
+                  >
+                    Edit
+                  </button>
+                </div>
 
-              <div
-                className="h-[220px] bg-cover bg-center flex items-center justify-center relative border-b border-neutral-900"
-                style={{ backgroundImage: `url('/assets/portal/profile/bg-img.webp')` }}
-              >
-                <div className="absolute inset-0 bg-black/40" />
-              </div>
+                {/* Flat Dark Summary Card with Vertical Divider */}
+                <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl p-10 shadow-lg flex flex-col md:grid md:grid-cols-[1.1fr_1px_1fr] gap-x-12 items-center text-left">
+                  {/* Left Side */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 w-full">
+                    <div className="w-28 h-28 rounded-xl border border-neutral-900 bg-neutral-955 shadow-md shrink-0 overflow-hidden flex items-center justify-center">
+                      {profile.pictureUrl ? (
+                        <img src={profile.pictureUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-12 h-12 text-neutral-600" />
+                      )}
+                    </div>
+                    <div className="flex flex-col min-w-0 items-center sm:items-start">
+                      <h3 className="text-[23px] font-medium text-white tracking-wide truncate max-w-[250px]">
+                        {profile.fullName || 'No Name'}
+                      </h3>
+                      {profile.jobTitle && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded border border-white/30 text-xs text-white/70 bg-transparent">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                          <span>{profile.jobTitle}</span>
+                        </div>
+                      )}
+                      <div className="mt-6 space-y-4 text-xs font-light text-white/80">
+                        <div className="flex items-center gap-3">
+                          <Mail className="w-4 h-4 text-neutral-500 shrink-0" />
+                          <span className="truncate max-w-[220px]">{profile.email || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Phone className="w-4 h-4 text-neutral-500 shrink-0" />
+                          <span>{profile.phone || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <MapPin className="w-4 h-4 text-neutral-500 shrink-0" />
+                          <span>{profile.city && profile.country ? `${profile.city}, ${profile.country}` : (profile.city || profile.country || '—')}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-4 h-4 text-neutral-500 shrink-0" />
+                          <span>{profile.dateOfJoining ? `Joined on ${new Date(profile.dateOfJoining).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}` : '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="p-6 lg:p-8 pt-20 lg:pt-24 relative">
+                  {/* Vertical Divider */}
+                  <div className="hidden md:block w-[1px] h-full bg-white/20 self-stretch" />
 
-                <div className="absolute -top-20 left-6 lg:left-8 w-32 h-32 rounded-full border-[3px] border-neutral-900 bg-[#0a0a0a] shadow-xl shrink-0 flex items-center justify-center">
-                  <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
-                    {profile.pictureUrl ? (
-                      <img src={profile.pictureUrl} alt="Profile" className="w-full h-full object-cover" />
+                  {/* Right Side */}
+                  <div className="w-full flex flex-col gap-y-4 text-[13px] self-center md:pl-8">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Department</span>
+                      <span className="text-white font-normal">{profile.department || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Manager</span>
+                      <span className="text-white font-normal">{profile.manager || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Employment Type</span>
+                      <span className="text-white font-normal">{profile.jobType || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Role</span>
+                      <span className="text-white font-normal">{profile.jobTitle || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Status</span>
+                      <div>
+                        <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-medium border ${
+                          (profile as any).status?.toLowerCase() === 'approved'
+                            ? ((profile as any).isOnline 
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                : 'bg-neutral-800/40 text-neutral-400 border border-neutral-700/50')
+                            : (profile as any).status?.toLowerCase() === 'rejected'
+                            ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {(profile as any).status?.toLowerCase() === 'approved' 
+                            ? ((profile as any).isOnline ? 'Active' : 'Idle') 
+                            : (profile as any).status || 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Last Login</span>
+                      <span className="text-white font-normal">{formatLastLogin((profile as any).lastLogin)}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Original Header Card for Employee */
+              <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl overflow-hidden relative shadow-lg">
+                <div
+                  className="h-[220px] bg-cover bg-center flex items-center justify-center relative border-b border-neutral-900"
+                  style={{ backgroundImage: `url('/assets/portal/profile/bg-img.webp')` }}
+                >
+                  <div className="absolute inset-0 bg-black/40" />
+                </div>
+
+                <div className="p-6 lg:p-8 pt-20 lg:pt-24 relative">
+                  <div className="absolute -top-20 left-6 lg:left-8 w-32 h-32 rounded-full border-[3px] border-neutral-900 bg-[#0a0a0a] shadow-xl shrink-0 flex items-center justify-center">
+                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
+                      {profile.pictureUrl ? (
+                        <img src={profile.pictureUrl} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-14 h-14 text-neutral-600" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-left">
+                    <h2 className="text-2xl font-medium text-white tracking-wide leading-tight">
+                      {profile.fullName || 'No Name'}
+                    </h2>
+                    <p className="text-[14px] text-neutral-400 mt-1 font-normal">
+                      {profile.jobTitle || 'No Title'}
+                    </p>
+
+                    <div className="flex flex-wrap justify-center lg:justify-start gap-x-8 gap-y-2 mt-4 text-[15px] text-white font-normal poppins">
+                      <span className="flex items-center gap-2">
+                        <Mail className="w-[18px] h-[18px] text-white shrink-0" />
+                        <span>{profile.email || 'None'}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Phone className="w-[18px] h-[18px] text-white shrink-0" />
+                        <span>{profile.phone || 'None'}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <MapPin className="w-[18px] h-[18px] text-white shrink-0" />
+                        <span>{profile.city && profile.country ? `${profile.city}, ${profile.country}` : (profile.city || profile.country || 'None')}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-neutral-900/80 my-5 -mx-6" />
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-8 text-center sm:text-left justify-center sm:justify-start">
+                      <div>
+                        <span className="block text-[12px] text-neutral-500 font-normal">Department</span>
+                        <span className="text-[14px] font-normal text-white mt-0.5 block">
+                          {profile.department || '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-[12px] text-neutral-500 font-normal">Manager</span>
+                        <span className="text-[14px] font-normal text-white mt-0.5 block">
+                          {profile.manager || '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {profile.editRequestStatus === 'APPROVED' ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Profile</span>
+                      </button>
+                    ) : profile.editRequestStatus === 'PENDING' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-2 bg-neutral-800 border border-neutral-700 text-neutral-400 text-xs font-bold py-2.5 px-6 rounded-lg cursor-not-allowed shrink-0"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-neutral-500 animate-pulse" />
+                        <span>Edit Request Pending</span>
+                      </button>
                     ) : (
-                      <User className="w-14 h-14 text-neutral-600" />
+                      <button
+                        type="button"
+                        onClick={handleRequestEdit}
+                        disabled={isLoading}
+                        className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0 disabled:opacity-50"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Request Edit</span>
+                      </button>
                     )}
                   </div>
                 </div>
-
-                <div className="text-left">
-                  <h2 className="text-2xl font-medium text-white tracking-wide leading-tight">
-                    {profile.fullName || 'No Name'}
-                  </h2>
-                  <p className="text-[14px] text-neutral-400 mt-1 font-normal">
-                    {profile.jobTitle || 'No Title'}
-                  </p>
-
-                  <div className="flex flex-wrap justify-center lg:justify-start gap-x-8 gap-y-2 mt-4 text-[15px] text-white font-normal poppins">
-                    <span className="flex items-center gap-2">
-                      <Mail className="w-[18px] h-[18px] text-white shrink-0" />
-                      <span>{profile.email || 'None'}</span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Phone className="w-[18px] h-[18px] text-white shrink-0" />
-                      <span>{profile.phone || 'None'}</span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <MapPin className="w-[18px] h-[18px] text-white shrink-0" />
-                      <span>{profile.city && profile.country ? `${profile.city}, ${profile.country}` : (profile.city || profile.country || 'None')}</span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border-t border-neutral-900/80 my-5 -mx-6" />
-
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-8 text-center sm:text-left justify-center sm:justify-start">
-                    <div>
-                      <span className="block text-[12px] text-neutral-500 font-normal">Department</span>
-                      <span className="text-[14px] font-normal text-white mt-0.5 block">
-                        {profile.department || '—'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-[12px] text-neutral-500 font-normal">Manager</span>
-                      <span className="text-[14px] font-normal text-white mt-0.5 block">
-                        {profile.manager || '—'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit</span>
-                  </button>
-                </div>
               </div>
-            </div>
+            )}
 
             {/* Read-Only Details Stack */}
             <div className="space-y-8">
@@ -793,6 +1546,7 @@ export default function ProfilePage() {
                               {profile.cnicFileName}
                             </button>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.cnicContent)}</span>
+                            {renderDocStatus('cnic', profile.cnicStatus, !!profile.cnicFileName)}
                           </>
                         ) : (
                           <span className="text-white font-normal">—</span>
@@ -813,6 +1567,7 @@ export default function ProfilePage() {
                               Profile_Picture.png
                             </button>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.pictureUrl)}</span>
+                            {renderDocStatus('picture', profile.pictureStatus, !!profile.pictureUrl)}
                           </>
                         ) : (
                           <span className="text-white font-normal">—</span>
@@ -834,6 +1589,7 @@ export default function ProfilePage() {
                               {profile.portfolioUrl}
                             </a>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">Link</span>
+                            {renderDocStatus('portfolio', profile.portfolioStatus, !!profile.portfolioUrl)}
                           </>
                         ) : (
                           <span className="text-white font-normal">—</span>
@@ -854,6 +1610,7 @@ export default function ProfilePage() {
                               {profile.cvFileName}
                             </button>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.cvContent)}</span>
+                            {renderDocStatus('cv', profile.cvStatus, !!profile.cvFileName)}
                           </>
                         ) : (
                           <span className="text-white font-normal">—</span>
@@ -874,6 +1631,7 @@ export default function ProfilePage() {
                               {profile.contractFileName}
                             </button>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.contractContent)}</span>
+                            {renderDocStatus('contract', profile.contractStatus, !!profile.contractFileName)}
                           </>
                         ) : (
                           <span className="text-white font-normal">—</span>

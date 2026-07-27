@@ -10,7 +10,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  if (pathname === '/login' || pathname === '/pages/login' || pathname === '/signup' || pathname === '/pages/signup' || pathname?.includes('/portal')) {
+  if (pathname === '/login' || pathname === '/pages/login' || pathname === '/signup' || pathname === '/pages/signup' || pathname?.includes('/portal') || pathname?.includes('/admin')) {
     return null;
   }
 

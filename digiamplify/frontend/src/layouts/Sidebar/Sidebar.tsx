@@ -43,15 +43,47 @@ export default function Sidebar() {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data) {
+          if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
+          if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
+          setUser(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              picture: data.pictureUrl || undefined,
+              jobTitle: data.jobTitle || undefined
+            };
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch user profile in sidebar', e);
+    }
+  };
+
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
 
   useEffect(() => {
     loadUserData();
+    fetchProfile();
 
     const handleProfileUpdate = () => {
       loadUserData();
+      fetchProfile();
     };
 
     window.addEventListener('profileUpdate', handleProfileUpdate);
@@ -63,16 +95,41 @@ export default function Sidebar() {
     };
   }, []);
 
-  const handleSignout = () => {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
+
+  const handleSignout = async () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          await fetch('http://localhost:5000/api/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Logout error:', e);
+      }
+      localStorage.clear();
       window.location.href = '/login';
     }
   };
 
+  const isCustomAdmin = user?.role?.toLowerCase() === 'admin';
+  const pathPrefix = isCustomAdmin ? '/admin' : '/portal';
+
   // Helper to derive capitalised name from email
   const getDisplayName = () => {
+    if (isCustomAdmin) return 'Admin';
     if (!user || !user.email) return 'Jhon Ken';
     const emailPrefix = user.email.split('@')[0];
     return emailPrefix
@@ -83,15 +140,16 @@ export default function Sidebar() {
 
   // Helper to retrieve role name
   const getDisplayRole = () => {
+    if (isCustomAdmin) return 'Admin';
     if (user?.jobTitle) return user.jobTitle;
-    if (!user || !user.role) return 'App Developer';
-    return user.role.charAt(0).toUpperCase() + user.role.slice(1);
+    if (user?.role) return user.role.charAt(0).toUpperCase() + user.role.slice(1);
+    return 'Employee';
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/portal/dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', path: `${pathPrefix}/dashboard`, icon: LayoutDashboard },
     { name: 'Task', path: '#', icon: ClipboardList },
-    { name: 'Profile', path: '/portal/profile', icon: User },
+    { name: 'Profile', path: `${pathPrefix}/profile`, icon: User },
     { name: 'Finance', path: '#', icon: Coins },
     { name: 'Calendar', path: '#', icon: Calendar },
     { name: 'Chat', path: '#', icon: MessageSquare },
@@ -173,7 +231,7 @@ export default function Sidebar() {
           <div className="flex items-center gap-3">
             {/* Simple User Logo or Uploaded Profile Image */}
             <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.4)] overflow-hidden shrink-0">
-              {user?.picture ? (
+              {user?.picture && !isCustomAdmin ? (
                 <img
                   src={user.picture}
                   alt="Profile"

@@ -50,7 +50,11 @@ export default function LoginPage() {
       setPassword('');
 
       setTimeout(() => {
-        window.location.href = '/portal/dashboard';
+        if (data.user && data.user.role && data.user.role.toLowerCase() === 'admin') {
+          window.location.href = '/admin/dashboard';
+        } else {
+          window.location.href = '/portal/dashboard';
+        }
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'Something went wrong');

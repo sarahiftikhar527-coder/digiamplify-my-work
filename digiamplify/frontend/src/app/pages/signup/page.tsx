@@ -32,6 +32,10 @@ export default function SignupPage() {
       setError("Passwords do not match!");
       return;
     }
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      setError("PIN must be exactly 4 digits!");
+      return;
+    }
     if (!agreeEula || !agreePrivacy) {
       setError("You must agree to the EULA and Privacy Policy!");
       return;
@@ -50,17 +54,27 @@ export default function SignupPage() {
         throw new Error(data.error || 'Registration failed');
       }
 
-      setSuccess('Account created successfully! Redirecting to login...');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      setPin('');
-      setAgreeEula(false);
-      setAgreePrivacy(false);
+      if (role.toLowerCase() === 'admin') {
+        setSuccess('Account created successfully! Redirecting to login...');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setPin('');
+        setAgreeEula(false);
+        setAgreePrivacy(false);
 
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 2000);
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } else {
+        setSuccess('Registration request sent to admin! Please wait for approval before logging in.');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setPin('');
+        setAgreeEula(false);
+        setAgreePrivacy(false);
+      }
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -248,20 +262,22 @@ export default function SignupPage() {
               </label>
               <div className="flex items-center w-full bg-[#050505] border border-neutral-900 rounded-[14px] px-4 py-3.5 focus-within:border-[#be0919] focus-within:shadow-[0_0_12px_rgba(190,9,25,0.06)] transition-all duration-200 group">
                 <User className="w-[18px] h-[18px] text-white/80 group-focus-within:text-[#be0919] transition-colors mr-3" />
-                <input
-                  type="text"
+                <select
                   name="role"
                   id="role"
-                  readOnly
                   value={role}
-                  className="bg-transparent text-white border-none outline-none w-full text-sm font-light cursor-not-allowed select-none [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#050505_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]"
-                />
+                  onChange={(e) => setRole(e.target.value)}
+                  className="bg-transparent text-white border-none outline-none w-full text-sm font-light cursor-pointer focus:outline-none"
+                >
+                  <option value="Employee" className="bg-[#0c0c0c] text-white">Employee</option>
+                  <option value="Admin" className="bg-[#0c0c0c] text-white">Admin</option>
+                </select>
               </div>
             </div>
 
             <div className="flex flex-col mb-8">
               <label className="text-neutral-400 text-[14px] font-medium text-white mb-2.5 tracking-wide">
-                Create Pin (4-6 digits )
+                Create Pin (4 digits)
               </label>
               <div className="flex items-center w-full bg-[#050505] border border-neutral-900 rounded-[14px] px-4 py-3.5 focus-within:border-[#be0919] focus-within:shadow-[0_0_12px_rgba(190,9,25,0.06)] transition-all duration-200 group">
                 <Lock className="w-[18px] h-[18px] text-white/80 group-focus-within:text-[#be0919] transition-colors mr-3" />
@@ -270,10 +286,16 @@ export default function SignupPage() {
                   name="pin"
                   id="pin"
                   required
-                  pattern="[0-9]{4,6}"
+                  pattern="[0-9]{4}"
+                  maxLength={4}
                   placeholder="...."
                   value={pin}
-                  onChange={(e) => setPin(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val)) {
+                      setPin(val);
+                    }
+                  }}
                   className="bg-transparent text-white border-none outline-none w-full placeholder-white/50 text-sm font-light tracking-[0.4em] [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#050505_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]"
                 />
                 <button

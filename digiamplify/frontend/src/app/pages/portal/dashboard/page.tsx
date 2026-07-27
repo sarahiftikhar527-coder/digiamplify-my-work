@@ -6,7 +6,7 @@ export default function DashboardPage() {
       <Sidebar />
       
       {/* Empty Main Content Area for Now */}
-      <div className="flex-1 p-6 pt-24 sm:p-10 md:pt-10 flex flex-col justify-start">
+      <div className="flex-1 p-6 pt-24 sm:p-10 md:pt-10 flex flex-col justify-start overflow-y-auto h-screen">
         <div className="text-neutral-500 font-light text-sm">
           Home / Dashboard
         </div>

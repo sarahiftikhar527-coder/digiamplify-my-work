@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
@@ -11,6 +12,12 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 
     if (!email || !password || !role || !pin) {
       res.status(400).json({ error: 'All fields (email, password, role, pin) are required' });
+      return;
+    }
+
+    // Validate PIN is exactly 4 digits
+    if (typeof pin !== 'string' || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      res.status(400).json({ error: 'PIN must be exactly 4 digits' });
       return;
     }
 
@@ -36,6 +43,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
         password: hashedPassword,
         role,
         pin: hashedPin,
+        status: role.toLowerCase() === 'admin' ? 'APPROVED' : 'PENDING',
       },
     });
 
@@ -87,6 +95,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Check approval status
+    if (user.role.toLowerCase() === 'employee' && user.status !== 'APPROVED') {
+      res.status(403).json({ error: 'Your signup request is pending approval or has been rejected' });
+      return;
+    }
+
+    // Update lastLogin and isOnline status
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date(), isOnline: true },
+    });
+
     // Generate JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
@@ -106,5 +126,24 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error during login' });
+  }
+};
+
+export const logout = async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized user context' });
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isOnline: false },
+    });
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error: any) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error during logout' });
   }
 };

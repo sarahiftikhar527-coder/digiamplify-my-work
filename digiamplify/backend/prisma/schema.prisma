@@ -8,14 +8,18 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  role      String   @default("Employee")
-  pin       String
-  profile   Profile?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(uuid())
+  email             String   @unique
+  password          String
+  role              String   @default("Employee")
+  pin               String
+  status            String   @default("PENDING")
+  editRequestStatus String   @default("NONE")
+  lastLogin         DateTime?
+  isOnline          Boolean   @default(false)
+  profile           Profile?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Profile {

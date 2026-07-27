@@ -4,6 +4,7 @@ import { Upload, FileText, ChevronDown, Trash2, MoreVertical, ExternalLink, Down
 interface DocumentsProps {
   data: any;
   onChange: (field: string, value: any) => void;
+  isAdmin?: boolean;
 }
 
 const formatDocDate = (dateStr: string | null | undefined) => {
@@ -45,8 +46,80 @@ const getFormattedUrl = (url: string | null | undefined) => {
   return `https://${url}`;
 };
 
-export default function Documents({ data, onChange }: DocumentsProps) {
+export default function Documents({ data, onChange, isAdmin = false }: DocumentsProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [statusDropdown, setStatusDropdown] = useState<string | null>(null);
+
+  const renderDocBadge = (docType: 'cnic' | 'cv' | 'contract' | 'picture' | 'portfolio', hasFile: boolean, currentStatus: string) => {
+    if (!hasFile) {
+      return (
+        <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/30 text-[#f59e0b] px-3 py-1.5 rounded-lg text-[11px] font-semibold w-fit">
+          Pending
+        </div>
+      );
+    }
+
+    const isVerified = currentStatus === 'Verified';
+    
+    if (!isAdmin) {
+      // Employee side: static badge, no dropdown icon
+      return (
+        <div className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border w-fit ${
+          isVerified
+            ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]'
+            : 'bg-red-500/10 border-red-500/30 text-[#ff4d5a]'
+        }`}>
+          {isVerified ? 'Verified' : 'Not Verified'}
+        </div>
+      );
+    }
+
+    // Admin side: has ChevronDown dropdown menu to Verify/Unverify
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setStatusDropdown(statusDropdown === docType ? null : docType)}
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 w-fit cursor-pointer transition-all hover:bg-neutral-900 ${
+            isVerified
+              ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]'
+              : 'bg-red-500/10 border-red-500/30 text-[#ff4d5a]'
+          }`}
+        >
+          <span>{isVerified ? 'Verified' : 'Not Verified'}</span>
+          <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+        </button>
+
+        {statusDropdown === docType && (
+          <div className="absolute left-0 top-10 z-50 bg-[#0f0f0f] border border-neutral-800 rounded-lg py-1 shadow-xl min-w-[120px]">
+            {isVerified ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(`${docType}Status`, 'Not Verified');
+                  setStatusDropdown(null);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-neutral-900 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              >
+                <span>Unverify</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(`${docType}Status`, 'Verified');
+                  setStatusDropdown(null);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-emerald-400 hover:bg-neutral-900 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              >
+                <span>Verify</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileFieldPrefix: string) => {
     const file = e.target.files?.[0];
@@ -122,11 +195,11 @@ export default function Documents({ data, onChange }: DocumentsProps) {
         <table className="w-full text-left text-xs font-light min-w-[650px] table-fixed">
           <thead>
             <tr className="border-b border-neutral-900 text-neutral-500">
-              <th className="pb-3.5 font-medium w-[24%]">Document Type</th>
-              <th className="pb-3.5 font-medium w-[34%]">File Name / Input</th>
-              <th className="pb-3.5 font-medium w-[20%]">Updated Date</th>
-              <th className="pb-3.5 font-medium w-[12%]">Status</th>
-              <th className="pb-3.5 font-medium w-[10%] pr-4 text-right">Action</th>
+              <th className="pb-3.5 font-medium w-[22%]">Document Type</th>
+              <th className="pb-3.5 font-medium w-[30%]">File Name / Input</th>
+              <th className="pb-3.5 font-medium w-[18%]">Updated Date</th>
+              <th className="pb-3.5 font-medium w-[18%]">Status</th>
+              <th className="pb-3.5 font-medium w-[12%] pr-4 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-900/50">
@@ -163,14 +236,7 @@ export default function Documents({ data, onChange }: DocumentsProps) {
                 </div>
               </td>
               <td className="py-4">
-                <div className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 w-fit ${
-                  data.cnicFileName
-                    ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]'
-                    : 'bg-[#f59e0b]/10 border-[#f59e0b]/30 text-[#f59e0b]'
-                }`}>
-                  <span>{data.cnicFileName ? 'Verified' : 'Pending'}</span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-                </div>
+                {renderDocBadge('cnic', !!data.cnicFileName, data.cnicStatus)}
               </td>
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
@@ -260,14 +326,7 @@ export default function Documents({ data, onChange }: DocumentsProps) {
                 </div>
               </td>
               <td className="py-4">
-                <div className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 w-fit ${
-                  data.cvFileName
-                    ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]'
-                    : 'bg-[#f59e0b]/10 border-[#f59e0b]/30 text-[#f59e0b]'
-                }`}>
-                  <span>{data.cvFileName ? 'Verified' : 'Pending'}</span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-                </div>
+                {renderDocBadge('cv', !!data.cvFileName, data.cvStatus)}
               </td>
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
@@ -357,14 +416,7 @@ export default function Documents({ data, onChange }: DocumentsProps) {
                 </div>
               </td>
               <td className="py-4">
-                <div className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 w-fit ${
-                  data.contractFileName
-                    ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]'
-                    : 'bg-[#f59e0b]/10 border-[#f59e0b]/30 text-[#f59e0b]'
-                }`}>
-                  <span>{data.contractFileName ? 'Verified' : 'Pending'}</span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-                </div>
+                {renderDocBadge('contract', !!data.contractFileName, data.contractStatus)}
               </td>
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
@@ -460,14 +512,7 @@ export default function Documents({ data, onChange }: DocumentsProps) {
                 </div>
               </td>
               <td className="py-4">
-                <div className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 w-fit ${
-                  data.pictureUrl
-                    ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]'
-                    : 'bg-[#f59e0b]/10 border-[#f59e0b]/30 text-[#f59e0b]'
-                }`}>
-                  <span>{data.pictureUrl ? 'Verified' : 'Pending'}</span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-                </div>
+                {renderDocBadge('picture', !!data.pictureUrl, data.pictureStatus)}
               </td>
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
@@ -560,14 +605,7 @@ export default function Documents({ data, onChange }: DocumentsProps) {
                 </div>
               </td>
               <td className="py-4">
-                <div className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 w-fit ${
-                  data.portfolioUrl
-                    ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]'
-                    : 'bg-[#f59e0b]/10 border-[#f59e0b]/30 text-[#f59e0b]'
-                }`}>
-                  <span>{data.portfolioUrl ? 'Verified' : 'Pending'}</span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-                </div>
+                {renderDocBadge('portfolio', !!data.portfolioUrl, data.portfolioStatus)}
               </td>
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
