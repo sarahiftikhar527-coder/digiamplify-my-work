@@ -18,6 +18,8 @@ model User {
   lastLogin         DateTime?
   isOnline          Boolean   @default(false)
   profile           Profile?
+  supportTickets    SupportTicket[]
+  attendances       Attendance[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
@@ -98,4 +100,47 @@ model Profile {
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model SupportTicket {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issueType      String
+  subject        String
+  priority       String
+  description    String   @db.LongText
+  fileName       String?
+  fileContent    String?  @db.LongText
+  contactMethod  String
+  status         String   @default("PENDING")
+  adminResponse  String?  @db.LongText
+  respondedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Attendance {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         String    // Format: YYYY-MM-DD
+  clockIn      DateTime?
+  clockOut     DateTime?
+  status       String    // "ON_TIME", "LATE", "CLOCKED_OUT"
+  lateDuration String?   // e.g., "18m" or "1h 15m"
+  description  String?   @db.LongText
+  breaks       Break[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Break {
+  id           String     @id @default(uuid())
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  startTime    DateTime
+  endTime      DateTime?
 }

@@ -45,8 +45,28 @@ const nextConfig: NextConfig = {
         destination: '/pages/portal/dashboard',
       },
       {
+        source: '/admin/profile/:userId',
+        destination: '/pages/portal/profile?userId=:userId',
+      },
+      {
         source: '/admin/profile',
         destination: '/pages/portal/profile',
+      },
+      {
+        source: '/portal/support',
+        destination: '/pages/portal/support',
+      },
+      {
+        source: '/admin/support',
+        destination: '/pages/portal/support',
+      },
+      {
+        source: '/portal/clock-in',
+        destination: '/pages/portal/clock-in',
+      },
+      {
+        source: '/admin/clock-in',
+        destination: '/pages/portal/clock-in',
       },
     ];
   },

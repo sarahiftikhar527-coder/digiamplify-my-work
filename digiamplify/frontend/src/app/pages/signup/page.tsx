@@ -270,7 +270,6 @@ export default function SignupPage() {
                   className="bg-transparent text-white border-none outline-none w-full text-sm font-light cursor-pointer focus:outline-none"
                 >
                   <option value="Employee" className="bg-[#0c0c0c] text-white">Employee</option>
-                  <option value="Admin" className="bg-[#0c0c0c] text-white">Admin</option>
                 </select>
               </div>
             </div>

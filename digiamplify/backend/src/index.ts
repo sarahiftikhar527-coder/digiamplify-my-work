@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import profileRoutes from './routes/profileRoutes';
+import supportRoutes from './routes/supportRoutes';
+import attendanceRoutes from './routes/attendanceRoutes';
 
 dotenv.config();
 
@@ -20,6 +22,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

@@ -6,23 +6,22 @@ interface PaymentDetailsProps {
 }
 
 export default function PaymentDetails({ data, onChange }: PaymentDetailsProps) {
-  const formatToInputDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    return d.toISOString().split('T')[0];
-  };
-
-  const formatFromInputDate = (inputVal: string) => {
-    if (!inputVal) return '';
-    const [year, month, day] = inputVal.split('-');
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    const monthName = months[parseInt(month, 10) - 1];
-    return `${parseInt(day, 10)} ${monthName}, ${year}`;
+  const getDayValue = (val: string) => {
+    if (!val) return '';
+    if (/^\d+$/.test(val)) {
+      const num = parseInt(val, 10);
+      if (num >= 1 && num <= 31) return val;
+    }
+    const firstPart = val.split(' ')[0];
+    if (/^\d+$/.test(firstPart)) {
+      const num = parseInt(firstPart, 10);
+      if (num >= 1 && num <= 31) return firstPart;
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return d.getDate().toString();
+    }
+    return '';
   };
 
   return (
@@ -148,13 +147,24 @@ export default function PaymentDetails({ data, onChange }: PaymentDetailsProps) 
           <div>
             <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Salary Payment Date</label>
             <div className="relative">
-              <input
-                type="date"
-                value={data.paymentDate ? formatToInputDate(data.paymentDate) : ''}
-                onChange={(e) => onChange('paymentDate', formatFromInputDate(e.target.value))}
-                className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 pl-10 pr-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 [color-scheme:dark] font-normal poppins"
-              />
+              <select
+                value={getDayValue(data.paymentDate)}
+                onChange={(e) => onChange('paymentDate', e.target.value)}
+                className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 pl-10 pr-10 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins appearance-none cursor-pointer"
+              >
+                <option value="">Select Date</option>
+                {Array.from({ length: 31 }, (_, i) => (i + 1).toString()).map((day) => (
+                  <option key={day} value={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
               <Calendar className="w-4 h-4 text-[#be0919] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none border-l border-neutral-800 pl-2">
+                <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>

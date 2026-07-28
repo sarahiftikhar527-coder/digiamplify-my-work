@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from '@/layouts/Sidebar/Sidebar';
 import PersonalDetails from '@/components/profile/PersonalDetails';
 import Documents from '@/components/profile/Documents';
@@ -53,9 +54,9 @@ const formatLastLogin = (dateStr: any) => {
   try {
     const d = new Date(dateStr);
     const now = new Date();
-    const isToday = d.getDate() === now.getDate() && 
-                    d.getMonth() === now.getMonth() && 
-                    d.getFullYear() === now.getFullYear();
+    const isToday = d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear();
     let hours = d.getHours();
     const minutes = d.getMinutes().toString().padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -97,6 +98,7 @@ const getFormattedUrl = (url: string | null | undefined) => {
 };
 
 export default function ProfilePage() {
+  const pathname = usePathname();
   const [profile, setProfile] = useState<any>(null);
   const [formData, setFormData] = useState<any>({
     fullName: '',
@@ -196,6 +198,9 @@ export default function ProfilePage() {
 
   const handleEditUser = async (userId: string) => {
     setSelectedUserId(userId);
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', `/admin/profile/${userId}`);
+    }
     setIsLoading(true);
     setError('');
     setIsViewingProfile(false);
@@ -237,6 +242,9 @@ export default function ProfilePage() {
 
   const handleViewUser = async (userId: string) => {
     setSelectedUserId(userId);
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', `/admin/profile/${userId}`);
+    }
     setIsLoading(true);
     setError('');
     setSuccess('');
@@ -284,6 +292,9 @@ export default function ProfilePage() {
     setIsViewingProfile(false);
     setProfile(null);
     fetchAllUsers();
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', '/admin/profile');
+    }
   };
 
   const handleApproveUser = async (userId: string) => {
@@ -554,7 +565,28 @@ export default function ProfilePage() {
       const parsed = JSON.parse(storedUser);
       if (parsed.role?.toLowerCase() === 'admin') {
         setIsAdmin(true);
-        fetchAllUsers();
+        let urlUserId = '';
+        if (pathname) {
+          const pathParts = pathname.split('/');
+          const lastSegment = pathParts[pathParts.length - 1];
+          if (lastSegment && lastSegment !== 'profile') {
+            urlUserId = lastSegment;
+          }
+        }
+
+        if (urlUserId) {
+          if (selectedUserId !== urlUserId) {
+            handleViewUser(urlUserId);
+          }
+        } else {
+          if (selectedUserId !== null || !isViewingProfile) {
+            setSelectedUserId(null);
+            setIsEditing(false);
+            setIsViewingProfile(false);
+            setProfile(null);
+            fetchAllUsers();
+          }
+        }
       } else {
         setIsAdmin(false);
         fetchProfile();
@@ -562,7 +594,7 @@ export default function ProfilePage() {
     } else {
       window.location.href = '/login';
     }
-  }, []);
+  }, [pathname]);
   const handleFieldChange = (field: string, value: any) => {
     setFormData((prev: any) => ({
       ...prev,
@@ -576,11 +608,10 @@ export default function ProfilePage() {
 
     return (
       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold border ${
-          isVerified 
-            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+        <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold border ${isVerified
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
             : 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
-        }`}>
+          }`}>
           {isVerified ? 'Verified' : 'Not Verified'}
         </span>
         {isAdmin && isViewingProfile && !isVerified && (
@@ -789,11 +820,11 @@ export default function ProfilePage() {
                   <h2 className="text-xl font-bold text-white tracking-wide">Users Directory</h2>
                   <p className="text-xs text-neutral-500 font-light mt-1">Manage and edit user profiles in the portal.</p>
                 </div>
-                
+
                 <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-2.5 w-full sm:max-w-[300px] focus-within:border-[#be0919] transition-all">
-                  <input 
-                    type="text" 
-                    placeholder="Search by email or name..." 
+                  <input
+                    type="text"
+                    placeholder="Search by email or name..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="bg-transparent border-none outline-none text-white text-xs w-full font-light"
@@ -812,82 +843,82 @@ export default function ProfilePage() {
                       <th className="py-4 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-900 text-xs">
-                    {usersList.filter((u: any) => u.status !== 'PENDING' || u.role.toLowerCase() === 'admin').filter((u: any) => {
+
+                  <tbody className="divide-y divide-neutral-900 text-sm">
+                    {usersList.filter((u: any) => u.status === 'APPROVED' || u.role.toLowerCase() === 'admin').filter((u: any) => {
                       const q = searchQuery.toLowerCase();
-                      const emailMatch = u.email?.toLowerCase().includes(q);
-                      const nameMatch = u.profile?.fullName?.toLowerCase().includes(q);
-                      const deptMatch = u.profile?.department?.toLowerCase().includes(q);
+                      const emailMatch = (u.email || '').toLowerCase().includes(q);
+                      const nameMatch = (u.profile?.fullName || '').toLowerCase().includes(q);
+                      const deptMatch = (u.profile?.department || '').toLowerCase().includes(q);
                       return emailMatch || nameMatch || deptMatch;
                     }).map((u: any) => (
                       <tr key={u.id} className="hover:bg-white/2 transition-colors">
-                        <td className="py-4 px-4 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
+                        <td className="py-4.5 px-4 flex items-center gap-3.5">
+                          <div className="w-9 h-9 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
                             {u.profile?.pictureUrl ? (
                               <img src={u.profile.pictureUrl} alt="User picture" className="w-full h-full object-cover" />
                             ) : (
-                              <User className="w-4 h-4 text-neutral-400" />
+                              <User className="w-4.5 h-4.5 text-neutral-400" />
                             )}
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="text-white font-medium truncate max-w-[150px] sm:max-w-[200px]">{u.email}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
-                            u.role.toLowerCase() === 'admin' 
-                              ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20' 
+                        <td className="py-4.5 px-4">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${u.role.toLowerCase() === 'admin'
+                              ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
                               : 'bg-neutral-800 text-neutral-300 border border-neutral-700/50'
-                          }`}>
+                            }`}>
                             {u.role}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-neutral-300 font-light">
+                        <td className="py-4.5 px-4 text-neutral-300 font-light">
                           {u.profile?.fullName || '—'}
                         </td>
-                        <td className="py-4 px-4 text-neutral-300 font-light">
+                        <td className="py-4.5 px-4 text-neutral-300 font-light">
                           {u.profile?.department || '—'}
                         </td>
-                        <td className="py-4 px-4 text-right">
-                          <div className="flex items-center justify-end gap-3">
+                        <td className="py-4.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-3.5">
                             {u.editRequestStatus === 'PENDING' && (
                               <button
                                 onClick={() => handleApproveEdit(u.id)}
-                                className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
+                                className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
                               >
-                                <Check className="w-3 h-3" />
+                                <Check className="w-3.5 h-3.5" />
                                 <span>Approve Edit</span>
                               </button>
                             )}
                             <button
                               onClick={() => handleViewUser(u.id)}
-                              className="inline-flex items-center gap-1.5 border border-neutral-800 text-neutral-300 hover:text-white hover:bg-white/5 text-[11px] font-bold py-1.5 px-4 rounded transition-all cursor-pointer"
+                              className="inline-flex items-center gap-1.5 border border-neutral-800 text-neutral-300 hover:text-white hover:bg-white/5 text-xs font-bold py-2 px-4.5 rounded transition-all cursor-pointer"
                             >
-                              <ExternalLink className="w-3 h-3" />
+                              <ExternalLink className="w-3.5 h-3.5" />
                               <span>View Profile</span>
                             </button>
                             <button
                               onClick={() => handleEditUser(u.id)}
-                              className="inline-flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
+                              className="inline-flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
                             >
-                              <Edit3 className="w-3 h-3" />
+                              <Edit3 className="w-3.5 h-3.5" />
                               <span>Edit</span>
                             </button>
                           </div>
                         </td>
                       </tr>
                     ))}
-                    {usersList.filter((u: any) => u.status !== 'PENDING' || u.role.toLowerCase() === 'admin').filter((u: any) => {
+                    {usersList.filter((u: any) => u.status === 'APPROVED' || u.role.toLowerCase() === 'admin').filter((u: any) => {
                       const q = searchQuery.toLowerCase();
-                      const emailMatch = u.email?.toLowerCase().includes(q);
-                      const nameMatch = u.profile?.fullName?.toLowerCase().includes(q);
-                      const deptMatch = u.profile?.department?.toLowerCase().includes(q);
+                      const emailMatch = (u.email || '').toLowerCase().includes(q);
+                      const nameMatch = (u.profile?.fullName || '').toLowerCase().includes(q);
+                      const deptMatch = (u.profile?.department || '').toLowerCase().includes(q);
                       return emailMatch || nameMatch || deptMatch;
                     }).length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-neutral-500 font-light">No users found.</td>
-                      </tr>
-                    )}
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-neutral-500 font-light">No users found.</td>
+                        </tr>
+                      )}
                   </tbody>
                 </table>
               </div>
@@ -1203,17 +1234,16 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between">
                       <span className="text-white/70">Status</span>
                       <div>
-                        <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-medium border ${
-                          (profile as any).status?.toLowerCase() === 'approved'
-                            ? ((profile as any).isOnline 
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                : 'bg-neutral-800/40 text-neutral-400 border border-neutral-700/50')
+                        <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-medium border ${(profile as any).status?.toLowerCase() === 'approved'
+                            ? ((profile as any).isOnline
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : 'bg-neutral-800/40 text-neutral-400 border border-neutral-700/50')
                             : (profile as any).status?.toLowerCase() === 'rejected'
-                            ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}>
-                          {(profile as any).status?.toLowerCase() === 'approved' 
-                            ? ((profile as any).isOnline ? 'Active' : 'Idle') 
+                              ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}>
+                          {(profile as any).status?.toLowerCase() === 'approved'
+                            ? ((profile as any).isOnline ? 'Active' : 'Idle')
                             : (profile as any).status || 'Pending'}
                         </span>
                       </div>
@@ -1520,7 +1550,15 @@ export default function ProfilePage() {
                     </div>
                     <div className="grid grid-cols-2 gap-x-2">
                       <span className="text-neutral-500">Payment Date</span>
-                      <span className="text-white font-normal">{profile.paymentDate || '—'}</span>
+                      <span className="text-white font-normal">
+                        {profile.paymentDate ? (
+                          /^\d+$/.test(profile.paymentDate)
+                            ? profile.paymentDate
+                            : (profile.paymentDate.split(' ')[0] && /^\d+$/.test(profile.paymentDate.split(' ')[0])
+                              ? profile.paymentDate.split(' ')[0]
+                              : profile.paymentDate)
+                        ) : '—'}
+                      </span>
                     </div>
                   </div>
                 </div>

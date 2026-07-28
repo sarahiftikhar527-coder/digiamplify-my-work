@@ -15,6 +15,11 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (role.toLowerCase() === 'admin') {
+      res.status(400).json({ error: 'Registering as an admin is not allowed.' });
+      return;
+    }
+
     // Validate PIN is exactly 4 digits
     if (typeof pin !== 'string' || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
       res.status(400).json({ error: 'PIN must be exactly 4 digits' });

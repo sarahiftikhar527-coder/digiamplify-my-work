@@ -153,8 +153,8 @@ export default function Sidebar() {
     { name: 'Finance', path: '#', icon: Coins },
     { name: 'Calendar', path: '#', icon: Calendar },
     { name: 'Chat', path: '#', icon: MessageSquare },
-    { name: 'Clock In', path: '#', icon: Clock },
-    { name: 'Help & Support', path: '#', icon: HelpCircle },
+    { name: 'Clock In', path: `${pathPrefix}/clock-in`, icon: Clock },
+    { name: 'Help & Support', path: `${pathPrefix}/support`, icon: HelpCircle },
   ];
 
   return (
