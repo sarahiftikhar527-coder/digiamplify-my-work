@@ -6,7 +6,7 @@ interface JobDetailsProps {
   onChange: (field: string, value: any) => void;
 }
 
-export default function JobDetails({ data, onChange }: JobDetailsProps) {
+export default function JobTab({ data, onChange }: JobDetailsProps) {
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const activeDays = data.workingDays ? data.workingDays.split(',') : [];
 

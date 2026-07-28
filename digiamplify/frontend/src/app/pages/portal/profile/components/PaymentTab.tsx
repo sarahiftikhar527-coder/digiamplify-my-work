@@ -5,7 +5,7 @@ interface PaymentDetailsProps {
   onChange: (field: string, value: any) => void;
 }
 
-export default function PaymentDetails({ data, onChange }: PaymentDetailsProps) {
+export default function PaymentTab({ data, onChange }: PaymentDetailsProps) {
   const getDayValue = (val: string) => {
     if (!val) return '';
     if (/^\d+$/.test(val)) {

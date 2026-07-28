@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/layouts/Sidebar/Sidebar';
-import PersonalDetails from '@/components/profile/PersonalDetails';
-import Documents from '@/components/profile/Documents';
-import JobDetails from '@/components/profile/JobDetails';
-import PaymentDetails from '@/components/profile/PaymentDetails';
+import PersonalDetails from './components/PersonalTab';
+import Documents from './components/DocumentsTab';
+import JobDetails from './components/JobTab';
+import PaymentDetails from './components/PaymentTab';
+import AdminUsersDirectory from './components/AdminUsersDirectory';
 import {
   User,
   Mail,
@@ -765,167 +766,18 @@ export default function ProfilePage() {
             {success}
           </div>
         )}
-
         {isAdmin && !selectedUserId && !isLoading && (
-          <>
-            {/* Pending Registration Requests */}
-            <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md mb-8">
-              <h2 className="text-xl font-bold text-white tracking-wide">Pending Registration Requests</h2>
-              <p className="text-xs text-neutral-500 font-light mt-1 mb-6">Review and approve or reject employee registration requests.</p>
-
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-neutral-900 text-neutral-400 text-xs font-semibold uppercase tracking-wider">
-                      <th className="py-4 px-4">User</th>
-                      <th className="py-4 px-4">Requested Role</th>
-                      <th className="py-4 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-900 text-xs">
-                    {usersList.filter((u: any) => u.status === 'PENDING' && u.role.toLowerCase() !== 'admin').map((u: any) => (
-                      <tr key={u.id} className="hover:bg-white/2 transition-colors">
-                        <td className="py-4 px-4 text-white font-medium">{u.email}</td>
-                        <td className="py-4 px-4 text-neutral-300 font-light">{u.role}</td>
-                        <td className="py-4 px-4 text-right flex items-center justify-end gap-3">
-                          <button
-                            onClick={() => handleApproveUser(u.id)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleRejectUser(u.id)}
-                            className="bg-[#be0919] hover:bg-[#990714] text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] cursor-pointer"
-                          >
-                            Reject
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {usersList.filter((u: any) => u.status === 'PENDING' && u.role.toLowerCase() !== 'admin').length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="py-8 text-center text-neutral-500 font-light">No pending registration requests.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Users Directory */}
-            <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <div>
-                  <h2 className="text-xl font-bold text-white tracking-wide">Users Directory</h2>
-                  <p className="text-xs text-neutral-500 font-light mt-1">Manage and edit user profiles in the portal.</p>
-                </div>
-
-                <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-2.5 w-full sm:max-w-[300px] focus-within:border-[#be0919] transition-all">
-                  <input
-                    type="text"
-                    placeholder="Search by email or name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent border-none outline-none text-white text-xs w-full font-light"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-neutral-900 text-neutral-400 text-xs font-semibold uppercase tracking-wider">
-                      <th className="py-4 px-4">User</th>
-                      <th className="py-4 px-4">Role</th>
-                      <th className="py-4 px-4">Full Name</th>
-                      <th className="py-4 px-4">Department</th>
-                      <th className="py-4 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-neutral-900 text-sm">
-                    {usersList.filter((u: any) => u.status === 'APPROVED' || u.role.toLowerCase() === 'admin').filter((u: any) => {
-                      const q = searchQuery.toLowerCase();
-                      const emailMatch = (u.email || '').toLowerCase().includes(q);
-                      const nameMatch = (u.profile?.fullName || '').toLowerCase().includes(q);
-                      const deptMatch = (u.profile?.department || '').toLowerCase().includes(q);
-                      return emailMatch || nameMatch || deptMatch;
-                    }).map((u: any) => (
-                      <tr key={u.id} className="hover:bg-white/2 transition-colors">
-                        <td className="py-4.5 px-4 flex items-center gap-3.5">
-                          <div className="w-9 h-9 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
-                            {u.profile?.pictureUrl ? (
-                              <img src={u.profile.pictureUrl} alt="User picture" className="w-full h-full object-cover" />
-                            ) : (
-                              <User className="w-4.5 h-4.5 text-neutral-400" />
-                            )}
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-white font-medium truncate max-w-[150px] sm:max-w-[200px]">{u.email}</span>
-                          </div>
-                        </td>
-                        <td className="py-4.5 px-4">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${u.role.toLowerCase() === 'admin'
-                              ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
-                              : 'bg-neutral-800 text-neutral-300 border border-neutral-700/50'
-                            }`}>
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="py-4.5 px-4 text-neutral-300 font-light">
-                          {u.profile?.fullName || '—'}
-                        </td>
-                        <td className="py-4.5 px-4 text-neutral-300 font-light">
-                          {u.profile?.department || '—'}
-                        </td>
-                        <td className="py-4.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-3.5">
-                            {u.editRequestStatus === 'PENDING' && (
-                              <button
-                                onClick={() => handleApproveEdit(u.id)}
-                                className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                                <span>Approve Edit</span>
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleViewUser(u.id)}
-                              className="inline-flex items-center gap-1.5 border border-neutral-800 text-neutral-300 hover:text-white hover:bg-white/5 text-xs font-bold py-2 px-4.5 rounded transition-all cursor-pointer"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>View Profile</span>
-                            </button>
-                            <button
-                              onClick={() => handleEditUser(u.id)}
-                              className="inline-flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Edit</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {usersList.filter((u: any) => u.status === 'APPROVED' || u.role.toLowerCase() === 'admin').filter((u: any) => {
-                      const q = searchQuery.toLowerCase();
-                      const emailMatch = (u.email || '').toLowerCase().includes(q);
-                      const nameMatch = (u.profile?.fullName || '').toLowerCase().includes(q);
-                      const deptMatch = (u.profile?.department || '').toLowerCase().includes(q);
-                      return emailMatch || nameMatch || deptMatch;
-                    }).length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="py-8 text-center text-neutral-500 font-light">No users found.</td>
-                        </tr>
-                      )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
+          <AdminUsersDirectory
+            usersList={usersList}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            handleApproveUser={handleApproveUser}
+            handleRejectUser={handleRejectUser}
+            handleApproveEdit={handleApproveEdit}
+            handleViewUser={handleViewUser}
+            handleEditUser={handleEditUser}
+          />
         )}
-
         {isEditing && !isLoading && profile && (profile as any).notFound && (
           <div className="max-w-xl mx-auto mt-12 animate-fadeIn">
             <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-8 text-center shadow-lg">

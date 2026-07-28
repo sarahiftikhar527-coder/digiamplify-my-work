@@ -46,7 +46,7 @@ const getFormattedUrl = (url: string | null | undefined) => {
   return `https://${url}`;
 };
 
-export default function Documents({ data, onChange, isAdmin = false }: DocumentsProps) {
+export default function DocumentsTab({ data, onChange, isAdmin = false }: DocumentsProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [statusDropdown, setStatusDropdown] = useState<string | null>(null);
 

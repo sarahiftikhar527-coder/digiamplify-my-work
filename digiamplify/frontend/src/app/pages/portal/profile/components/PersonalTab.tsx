@@ -6,7 +6,7 @@ interface PersonalDetailsProps {
   onChange: (field: string, value: any) => void;
 }
 
-export default function PersonalDetails({ data, onChange }: PersonalDetailsProps) {
+export default function PersonalTab({ data, onChange }: PersonalDetailsProps) {
   const formatToInputDate = (dateStr: string) => {
     if (!dateStr) return '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
