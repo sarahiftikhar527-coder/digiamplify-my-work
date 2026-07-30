@@ -68,6 +68,14 @@ const nextConfig: NextConfig = {
         source: '/admin/clock-in',
         destination: '/pages/portal/clock-in',
       },
+      {
+        source: '/portal/finance',
+        destination: '/pages/portal/finance',
+      },
+      {
+        source: '/admin/finance',
+        destination: '/pages/portal/finance',
+      },
     ];
   },
 };

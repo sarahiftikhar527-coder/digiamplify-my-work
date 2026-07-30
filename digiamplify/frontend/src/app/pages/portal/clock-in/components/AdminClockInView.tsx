@@ -1,5 +1,6 @@
 import React from 'react';
-import { Users, CheckCircle, Clock, Coffee, AlertCircle, Search, Eye } from 'lucide-react';
+import { Users, CheckCircle, Clock, Coffee, AlertCircle, Search, Eye, Download } from 'lucide-react';
+import { downloadCSV } from '@/utils/csvHelper';
 
 interface AdminClockInViewProps {
   searchQuery: string;
@@ -28,10 +29,33 @@ export default function AdminClockInView({
   filteredRecords,
   onViewNoteClick
 }: AdminClockInViewProps) {
+  const handleDownloadCSV = () => {
+    const headers = [
+      'Employee ID',
+      'Full Name',
+      'Email',
+      'Shift',
+      'Clock In',
+      'Clock Out',
+      'Status',
+      'Task Summary (Description)'
+    ];
+
+    downloadCSV(headers, filteredRecords, 'attendance_records.csv', (rec: any) => [
+      rec.id,
+      rec.fullName,
+      rec.email,
+      rec.shift,
+      rec.clockIn,
+      rec.clockOut,
+      rec.status,
+      rec.description || ''
+    ]);
+  };
+
   return (
     <div className="w-full flex flex-col justify-start">
-      
-      {/* Top Header Title */}
+
       <div className="mb-12 select-none">
         <h1 className="text-3xl font-medium tracking-wide text-white">Clock In</h1>
         <p className="text-sm text-neutral-400 font-medium mt-3 leading-relaxed">
@@ -39,10 +63,8 @@ export default function AdminClockInView({
         </p>
       </div>
 
-      {/* Grid Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6 mb-10 select-none animate-fadeIn">
-        
-        {/* Card 1: Total Staff */}
+
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-wide">Total Staff</span>
@@ -51,7 +73,6 @@ export default function AdminClockInView({
           <span className="text-2xl font-bold text-white">{totalEmployeesCount}</span>
         </div>
 
-        {/* Card 2: Clocked In */}
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-wide">Clocked In</span>
@@ -60,7 +81,6 @@ export default function AdminClockInView({
           <span className="text-2xl font-bold text-white">{presentEmployeesCount}</span>
         </div>
 
-        {/* Card 3: Late */}
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-wide">Late</span>
@@ -69,7 +89,6 @@ export default function AdminClockInView({
           <span className="text-2xl font-bold text-white">{lateEmployeesCount}</span>
         </div>
 
-        {/* Card 4: On Break */}
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-wide">On Break</span>
@@ -78,7 +97,6 @@ export default function AdminClockInView({
           <span className="text-2xl font-bold text-white">{onBreakEmployeesCount}</span>
         </div>
 
-        {/* Card 5: Absent */}
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-wide">Absent</span>
@@ -89,10 +107,8 @@ export default function AdminClockInView({
 
       </div>
 
-      {/* Directory Filters & Search */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6 animate-fadeIn">
-        
-        {/* Search Field */}
+
         <div className="relative w-full md:max-w-xs">
           <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none select-none">
             <Search className="w-4 h-4 text-neutral-500" />
@@ -106,13 +122,12 @@ export default function AdminClockInView({
           />
         </div>
 
-        {/* Status Dropdown Filter */}
         <div className="flex items-center gap-3.5 w-full md:w-auto">
           <span className="text-xs text-neutral-500 font-bold uppercase tracking-wider select-none shrink-0">Filter Status:</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-[#0c0c0c] border border-neutral-850 text-xs text-white rounded-xl py-2.5 px-4 font-semibold hover:border-neutral-750 focus:outline-none cursor-pointer"
+            className="bg-[#0c0c0c] border border-neutral-800 text-xs text-white rounded-xl py-2.5 pl-4 pr-10 font-semibold hover:border-neutral-750 focus:outline-none cursor-pointer"
           >
             <option value="all">All</option>
             <option value="clocked in">Clocked In</option>
@@ -125,7 +140,6 @@ export default function AdminClockInView({
 
       </div>
 
-      {/* Table Log Directory */}
       <div className="bg-black border border-neutral-900 rounded-xl overflow-hidden shadow-lg animate-fadeIn">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[850px] table-fixed">
@@ -165,15 +179,14 @@ export default function AdminClockInView({
                       </span>
                     </td>
                     <td className="py-4.5 px-6 text-center">
-                      <span className={`inline-block px-3 py-1 rounded text-xs font-bold uppercase border select-none ${
-                        rec.status.toLowerCase() === 'on time' || rec.status.toLowerCase().includes('late')
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : rec.status.toLowerCase() === 'clocked out'
+                      <span className={`inline-block px-3 py-1 rounded text-xs font-bold uppercase border select-none whitespace-nowrap ${rec.status.toLowerCase() === 'on time' || rec.status.toLowerCase().includes('late')
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : rec.status.toLowerCase() === 'clocked out'
                           ? 'bg-red-500/10 text-[#ff4d5a] border-red-500/20'
                           : rec.status.toLowerCase() === 'on break'
-                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                          : 'bg-neutral-900 border-neutral-800 text-neutral-400'
-                      }`}>
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                        }`}>
                         {rec.status}
                       </span>
                     </td>
@@ -181,7 +194,7 @@ export default function AdminClockInView({
                       {rec.description ? (
                         <button
                           onClick={() => onViewNoteClick(rec)}
-                          className="px-3.5 py-1.5 bg-neutral-900 border border-neutral-800 text-xs font-bold text-white hover:bg-neutral-850 transition-colors rounded-lg flex items-center gap-1.5 ml-auto cursor-pointer"
+                          className="px-3.5 py-1.5 bg-neutral-900 border border-neutral-800 text-xs font-bold text-white hover:bg-neutral-850 transition-colors rounded-lg flex items-center gap-1.5 ml-auto cursor-pointer whitespace-nowrap"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>View Note</span>
@@ -192,16 +205,29 @@ export default function AdminClockInView({
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="py-10 text-center text-sm text-neutral-500 font-light select-none">
-                    No employee attendance records found.
-                  </td>
-                </tr>
-              )}
+              ) :
+                (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-sm text-neutral-500 font-light select-none">
+                      No employee attendance records found.
+                    </td>
+                  </tr>
+                )}
             </tbody>
           </table>
         </div>
+
+        {filteredRecords.length > 0 && (
+          <div className="flex justify-end p-6 border-t border-neutral-900 bg-[#050505]/20">
+            <button
+              onClick={handleDownloadCSV}
+              className="inline-flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
+            >
+              <Download className="w-4.5 h-4.5" />
+              <span>Download Attendance CSV</span>
+            </button>
+          </div>
+        )}
       </div>
 
     </div>

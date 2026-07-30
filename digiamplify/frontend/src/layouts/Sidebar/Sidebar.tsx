@@ -150,7 +150,7 @@ export default function Sidebar() {
     { name: 'Dashboard', path: `${pathPrefix}/dashboard`, icon: LayoutDashboard },
     { name: 'Task', path: '#', icon: ClipboardList },
     { name: 'Profile', path: `${pathPrefix}/profile`, icon: User },
-    { name: 'Finance', path: '#', icon: Coins },
+    { name: 'Finance', path: `${pathPrefix}/finance`, icon: Coins },
     { name: 'Calendar', path: '#', icon: Calendar },
     { name: 'Chat', path: '#', icon: MessageSquare },
     { name: 'Clock In', path: `${pathPrefix}/clock-in`, icon: Clock },

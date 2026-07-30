@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, Flag, ExternalLink } from 'lucide-react';
+import { Search, Flag, ExternalLink, Download } from 'lucide-react';
+import { downloadCSV } from '@/utils/csvHelper';
 
 interface AdminSupportViewProps {
   searchQuery: string;
@@ -20,6 +21,38 @@ export default function AdminSupportView({
   filteredTickets,
   onTicketClick
 }: AdminSupportViewProps) {
+  const handleDownloadCSV = () => {
+    const headers = [
+      'Ticket ID',
+      'Employee Name',
+      'Employee Email',
+      'Issue Type',
+      'Subject',
+      'Priority',
+      'Status',
+      'Contact Method',
+      'Description',
+      'Admin Response',
+      'Created At',
+      'Responded At'
+    ];
+
+    downloadCSV(headers, filteredTickets, 'support_tickets.csv', (t: any) => [
+      t.id,
+      t.user?.profile?.fullName || '',
+      t.user?.email || '',
+      t.issueType,
+      t.subject,
+      t.priority,
+      t.status,
+      t.contactMethod,
+      t.description,
+      t.adminResponse || '',
+      t.createdAt ? new Date(t.createdAt).toISOString() : '',
+      t.respondedAt ? new Date(t.respondedAt).toISOString() : ''
+    ]);
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
       
@@ -137,6 +170,18 @@ export default function AdminSupportView({
             </tbody>
           </table>
         </div>
+
+        {filteredTickets.length > 0 && (
+          <div className="flex justify-end mt-6 border-t border-neutral-900 pt-6">
+            <button
+              onClick={handleDownloadCSV}
+              className="inline-flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
+            >
+              <Download className="w-4.5 h-4.5" />
+              <span>Download Tickets CSV</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, User, Check, ExternalLink, Edit3 } from 'lucide-react';
+import { Search, User, Check, ExternalLink, Edit3, Download } from 'lucide-react';
+import { downloadCSV } from '@/utils/csvHelper';
 
 interface AdminUsersDirectoryProps {
   usersList: any[];
@@ -31,6 +32,102 @@ export default function AdminUsersDirectory({
     const deptMatch = (u.profile?.department || '').toLowerCase().includes(q);
     return emailMatch || nameMatch || deptMatch;
   });
+
+  const handleDownloadCSV = () => {
+    const headers = [
+      'User ID',
+      'Email',
+      'Role',
+      'Status',
+      'Full Name',
+      'Username',
+      'Date of Birth',
+      'Gender',
+      'Nationality',
+      'Language',
+      'Phone',
+      'Emergency Phone',
+      'Current Address',
+      'Permanent Address',
+      'Country',
+      'City',
+      'Education',
+      'Job Title',
+      'Department',
+      'Team',
+      'Manager',
+      'Job Level',
+      'Probation Period',
+      'Date of Joining',
+      'Confirmation Date',
+      'Annual Leave',
+      'Job Type',
+      'Work Type',
+      'Shift',
+      'Working Days',
+      'Weekly Off',
+      'Notice Period',
+      'Bank Name',
+      'Account Holder Name',
+      'Account Number',
+      'Currency',
+      'Bonus',
+      'Annual Salary',
+      'Salary Type',
+      'Salary',
+      'Deduction Per Absence',
+      'Payment Date',
+      'Last Login',
+      'Is Online'
+    ];
+
+    downloadCSV(headers, approvedUsers, 'users_directory.csv', (u: any) => [
+      u.id,
+      u.email,
+      u.role,
+      u.status,
+      u.profile?.fullName || '',
+      u.profile?.userName || '',
+      u.profile?.dateOfBirth || '',
+      u.profile?.gender || '',
+      u.profile?.nationality || '',
+      u.profile?.language || '',
+      u.profile?.phone || '',
+      u.profile?.emergencyPhone || '',
+      u.profile?.currentAddress || '',
+      u.profile?.permanentAddress || '',
+      u.profile?.country || '',
+      u.profile?.city || '',
+      u.profile?.education || '',
+      u.profile?.jobTitle || '',
+      u.profile?.department || '',
+      u.profile?.team || '',
+      u.profile?.manager || '',
+      u.profile?.jobLevel || '',
+      u.profile?.probationPeriod || '',
+      u.profile?.dateOfJoining || '',
+      u.profile?.confirmationDate || '',
+      u.profile?.annualLeave || '',
+      u.profile?.jobType || '',
+      u.profile?.workType || '',
+      u.profile?.shift || '',
+      u.profile?.workingDays || '',
+      u.profile?.weeklyOff || '',
+      u.profile?.noticePeriod || '',
+      u.profile?.bankName || '',
+      u.profile?.accountHolderName || '',
+      u.profile?.accountNumber || '',
+      u.profile?.currency || '',
+      u.profile?.bonus || '',
+      u.profile?.annualSalary || '',
+      u.profile?.salaryType || '',
+      u.profile?.salary || '',
+      u.profile?.deductionPerAbsence || '',
+      u.profile?.paymentDate || '',
+      u.lastLogin ? new Date(u.lastLogin).toISOString() : '',
+      u.isOnline ? 'Yes' : 'No'
+    ]);
+  };
 
   return (
     <>
@@ -177,6 +274,18 @@ export default function AdminUsersDirectory({
             </tbody>
           </table>
         </div>
+
+        {approvedUsers.length > 0 && (
+          <div className="flex justify-end mt-6 border-t border-neutral-900 pt-6">
+            <button
+              onClick={handleDownloadCSV}
+              className="inline-flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
+            >
+              <Download className="w-4.5 h-4.5" />
+              <span>Download Users CSV</span>
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

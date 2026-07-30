@@ -46,17 +46,11 @@ export default function EmployeeSupportView({
 }: EmployeeSupportViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start w-full">
-      
-      {/* Report Form Column */}
+
       <div className="w-full bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-lg">
-        <div className="flex items-center gap-2 mb-6 border-b border-neutral-900 pb-3 select-none">
-          <HelpCircle className="w-5 h-5 text-[#be0919]" />
-          <h2 className="text-lg font-bold text-white tracking-wide">Report a Problem</h2>
-        </div>
 
         <form onSubmit={onSubmit} className="space-y-5">
-          
-          {/* Issue Subject */}
+
           <div className="flex flex-col">
             <label className="text-sm text-white/90 mb-2.5 font-medium poppins select-none">
               Subject <span className="text-[#be0919] font-bold">*</span>
@@ -71,9 +65,8 @@ export default function EmployeeSupportView({
             />
           </div>
 
-          {/* Issue Type & Priority side by side */}
           <div className="grid grid-cols-2 gap-4">
-            
+
             <div className="flex flex-col">
               <label className="text-sm text-white/90 mb-2.5 font-medium poppins select-none">
                 Issue Category <span className="text-[#be0919] font-bold">*</span>
@@ -118,7 +111,6 @@ export default function EmployeeSupportView({
 
           </div>
 
-          {/* Description input */}
           <div className="flex flex-col">
             <label className="text-sm text-white/90 mb-2.5 font-medium poppins select-none">
               Description <span className="text-[#be0919] font-bold">*</span>
@@ -132,7 +124,6 @@ export default function EmployeeSupportView({
             />
           </div>
 
-          {/* File Attachment Drag & Drop Dropzone */}
           <div className="flex flex-col">
             <label className="text-base text-white/90 mb-2.5 font-medium poppins select-none">
               Attachment (Optional)
@@ -149,7 +140,7 @@ export default function EmployeeSupportView({
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
               />
-              
+
               <div className="w-12 h-12 rounded-full bg-[#be0919]/10 flex items-center justify-center mb-3">
                 <UploadCloud className="w-6 h-6 text-[#be0919]" />
               </div>
@@ -176,15 +167,14 @@ export default function EmployeeSupportView({
               )}
 
               <div className="flex gap-2.5 mt-5">
-                <span className="text-xs font-bold py-1.5 px-3.5 bg-[#0c0c0c] border border-neutral-800 text-neutral-400 rounded-md">.PDF</span>
-                <span className="text-xs font-bold py-1.5 px-3.5 bg-[#0c0c0c] border border-neutral-800 text-neutral-400 rounded-md">.DOC</span>
-                <span className="text-xs font-bold py-1.5 px-3.5 bg-[#0c0c0c] border border-neutral-800 text-neutral-400 rounded-md">.PNG</span>
-                <span className="text-xs font-bold py-1.5 px-3.5 bg-[#0c0c0c] border border-neutral-800 text-neutral-400 rounded-md">.JPG</span>
+                <span className="text-xs font-bold py-1.5 px-3.5 bg-white text-black/50 rounded-md">.PDF</span>
+                <span className="text-xs font-bold py-1.5 px-3.5 bg-white text-black/50 rounded-md">.DOC</span>
+                <span className="text-xs font-bold py-1.5 px-3.5 bg-white text-black/50 rounded-md">.PNG</span>
+                <span className="text-xs font-bold py-1.5 px-3.5 bg-white text-black/50 rounded-md">.JPG</span>
               </div>
             </div>
           </div>
 
-          {/* Preferred Contact Method */}
           <div className="flex flex-col">
             <label className="text-sm text-white/90 mb-2.5 font-medium poppins select-none">
               Preferred Contact Method
@@ -205,7 +195,6 @@ export default function EmployeeSupportView({
             </div>
           </div>
 
-          {/* Submit button bar */}
           <div className="flex justify-end pt-3">
             <button
               type="submit"
@@ -218,7 +207,6 @@ export default function EmployeeSupportView({
         </form>
       </div>
 
-      {/* Support Tickets History (placed below the form, wide card) */}
       <div className="w-full bg-black border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-lg">
         <h2 className="text-lg font-bold text-white tracking-wide border-b border-neutral-900 pb-3 mb-6 select-none">
           My Support Tickets
@@ -233,8 +221,8 @@ export default function EmployeeSupportView({
         ) : (
           <div className="space-y-4">
             {tickets.map((t) => (
-              <div 
-                key={t.id} 
+              <div
+                key={t.id}
                 onClick={() => onTicketClick(t)}
                 className="p-4 bg-[#0c0c0c] border border-white/20 hover:border-[#be0919]/50 rounded-xl cursor-pointer transition-all duration-200"
               >
@@ -247,8 +235,8 @@ export default function EmployeeSupportView({
                     })}
                   </span>
                   <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold border select-none ${
-                    t.status === 'RESOLVED' 
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                    t.status === 'RESOLVED'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                       : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                   }`}>
                     {t.status === 'RESOLVED' ? 'Resolved' : 'Pending'}
@@ -256,7 +244,7 @@ export default function EmployeeSupportView({
                 </div>
                 <h4 className="text-sm font-bold text-white truncate">{t.subject}</h4>
                 <p className="text-xs text-neutral-400 truncate mt-1.5">{t.description}</p>
-                
+
                 {t.adminResponse && (
                   <div className="mt-3 pt-2.5 border-t border-neutral-900 flex items-start gap-1.5 text-xs text-neutral-300">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />

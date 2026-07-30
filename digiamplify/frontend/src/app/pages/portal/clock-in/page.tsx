@@ -25,7 +25,6 @@ export default function ClockInPage() {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Forgot PIN modal states
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
   const [resetNewPin, setResetNewPin] = useState('');
@@ -33,11 +32,9 @@ export default function ClockInPage() {
   const [resetSuccess, setResetSuccess] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
-  // Description input states
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [todayDescription, setTodayDescription] = useState('');
 
-  // Admin states
   const [adminRecords, setAdminRecords] = useState<any[]>([]);
   const [adminSummary, setAdminSummary] = useState<any>({
     totalCount: 0,
@@ -48,22 +45,20 @@ export default function ClockInPage() {
     lateCount: 0
   });
   const [adminSearch, setAdminSearch] = useState('');
-  const [adminFilterStatus, setAdminFilterStatus] = useState('ALL');
+  const [adminFilterStatus, setAdminFilterStatus] = useState('all');
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [showNoteModal, setShowNoteModal] = useState(false);
 
   useEffect(() => {
-    // 1. Authenticate user
+
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.href = '/login';
       return;
     }
 
-    // 2. Fetch today's clock in status & role
     fetchTodayStatus();
 
-    // 3. Setup live clock
     const updateTime = () => {
       const now = new Date();
       setCurrentTime(
@@ -90,7 +85,6 @@ export default function ClockInPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch admin logs if role is Admin
   useEffect(() => {
     if (userRole === 'Admin') {
       fetchAdminAttendanceLogs();
@@ -180,7 +174,6 @@ export default function ClockInPage() {
     const isClockedIn = !!attendance?.clockIn;
     const isClockedOut = !!attendance?.clockOut;
 
-    // Check if employee is clocking out and needs to provide description first
     if (isClockedIn && !isClockedOut) {
       if (!showDescriptionInput) {
         setShowDescriptionInput(true);
@@ -314,7 +307,6 @@ export default function ClockInPage() {
     });
   };
 
-  // Determine visual style of status pill in clock circle
   const getStatusPill = () => {
     if (!attendance) {
       return (
@@ -369,35 +361,44 @@ export default function ClockInPage() {
 
   const isFormDisabled = attendance?.clockOut;
 
-  // Filter records for Admin Directory view
   const filteredRecords = adminRecords.filter((rec) => {
     const matchesSearch = rec.fullName.toLowerCase().includes(adminSearch.toLowerCase()) ||
                           rec.email.toLowerCase().includes(adminSearch.toLowerCase());
-    
-    if (adminFilterStatus === 'ALL') return matchesSearch;
-    if (adminFilterStatus === 'ON_TIME') return matchesSearch && rec.status === 'On Time';
-    if (adminFilterStatus === 'LATE') return matchesSearch && rec.status.includes('Late');
-    if (adminFilterStatus === 'ON_BREAK') return matchesSearch && rec.status === 'On Break';
-    if (adminFilterStatus === 'CLOCKED_OUT') return matchesSearch && rec.status === 'Clocked Out';
-    if (adminFilterStatus === 'ABSENT') return matchesSearch && rec.status === 'Absent';
-    return matchesSearch;
+
+    if (!matchesSearch) return false;
+
+    const status = adminFilterStatus.toLowerCase();
+    if (status === 'all') return true;
+    if (status === 'clocked in') {
+      return rec.status !== 'Absent' && rec.status !== 'Clocked Out';
+    }
+    if (status === 'clocked out') {
+      return rec.status === 'Clocked Out';
+    }
+    if (status === 'late') {
+      return rec.isLate;
+    }
+    if (status === 'on break') {
+      return rec.status === 'On Break';
+    }
+    if (status === 'absent') {
+      return rec.status === 'Absent';
+    }
+    return true;
   });
 
   return (
     <div className="flex w-full min-h-screen bg-[#050505] text-white">
       <Sidebar />
 
-      {/* Main Container */}
       <div className="flex-1 p-6 pt-24 sm:p-10 md:pt-10 flex flex-col justify-start overflow-y-auto max-h-screen">
-        
-        {/* Top Path bar */}
+
         <div className="flex items-center justify-between mb-8">
           <div className="text-neutral-500 font-light text-sm flex items-center gap-1.5">
             <span className="text-red-500 font-medium select-none">Clock In</span>
           </div>
         </div>
 
-        {/* Global Alerts */}
         {error && (
           <div className="bg-[#be0919]/10 border border-[#be0919]/30 text-[#ff4d5a] text-xs py-3.5 px-4 rounded-[14px] mb-6 text-center font-light relative animate-fadeIn">
             {error}
@@ -416,7 +417,6 @@ export default function ClockInPage() {
           </div>
         )}
 
-        {/* -------------------- DYNAMIC VIEW SELECTION -------------------- */}
         {userRole === 'Admin' ? (
           <AdminClockInView
             searchQuery={adminSearch}
@@ -425,7 +425,7 @@ export default function ClockInPage() {
             setStatusFilter={setAdminFilterStatus}
             totalEmployeesCount={adminSummary.totalCount}
             presentEmployeesCount={adminSummary.clockedInCount}
-            absentEmployeesCount={adminSummary.clockedOutCount} // Wait! Under Stats: Total - Present = Absent, but clockedOutCount is clockedOut
+            absentEmployeesCount={adminSummary.totalCount - adminSummary.clockedInCount}
             lateEmployeesCount={adminSummary.lateCount}
             onBreakEmployeesCount={adminSummary.onBreakCount}
             filteredRecords={filteredRecords}
@@ -461,7 +461,6 @@ export default function ClockInPage() {
 
       </div>
 
-      {/* Modals */}
       <ResetPinModal
         isOpen={showResetModal}
         onClose={() => {

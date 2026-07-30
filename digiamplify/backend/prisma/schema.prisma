@@ -20,6 +20,7 @@ model User {
   profile           Profile?
   supportTickets    SupportTicket[]
   attendances       Attendance[]
+  transactions      Transaction[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
@@ -143,4 +144,16 @@ model Break {
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
   startTime    DateTime
   endTime      DateTime?
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  reference String
+  amount    Float
+  type      String
+  date      DateTime @default(now())
+  status    String
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/layouts/Sidebar/Sidebar';
-import { X } from 'lucide-react';
+import { X, HelpCircle } from 'lucide-react';
 
 import EmployeeSupportView from './components/EmployeeSupportView';
 import AdminSupportView from './components/AdminSupportView';
@@ -15,7 +15,6 @@ export default function HelpAndSupportPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Form states for Employee
   const [issueType, setIssueType] = useState('Technical Issue');
   const [customIssueType, setCustomIssueType] = useState('');
   const [subject, setSubject] = useState('');
@@ -25,7 +24,6 @@ export default function HelpAndSupportPage() {
   const [fileName, setFileName] = useState('');
   const [fileContent, setFileContent] = useState('');
 
-  // Admin response states
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'RESOLVED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
@@ -76,7 +74,6 @@ export default function HelpAndSupportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size (e.g. 5MB max)
     if (file.size > 5 * 1024 * 1024) {
       setError('File size exceeds the 5MB limit.');
       return;
@@ -172,7 +169,7 @@ export default function HelpAndSupportPage() {
       }
 
       setSuccess('Problem reported successfully! We will get back to you soon.');
-      // Reset form
+
       setIssueType('Technical Issue');
       setCustomIssueType('');
       setSubject('');
@@ -236,13 +233,11 @@ export default function HelpAndSupportPage() {
     document.body.removeChild(link);
   };
 
-  // Filter support tickets based on active tab and search text
   const filteredTickets = tickets.filter((ticket) => {
-    // 1. Status Filter
+
     if (activeTab === 'PENDING' && ticket.status !== 'PENDING') return false;
     if (activeTab === 'RESOLVED' && ticket.status !== 'RESOLVED') return false;
 
-    // 2. Search query filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const subjectMatch = (ticket.subject || '').toLowerCase().includes(query);
@@ -260,17 +255,14 @@ export default function HelpAndSupportPage() {
     <div className="flex w-full min-h-screen bg-[#050505] text-white">
       <Sidebar />
 
-      {/* Main Container */}
       <div className="flex-1 p-6 pt-24 sm:p-10 md:pt-10 flex flex-col justify-start overflow-y-auto max-h-screen">
-        
-        {/* Breadcrumb Path */}
+
         <div className="flex items-center justify-between mb-8 select-none">
           <div className="text-neutral-500 font-light text-sm flex items-center gap-1.5">
             <span className="text-red-500 font-medium">Help & Support</span>
           </div>
         </div>
 
-        {/* Global Alert Banners */}
         {error && (
           <div className="bg-[#be0919]/10 border border-[#be0919]/30 text-[#ff4d5a] text-xs py-3.5 px-4 rounded-[14px] mb-6 text-center font-light relative animate-fadeIn">
             {error}
@@ -289,7 +281,6 @@ export default function HelpAndSupportPage() {
           </div>
         )}
 
-        {/* -------------------- DYNAMIC ROLE VIEW SELECTION -------------------- */}
         {isAdmin ? (
           <AdminSupportView
             searchQuery={searchQuery}
@@ -302,11 +293,14 @@ export default function HelpAndSupportPage() {
           />
         ) : (
           <div className="space-y-10">
-            {/* Top header introduction */}
+
             <div className="select-none">
-              <h1 className="text-3xl font-medium tracking-wide text-white">Help & Support</h1>
-              <p className="text-sm text-neutral-400 font-medium mt-3 leading-relaxed font-sans">
-                Submit problems, request shift modifications or technical assistance directly to administration.
+              <h1 className="text-[23px] font-semibold tracking-wide text-white flex items-center gap-2.5">
+                <HelpCircle className="w-6.5 h-6.5 text-[#be0919]" />
+                <span>Report a Problem</span>
+              </h1>
+              <p className="text-[17px] text-neutral-400 font-regular mt-3 leading-relaxed font-sans">
+                Let us know what is going on. We’ll look into it and get back to you soon.
               </p>
             </div>
 
@@ -336,7 +330,6 @@ export default function HelpAndSupportPage() {
 
       </div>
 
-      {/* Ticket Details/Response Modal */}
       <TicketDetailsModal
         isOpen={!!selectedTicket}
         onClose={() => {

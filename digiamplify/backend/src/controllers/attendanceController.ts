@@ -3,7 +3,6 @@ import prisma from '../config/prisma';
 import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../middleware/authMiddleware';
 
-// Helper to get adjusted local YYYY-MM-DD date string
 const getLocalDateString = (): string => {
   const localDate = new Date();
   const offset = localDate.getTimezoneOffset();
@@ -11,7 +10,6 @@ const getLocalDateString = (): string => {
   return adjustedDate.toISOString().split('T')[0];
 };
 
-// Helper to format duration in minutes as "Xh Ym"
 const formatDuration = (totalMins: number): string => {
   if (totalMins <= 0) return '0h 0m';
   const hrs = Math.floor(totalMins / 60);
@@ -19,7 +17,6 @@ const formatDuration = (totalMins: number): string => {
   return `${hrs}h ${mins}m`;
 };
 
-// Fetch today's attendance status and stats
 export const getTodayStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
@@ -28,10 +25,8 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Get today's local date
     const todayStr = getLocalDateString();
 
-    // Fetch user and profile
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -50,7 +45,6 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Fetch today's attendance including breaks
     const attendance = await prisma.attendance.findUnique({
       where: {
         userId_date: {
@@ -63,7 +57,6 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
       }
     });
 
-    // Calculate worked and break hours
     let workedHours = '--h --m';
     let breakHours = '--h --m';
     let currentStatus = 'Absent';
@@ -73,7 +66,6 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
       const clockInTime = new Date(attendance.clockIn!);
       const clockOutTime = attendance.clockOut ? new Date(attendance.clockOut) : null;
 
-      // 1. Calculate break durations
       let totalBreakMins = 0;
       let hasActiveBreak = false;
 
@@ -90,7 +82,6 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
 
       breakHours = formatDuration(totalBreakMins);
 
-      // 2. Calculate active worked minutes
       const endMarker = clockOutTime || now;
       const totalElapsedMs = endMarker.getTime() - clockInTime.getTime();
       const totalElapsedMins = Math.floor(totalElapsedMs / 60000);
@@ -98,7 +89,6 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
 
       workedHours = formatDuration(activeWorkedMins);
 
-      // 3. Determine current status
       if (clockOutTime) {
         currentStatus = 'Clocked Out';
       } else if (hasActiveBreak) {
@@ -126,7 +116,6 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// Clock In handler
 export const clockIn = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
@@ -137,7 +126,6 @@ export const clockIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Validate User & PIN
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -155,7 +143,6 @@ export const clockIn = async (req: Request, res: Response): Promise<void> => {
 
     const todayStr = getLocalDateString();
 
-    // Check if already clocked in today
     const existing = await prisma.attendance.findUnique({
       where: {
         userId_date: {
@@ -170,7 +157,6 @@ export const clockIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Get User Profile Shift info
     const profile = await prisma.profile.findUnique({
       where: { userId }
     });
@@ -178,9 +164,8 @@ export const clockIn = async (req: Request, res: Response): Promise<void> => {
     const isNightShift = profile?.shift?.toLowerCase() === 'night';
     const now = new Date();
 
-    // Calculate Lateness status
     const startOfShift = new Date(now);
-    // Morning shift starts at 09:00 AM, Night shift starts at 06:00 PM (18:00)
+
     startOfShift.setHours(isNightShift ? 18 : 9, 0, 0, 0);
 
     let status = 'ON_TIME';
@@ -222,7 +207,6 @@ export const clockIn = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Clock Out handler
 export const clockOut = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
@@ -233,7 +217,6 @@ export const clockOut = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Validate User & PIN
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -251,7 +234,6 @@ export const clockOut = async (req: Request, res: Response): Promise<void> => {
 
     const todayStr = getLocalDateString();
 
-    // Check today's attendance
     const attendance = await prisma.attendance.findUnique({
       where: {
         userId_date: {
@@ -276,7 +258,6 @@ export const clockOut = async (req: Request, res: Response): Promise<void> => {
 
     const now = new Date();
 
-    // Close any active breaks
     const activeBreak = attendance.breaks.find((b) => !b.endTime);
     if (activeBreak) {
       await prisma.break.update({
@@ -304,7 +285,6 @@ export const clockOut = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Start break handler
 export const startBreak = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
@@ -356,7 +336,6 @@ export const startBreak = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// End break handler
 export const endBreak = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
@@ -403,7 +382,6 @@ export const endBreak = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Reset 4-digit PIN using account password verification
 export const resetPin = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
@@ -428,14 +406,12 @@ export const resetPin = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       res.status(400).json({ error: 'Invalid account password' });
       return;
     }
 
-    // Hash new PIN
     const salt = await bcrypt.genSalt(10);
     const hashedPin = await bcrypt.hash(newPin, salt);
 
@@ -451,7 +427,6 @@ export const resetPin = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Admin view today's employee attendance logs
 export const getAdminTodayStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
@@ -467,7 +442,6 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
 
     const todayStr = getLocalDateString();
 
-    // Find all approved employees
     const employees = await prisma.user.findMany({
       where: {
         role: 'Employee',
@@ -516,7 +490,6 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
         const clockInTime = new Date(todayAttendance.clockIn!);
         const clockOutTime = todayAttendance.clockOut ? new Date(todayAttendance.clockOut) : null;
 
-        // Calculate breaks duration
         let totalBreakMins = 0;
         let hasActiveBreak = false;
 
@@ -532,7 +505,6 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
         }
         breakHours = formatDuration(totalBreakMins);
 
-        // Calculate worked minutes
         const endMarker = clockOutTime || now;
         const totalElapsedMs = endMarker.getTime() - clockInTime.getTime();
         const totalElapsedMins = Math.floor(totalElapsedMs / 60000);
@@ -557,6 +529,8 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
         shift: emp.profile?.shift || 'Morning',
         email: emp.email,
         status: currentStatus,
+        isLate: todayAttendance ? todayAttendance.status === 'LATE' : false,
+        isOnTime: todayAttendance ? todayAttendance.status === 'ON_TIME' : false,
         clockIn: clockInTimeStr,
         clockOut: clockOutTimeStr,
         workedHours,
@@ -565,13 +539,12 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
       };
     });
 
-    // Summary stats
     const totalCount = attendanceRecords.length;
     const clockedInCount = attendanceRecords.filter((r) => r.status !== 'Absent').length;
     const onBreakCount = attendanceRecords.filter((r) => r.status === 'On Break').length;
     const clockedOutCount = attendanceRecords.filter((r) => r.status === 'Clocked Out').length;
-    const onTimeCount = attendanceRecords.filter((r) => r.status === 'On Time').length;
-    const lateCount = attendanceRecords.filter((r) => r.status.includes('Late')).length;
+    const onTimeCount = attendanceRecords.filter((r) => r.isOnTime).length;
+    const lateCount = attendanceRecords.filter((r) => r.isLate).length;
 
     res.status(200).json({
       records: attendanceRecords,

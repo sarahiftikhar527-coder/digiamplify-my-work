@@ -5,6 +5,7 @@ import authRoutes from './routes/authRoutes';
 import profileRoutes from './routes/profileRoutes';
 import supportRoutes from './routes/supportRoutes';
 import attendanceRoutes from './routes/attendanceRoutes';
+import financeRoutes from './routes/financeRoutes';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/finance', financeRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
