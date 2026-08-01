@@ -32,7 +32,7 @@ export default function ResetPinModal({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-[#0c0c0c] border border-neutral-900 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl relative animate-scaleIn">
         
-        {/* Modal Header */}
+        {}
         <div className="flex items-center justify-between p-6 border-b border-neutral-900 bg-[#050505]">
           <div className="flex items-center gap-2 select-none">
             <Key className="w-5 h-5 text-[#be0919]" />
@@ -46,7 +46,7 @@ export default function ResetPinModal({
           </button>
         </div>
 
-        {/* Modal Body */}
+        {}
         <form onSubmit={onSubmit} className="p-6 space-y-5 text-sm">
           <p className="text-xs text-neutral-400 font-light mb-2 leading-relaxed">
             For security, verify your identity with your account login password to set a new 4-digit clock-in PIN.
@@ -64,7 +64,7 @@ export default function ResetPinModal({
             </div>
           )}
 
-          {/* Password field */}
+          {}
           <div className="flex flex-col">
             <label className="text-[12px] text-white/80 mb-2 font-normal poppins select-none">
               Account Password <span className="text-[#be0919] font-bold">*</span>
@@ -79,7 +79,7 @@ export default function ResetPinModal({
             />
           </div>
 
-          {/* New PIN field */}
+          {}
           <div className="flex flex-col">
             <label className="text-[12px] text-white/80 mb-2 font-normal poppins select-none">
               New 4-Digit PIN <span className="text-[#be0919] font-bold">*</span>
@@ -95,7 +95,7 @@ export default function ResetPinModal({
             />
           </div>
 
-          {/* Actions */}
+          {}
           <div className="flex justify-end gap-3 pt-3 border-t border-neutral-900">
             <button
               type="button"

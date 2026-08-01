@@ -93,7 +93,7 @@ const metricsData = [
     }
 ];
 
-// Helper Function to draw the 5 vertical bars 
+
 const MiniBarChart = () => (
     <div className="flex items-end gap-1.5 h-14 mb-5">
         <div className="w-2.5 h-4 bg-[#2f2d2d] rounded-sm"></div>
@@ -192,7 +192,7 @@ export default function HomePage() {
     return (
         <div className="w-full min-h-screen bg-[#050505] text-white font-poppins selection:bg-[#be0919] selection:text-white overflow-hidden">
 
-            {/* Hero Section */}
+            {}
 
             <section className="w-full relative min-h-screen flex items-center pt-15 pb-20">
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#be0919]/5 rounded-full blur-[120px] pointer-events-none"></div>
@@ -208,7 +208,7 @@ export default function HomePage() {
                                 Designing and developing intelligent software solutions that combine clean architecture, modern technology, and seamless user experiences to help businesses grow with confidence and scalability.
                             </p>
 
-                            {/* Stats Cards */}
+                            {}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 max-w-[720px] mt-12">
                                 {heroStats.map((stat, index) => (
                                     <div
@@ -254,7 +254,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Mission Section */}
+            {}
             <section className="w-full py-16 bg-[#050505] text-white overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
 
@@ -360,7 +360,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Gallery Section */}
+            {}
 
             <section className="w-full py-8 bg-[#050505] overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -392,7 +392,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Capabilities Intro Section */}
+            {}
 
             <section className="w-full py-7 bg-gradient-to-b from-[#141414] to-[#0a0a0a] border-t border-[#1a1a1a] overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -426,7 +426,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Expertise & Services Section */}
+            {}
 
             <section className="w-full pb-10 bg-[#0a0a0a] overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -492,14 +492,14 @@ export default function HomePage() {
             </section>
 
 
-            {/* Subtle Divider */}
+            {}
 
             <section className="w-full bg-[#050505] py-8 lg:py-2">
                 <div className="w-full h-[60px] md:h-[80px] lg:h-[100px] bg-gradient-to-r from-[#222222] to-[#050505] border-y border-[#1a1a1a]"></div>
             </section>
 
 
-            {/* Numbers & Metrics Section */}
+            {}
 
             <section className="w-full py-15 bg-[#050505] overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -589,7 +589,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Workflow Section */}
+            {}
 
             <section className="w-full py-13 bg-gradient-to-r from-[#2a2a2a] to-[#050505] overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -652,7 +652,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Flagship Projects Section */}
+            {}
 
             <section className="w-full py-13 bg-black overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -741,7 +741,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Client Review Section */}
+            {}
 
             <section className="w-full py-15 bg-gradient-to-r from-[#2a2a2a] to-[#050505] overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -839,7 +839,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* Video Section */}
+            {}
 
             <section className="w-full py-20 bg-black overflow-hidden">
                 <div className="max-w-[1200px] mx-auto px-6">
@@ -903,7 +903,7 @@ export default function HomePage() {
             </section>
 
 
-            {/* FAQ Section */}
+            {}
 
             <section className="w-full py-8 bg-[#1a1a1a] overflow-hidden">
                 <div className="max-w-[1350px] mx-auto px-6 lg:px-12">
@@ -965,7 +965,7 @@ export default function HomePage() {
 
                     </div>
 
-                    {/* CTA Card */}
+                    {}
 
                     <div className="w-full bg-gradient-to-br from-[#161616] to-[#111111] border border-[#ffffff]/20 rounded-[15px] p-10 lg:p-16 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-12 relative overflow-hidden">
 
@@ -999,10 +999,10 @@ export default function HomePage() {
             </section>
 
 
-            {/* Contact Form Section */}
+            {}
             <ContactForm />
 
-            {/* Newsletter Section */}
+            {}
             <div className="max-w-[1350px] mx-auto px-6 lg:px-12 w-full pt-12 pb-8 border-t border-[#1a1a1a]">
                 <Newsletter />
 

@@ -127,7 +127,7 @@ export default function Sidebar() {
   const isCustomAdmin = user?.role?.toLowerCase() === 'admin';
   const pathPrefix = isCustomAdmin ? '/admin' : '/portal';
 
-  // Helper to derive capitalised name from email
+  
   const getDisplayName = () => {
     if (isCustomAdmin) return 'Admin';
     if (!user || !user.email) return 'Jhon Ken';
@@ -138,7 +138,7 @@ export default function Sidebar() {
       .join(' ');
   };
 
-  // Helper to retrieve role name
+  
   const getDisplayRole = () => {
     if (isCustomAdmin) return 'Admin';
     if (user?.jobTitle) return user.jobTitle;
@@ -148,18 +148,18 @@ export default function Sidebar() {
 
   const navItems = [
     { name: 'Dashboard', path: `${pathPrefix}/dashboard`, icon: LayoutDashboard },
-    { name: 'Task', path: '#', icon: ClipboardList },
-    { name: 'Profile', path: `${pathPrefix}/profile`, icon: User },
+    { name: isCustomAdmin ? 'Assign Tasks' : 'Task', path: `${pathPrefix}/task`, icon: ClipboardList },
+    { name: isCustomAdmin ? 'Employees' : 'Profile', path: `${pathPrefix}/profile`, icon: User },
     { name: 'Finance', path: `${pathPrefix}/finance`, icon: Coins },
     { name: 'Calendar', path: '#', icon: Calendar },
     { name: 'Chat', path: '#', icon: MessageSquare },
-    { name: 'Clock In', path: `${pathPrefix}/clock-in`, icon: Clock },
+    { name: isCustomAdmin ? 'Clocked In Users' : 'Clock In', path: `${pathPrefix}/clock-in`, icon: Clock },
     { name: 'Help & Support', path: `${pathPrefix}/support`, icon: HelpCircle },
   ];
 
   return (
     <>
-      {/* Floating Hamburger button for mobile */}
+      {}
       <button
         onClick={() => setIsOpen(true)}
         className="fixed top-6 left-6 z-40 p-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white hover:text-[#be0919] md:hidden cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.5)] transition-colors"
@@ -174,14 +174,14 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar Drawer */}
+      {}
       <div className={`fixed inset-y-0 left-0 w-[260px] h-screen bg-[#0a0a0a] border-r border-[#be0919]/25 flex flex-col justify-between py-8 px-6 z-50 shadow-[4px_0_24px_rgba(190,9,25,0.06)] shrink-0 transition-transform duration-300 md:static md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}>
 
 
         <div className="absolute inset-y-0 right-0 w-[45px] bg-gradient-to-l from-[#be0919]/30 to-transparent pointer-events-none z-0" />
 
-        {/* Top Section: Logo */}
+        {}
         <div className="flex flex-col flex-1 relative z-10 items-center">
           <Link href="/" className="mb-10 block transition-transform hover:scale-102">
             <Image
@@ -193,7 +193,7 @@ export default function Sidebar() {
             />
           </Link>
 
-          {/* Sidebar Navigation */}
+          {}
           <nav className="flex flex-col gap-2 w-full">
             {navItems.map((item) => {
               const isActive = pathname === item.path || (item.path !== '#' && pathname?.startsWith(item.path));
@@ -216,7 +216,7 @@ export default function Sidebar() {
             })}
           </nav>
 
-          {/* Hide Menu option for mobile ONLY */}
+          {}
           <button
             onClick={() => setIsOpen(false)}
             className="flex items-center gap-4 py-3 px-4 rounded-[12px] text-neutral-400 hover:text-white hover:bg-white/5 transition-all duration-200 mt-8 mb-4 w-full text-left text-sm font-medium md:hidden cursor-pointer border-t border-neutral-900 pt-6"
@@ -226,10 +226,10 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Bottom Section: Profile Panel */}
+        {}
         <div className="flex items-center justify-between border-t border-neutral-900 pt-6 mt-auto">
           <div className="flex items-center gap-3">
-            {/* Simple User Logo or Uploaded Profile Image */}
+            {}
             <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.4)] overflow-hidden shrink-0">
               {user?.picture && !isCustomAdmin ? (
                 <img
@@ -252,7 +252,7 @@ export default function Sidebar() {
             </div>
           </div>
 
-          {/* Signout Button */}
+          {}
           <button
             onClick={handleSignout}
             title="Sign Out"

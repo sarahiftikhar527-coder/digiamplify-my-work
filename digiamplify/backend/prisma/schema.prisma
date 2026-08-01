@@ -21,6 +21,9 @@ model User {
   supportTickets    SupportTicket[]
   attendances       Attendance[]
   transactions      Transaction[]
+  tasks             Task[]   @relation("UserTasks")
+  assignedTasks     Task[]   @relation("AdminTasks")
+  taskActivities    TaskActivity[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
@@ -157,3 +160,34 @@ model Transaction {
   date      DateTime @default(now())
   status    String
 }
+
+model Task {
+  id             String   @id @default(uuid())
+  assignedToId   String
+  assignedTo     User     @relation("UserTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedById   String?
+  assignedBy     User?    @relation("AdminTasks", fields: [assignedById], references: [id], onDelete: SetNull)
+  subject        String
+  priority       String
+  description    String   @db.LongText
+  dueDate        String
+  dueTime        String?
+  fileName       String?
+  fileContent    String?  @db.LongText
+  status         String   @default("PENDING")
+  progress       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  activities     TaskActivity[]
+}
+
+model TaskActivity {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description String   @db.LongText
+  createdAt   DateTime @default(now())
+}
+

@@ -105,7 +105,7 @@ export default function AdminSupportView({
           </button>
         </div>
 
-        {/* Tickets Table */}
+        {}
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[750px]">
             <thead>
@@ -157,7 +157,7 @@ export default function AdminSupportView({
                       className="inline-flex items-center gap-1.5 border border-neutral-800 text-neutral-300 hover:text-white hover:bg-white/5 text-sm font-bold py-2.5 px-5 rounded transition-all cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Respond</span>
+                      <span>{t.status === 'RESOLVED' ? 'See Response' : 'Respond'}</span>
                     </button>
                   </td>
                 </tr>

@@ -1,8 +1,9 @@
 import { Response } from 'express';
 import prisma from '../config/prisma';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { sendEmail, sendSMS } from '../services/notificationService';
 
-// Create a new support ticket
+
 export const createTicket = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
@@ -42,7 +43,7 @@ export const createTicket = async (req: AuthRequest, res: Response): Promise<voi
   }
 };
 
-// Get tickets (admin sees all, employee sees only their own)
+
 export const getTickets = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
@@ -51,7 +52,7 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // Check user role
+    
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -63,7 +64,7 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
 
     let tickets;
     if (user.role.toLowerCase() === 'admin') {
-      // Admin sees all tickets with user details
+      
       tickets = await prisma.supportTicket.findMany({
         include: {
           user: {
@@ -82,7 +83,7 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
         }
       });
     } else {
-      // Employee sees only their own tickets
+      
       tickets = await prisma.supportTicket.findMany({
         where: { userId },
         orderBy: {
@@ -98,10 +99,10 @@ export const getTickets = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-// Admin responds to a support ticket
+
 export const respondToTicket = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.userId; // Admin ID
+    const userId = req.userId; 
     const { ticketId } = req.params;
     const { adminResponse } = req.body;
 
@@ -110,7 +111,7 @@ export const respondToTicket = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    // Verify requesting user is admin
+    
     const adminUser = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -120,9 +121,16 @@ export const respondToTicket = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    // Check if ticket exists
+    
     const ticket = await prisma.supportTicket.findUnique({
-      where: { id: ticketId }
+      where: { id: ticketId },
+      include: {
+        user: {
+          include: {
+            profile: true
+          }
+        }
+      }
     });
 
     if (!ticket) {
@@ -130,7 +138,7 @@ export const respondToTicket = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    // Update ticket
+    
     const updatedTicket = await prisma.supportTicket.update({
       where: { id: ticketId },
       data: {
@@ -139,6 +147,76 @@ export const respondToTicket = async (req: AuthRequest, res: Response): Promise<
         respondedAt: new Date()
       }
     });
+
+    
+    const contactMethodLower = ticket.contactMethod?.toLowerCase() || '';
+    
+    // Get target email: profile email, work email, or login email
+    const employeeEmail = ticket.user?.profile?.email || ticket.user?.profile?.workEmail || ticket.user?.email;
+    const employeePhone = ticket.user?.profile?.phone;
+    const employeeName = ticket.user?.profile?.fullName || ticket.user?.email || 'Valued Employee';
+
+    if (contactMethodLower === 'email') {
+      if (employeeEmail) {
+        const subject = `DigiAmplify Support Ticket Resolved: ${ticket.subject}`;
+        
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
+            <div style="text-align: center; border-bottom: 2px solid #be0919; padding-bottom: 10px; margin-bottom: 20px;">
+              <h2 style="color: #be0919; margin: 0;">DigiAmplify Help & Support</h2>
+            </div>
+            <p>Dear <strong>${employeeName}</strong>,</p>
+            <p>Your support ticket has been reviewed and resolved by our administrator.</p>
+            <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #be0919; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0 0 10px 0;"><strong>Ticket Subject:</strong> ${ticket.subject}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Issue Type:</strong> ${ticket.issueType}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Description:</strong> ${ticket.description}</p>
+              <p style="margin: 0;"><strong>Admin Resolution Response:</strong></p>
+              <p style="margin: 5px 0 0 0; font-style: italic; color: #333333;">${adminResponse}</p>
+            </div>
+            <p>You can also view the details and check your ticket status at any time in the employee portal.</p>
+            <p style="margin-top: 30px; font-size: 12px; color: #777777; border-top: 1px solid #eeeeee; padding-top: 10px; text-align: center;">
+              This is an automated email notification. Please do not reply directly to this message.
+            </p>
+          </div>
+        `;
+
+        const text = `
+          Dear ${employeeName},
+
+          Your support ticket has been reviewed and resolved by our administrator.
+
+          --- Ticket Details ---
+          Subject: ${ticket.subject}
+          Issue Type: ${ticket.issueType}
+          Description: ${ticket.description}
+
+          --- Admin Resolution Response ---
+          ${adminResponse}
+
+          You can also view the details and check your ticket status at any time in the employee portal.
+
+          Regards,
+          DigiAmplify Support Team
+        `;
+
+        sendEmail(employeeEmail, subject, html, text).catch(err => {
+          console.error('[SUPPORT CONTROLLER] Failed to send resolution email:', err);
+        });
+      } else {
+        console.warn(`[SUPPORT CONTROLLER] Preferred contact method is Email, but no email address was found for user ID: ${ticket.userId}`);
+      }
+    } else if (contactMethodLower === 'phone' || contactMethodLower === 'sms') {
+      if (employeePhone) {
+        const smsMessage = `DigiAmplify Support Alert: Your ticket "${ticket.subject}" has been resolved. Admin Response: "${adminResponse}". View details in portal.`;
+        
+        sendSMS(employeePhone, smsMessage).catch(err => {
+          console.error('[SUPPORT CONTROLLER] Failed to send resolution SMS:', err);
+        });
+      } else {
+        console.warn(`[SUPPORT CONTROLLER] Preferred contact method is Phone/SMS, but no phone number was found in user profile for user ID: ${ticket.userId}`);
+      }
+    }
 
     res.status(200).json({
       message: 'Support ticket responded and resolved successfully',

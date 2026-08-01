@@ -12,7 +12,7 @@ const router = Router();
 
 router.get('/employee', authenticateToken as any, getEmployeeFinanceData as any);
 
-// Admin finance management routes
+
 router.get('/admin/overview', authenticateToken as any, getAdminFinanceOverview as any);
 router.get('/admin/employee/:userId', authenticateToken as any, getEmployeeFinanceDataForAdmin as any);
 router.post('/admin/transaction', authenticateToken as any, addTransactionForAdmin as any);

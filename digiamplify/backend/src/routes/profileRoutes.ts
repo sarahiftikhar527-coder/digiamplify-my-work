@@ -4,12 +4,12 @@ import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Secure all profile operations
+
 router.get('/', authenticateToken as any, getProfile);
 router.post('/', authenticateToken as any, upsertProfile);
 router.post('/request-edit', authenticateToken as any, requestEditPermission);
 
-// Admin-specific endpoints
+
 router.get('/all', authenticateToken as any, getAllProfiles);
 router.get('/:userId', authenticateToken as any, getProfileByUserId);
 router.post('/:userId', authenticateToken as any, upsertProfileByUserId);

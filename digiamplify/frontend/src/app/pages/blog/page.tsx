@@ -37,7 +37,7 @@ export default function BlogPage() {
     <div className="w-full bg-[#0d0d0d] min-h-screen text-white">
       <div className="max-w-[1200px] mx-auto pt-24 pb-20 px-6 lg:px-8 font-sans w-full">
         
-        {/* Header Section */}
+        {}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10 mb-10">
           <Title as="h1" className="text-6xl lg:text-[5rem] tracking-wide shrink-0">
             Our <span className="text-[#be0919]">Blogs</span>
@@ -47,7 +47,7 @@ export default function BlogPage() {
           </p>
         </div>
 
-        {/* Search & 3D Element Section */}
+        {}
         <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-16">
           
           <div className="relative w-full md:w-[420px]">
@@ -76,7 +76,7 @@ export default function BlogPage() {
           </div>
         </div>
 
-        {/* Categories Tab Navigation */}
+        {}
         <div className="flex flex-wrap gap-8 lg:gap-12 mb-12 border-b border-[#222] pb-2">
           {categories.map((category, index) => (
             <button 
@@ -93,12 +93,12 @@ export default function BlogPage() {
           ))}
         </div>
 
-        {/* Blog Grid */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
           {blogPosts.map((post, index) => (
             <div key={index} className="flex flex-col group cursor-pointer">
              
-              {/* Image Card */}
+              {}
               <div className="relative h-[220px] w-full rounded-xl overflow-hidden mb-5">
                 <Image 
                   src={`/assets/blog-${index + 1}.jpg`}
@@ -118,7 +118,7 @@ export default function BlogPage() {
                 </div>
               </div>
               
-              {/* Content */}
+              {}
               <h3 className="text-[16px] font-semibold text-white mb-3 tracking-wide">{post.title}</h3>
               <p className="text-white/50 text-[13px] leading-relaxed mb-4">
                 {post.desc}
@@ -134,7 +134,7 @@ export default function BlogPage() {
           ))}
         </div>
 
-        {/* Pagination */}
+        {}
         <div className="flex justify-center items-center gap-2 mb-20">
           <button className="w-8 h-8 flex items-center justify-center border border-[#333] text-[#888] rounded-md hover:border-white transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
@@ -147,7 +147,7 @@ export default function BlogPage() {
           </button>
         </div>
 
-        {/* Reusable Newsletter Section */}
+        {}
         <Newsletter />
 
       </div>

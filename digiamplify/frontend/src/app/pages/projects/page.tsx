@@ -17,7 +17,7 @@ export default function ProjectsPage() {
   return (
     <div className="w-full bg-[#0d0d0d] min-h-screen text-white font-poppins overflow-x-hidden">
 
-      {/* --- Hero Section --- */}
+      {}
       <section className="relative w-full h-[550px] lg:h-[650px] bg-[#050505] overflow-hidden mb-20 mt-10">
 
         <div
@@ -72,7 +72,7 @@ export default function ProjectsPage() {
       <div className="max-w-[1200px] mx-auto px-6 lg:px-8 w-full pb-20">
 
 
-        {/* --- Recent Work Section --- */}
+        {}
         <section className="mb-25">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
             <Title as="h2" className="text-3xl lg:text-[2.2rem] font-['Glacial']">
@@ -136,7 +136,7 @@ export default function ProjectsPage() {
         </section>
 
 
-        {/* --- Other Projects Section --- */}
+        {}
         <section className="mb-20">
           <div className="flex justify-center mb-12">
             <Title as="h2" className="text-3xl lg:text-[37px] font-['Glacial']">
@@ -177,7 +177,7 @@ export default function ProjectsPage() {
           </div>
         </section>
 
-        {/* --- Newsletter Component --- */}
+        {}
         <Newsletter />
 
       </div>

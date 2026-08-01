@@ -81,7 +81,7 @@ export default function AboutPage() {
     <div className="w-full bg-[#0d0d0d] min-h-screen text-white font-poppins overflow-x-hidden">
       <div className="max-w-[1200px] mx-auto pt-24 pb-20 px-6 lg:px-8 w-full">
         
-        {/* --- Hero Section --- */}
+        {}
         <section className="flex flex-col lg:flex-row justify-between items-stretch gap-12 mb-32 relative min-h-[450px] lg:min-h-[550px]">
           
           <div className="w-full my-10 lg:w-[40%] flex flex-col justify-between z-20 py-6 lg:py-10">
@@ -120,7 +120,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* --- Agency Background Section --- */}
+        {}
         <section className="flex flex-col lg:flex-row gap-6 mb-32 items-stretch">
           
           <div className="w-full lg:w-[40%] flex flex-col gap-6">
@@ -204,7 +204,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* --- Journey / Timeline Section --- */}
+        {}
         <section className="mb-32">
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-3xl p-8 lg:p-14 w-full">
             
@@ -247,7 +247,7 @@ export default function AboutPage() {
         </section>
 
 
-       {/* --- Vision & Mission Cards --- */}
+       {}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-32">
           
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-3xl p-10 lg:p-12 relative overflow-hidden flex flex-col min-h-[450px]">
@@ -308,7 +308,7 @@ export default function AboutPage() {
         </section>
 
 
-        {/* --- Image Grid Collage Section --- */}
+        {}
         <section className="mb-32">
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-3xl p-8 lg:p-12 w-full">
             
@@ -352,7 +352,7 @@ export default function AboutPage() {
         </section>
 
 
-        {/* --- Core Values Section --- */}
+        {}
         <section className="mb-32 relative flex flex-col items-center">
           
           <div className="absolute left-[-160px] lg:left-[-150px] bottom-[-120px] hidden lg:block opacity-90 z-0 pointer-events-none">
@@ -391,7 +391,7 @@ export default function AboutPage() {
           
         </section>
 
-        {/* --- Newsletter Component --- */}
+        {}
         <Newsletter />
 
       </div>

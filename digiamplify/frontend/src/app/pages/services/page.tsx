@@ -101,7 +101,7 @@ export default function ServicesPage() {
   return (
     <div className="w-full bg-[#050505] min-h-screen font-poppins overflow-x-hidden text-white">
 
-      {/* Services Hero Section */}
+      {}
       <section className="relative w-full h-[450px] lg:h-[500px] bg-[#050505] overflow-hidden mb-15 mt-10 flex items-center border-b border-[#1a1a1a]">
 
         <div className="absolute top-0 left-0 w-[200px] lg:w-[300px] h-full bg-gradient-to-r from-[#be0919]/40 via-[#be0919]/5 to-transparent pointer-events-none z-0"></div>
@@ -157,7 +157,7 @@ export default function ServicesPage() {
 
       </section>
 
-      {/* Goals Section */}
+      {}
 
       <section className="w-full relative py-20 lg:py-16 bg-[#080808] overflow-hidden border-b border-[#1a1a1a]">
 
@@ -214,7 +214,7 @@ export default function ServicesPage() {
       </section>
 
 
-      {/* Solution Steps Section */}
+      {}
 
       <section className="w-full relative pt-10 pb-18 bg-[#050505] border-t border-white/30">
         <div className="max-w-[1200px] mx-auto px-6 lg:px-8 relative z-10">
@@ -280,7 +280,7 @@ export default function ServicesPage() {
       </section>
 
 
-      {/* Real Clients Real Results Section */}
+      {}
 
       <section className="w-full relative pt-10 pb-4 bg-[#0a0a0a] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#1f1f1f_0%,_transparent_70%)] pointer-events-none z-0"></div>
@@ -302,7 +302,7 @@ export default function ServicesPage() {
             </button>
           </div>
 
-          {/* Case Studies Cards */}
+          {}
           <div className="flex flex-col gap-8">
             {caseStudies.map((study, index) => (
               <div
@@ -382,14 +382,14 @@ export default function ServicesPage() {
             ))}
           </div>
 
-          {/* Bottom Divider Line */}
+          {}
           <div className="w-full h-[1.5px] bg-white/50 mt-14"></div>
 
         </div>
 
       </section>
 
-      {/* Reusable Newsletter Section */}
+      {}
 
       <div className="max-w-[1200px] mx-auto px-6 lg:px-8 w-full pb-20">
         <Newsletter />

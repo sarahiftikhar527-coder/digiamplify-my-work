@@ -51,7 +51,7 @@ export default function AdminManageFinancesModal({
   handleSavePaymentSettings,
   onClose
 }: AdminManageFinancesModalProps) {
-  // Edit payment profile settings quick form state
+  
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
@@ -59,11 +59,11 @@ export default function AdminManageFinancesModal({
   const [bonus, setBonus] = useState('');
   const [currency, setCurrency] = useState('USD');
 
-  // Add transaction form state
+  
   const [txTitle, setTxTitle] = useState('');
   const [txAmount, setTxAmount] = useState('');
-  const [txType, setTxType] = useState('SALARY'); // SALARY, BONUS, DEDUCTION
-  const [txStatus, setTxStatus] = useState('SUCCESSFUL'); // SUCCESSFUL, PENDING, FAILED
+  const [txType, setTxType] = useState('SALARY'); 
+  const [txStatus, setTxStatus] = useState('SUCCESSFUL'); 
   const [txRef, setTxRef] = useState('');
 
   // Initialize/reset form states when selected employee changes or isEditingPayment opens
@@ -139,7 +139,7 @@ export default function AdminManageFinancesModal({
           </div>
         </div>
 
-        {/* Sub-Interface: Edit Bank settings */}
+        {}
         {isEditingPayment ? (
           <div className="bg-[#050505] border border-neutral-900 rounded-xl p-8 mb-8 shadow-sm animate-fadeIn">
             <h3 className="text-base font-bold text-white mb-6 border-l-2 border-red-500 pl-3">Edit Profile Payment Details</h3>
@@ -219,7 +219,7 @@ export default function AdminManageFinancesModal({
           </div>
         ) : null}
 
-        {/* Sub-Interface: Add Transaction Form */}
+        {}
         {showAddTxForm ? (
           <div className="bg-[#050505] border border-neutral-900 rounded-xl p-8 mb-8 shadow-sm animate-fadeIn">
             <h3 className="text-base font-bold text-white mb-6 border-l-2 border-red-500 pl-3">Add Finance Transaction</h3>
@@ -296,7 +296,7 @@ export default function AdminManageFinancesModal({
           </div>
         ) : null}
 
-        {/* Transactions list */}
+        {}
         <div className="mt-6">
           <h3 className="text-base font-bold text-white mb-6 border-l-2 border-red-500 pl-3 select-none">Transaction History</h3>
           <div className="overflow-x-auto w-full max-h-[40vh] custom-scrollbar pb-3">

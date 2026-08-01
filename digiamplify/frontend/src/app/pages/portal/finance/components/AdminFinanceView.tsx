@@ -20,15 +20,15 @@ export default function AdminFinanceView() {
     totalEmployeesCount: 0
   });
 
-  // Employees payroll list
+  
   const [employees, setEmployees] = useState<any[]>([]);
 
-  // Selected employee detail state for transaction management
+  
   const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
   const [empTransactions, setEmpTransactions] = useState<any[]>([]);
   const [isManagingTx, setIsManagingTx] = useState(false);
 
-  // Edit payment profile settings quick form states
+  
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   const [showAddTxForm, setShowAddTxForm] = useState(false);
 
@@ -160,7 +160,7 @@ export default function AdminFinanceView() {
       if (res.ok) {
         setSuccess('Payment profile settings updated successfully!');
         setIsEditingPayment(false);
-        // Refresh employee data
+        
         const updatedEmp = {
           ...selectedEmp,
           bankName: settings.bankName,
@@ -191,7 +191,7 @@ export default function AdminFinanceView() {
 
   return (
     <div className="w-full flex flex-col justify-start">
-      {/* Scrollbar Custom Styling */}
+      {}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           height: 4px;
@@ -209,7 +209,7 @@ export default function AdminFinanceView() {
         }
       `}</style>
 
-      {/* Overview Header */}
+      {}
       <div className="mb-10 select-none">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-white flex items-center gap-3">
           <Coins className="w-7 h-7 text-[#be0919]" />
@@ -220,7 +220,7 @@ export default function AdminFinanceView() {
         </p>
       </div>
 
-      {/* Notifications */}
+      {}
       {error && (
         <div className="bg-[#be0919]/10 border border-[#be0919]/30 text-[#ff4d5a] text-sm py-4 px-6 rounded-xl mb-6 text-center font-normal">
           {error}

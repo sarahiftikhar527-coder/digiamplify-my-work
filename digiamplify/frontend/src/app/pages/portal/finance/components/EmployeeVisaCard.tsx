@@ -24,14 +24,14 @@ export default function EmployeeVisaCard({
 }: EmployeeVisaCardProps) {
   return (
     <div className="lg:col-span-2 bg-[#0c0c0c] border border-neutral-900 rounded-2xl p-6 sm:p-8 shadow-md flex flex-col justify-between min-h-[320px] select-none animate-fadeIn">
-      {/* Title */}
+      {}
       <div className="mb-4">
         <h3 className="text-base sm:text-lg font-bold tracking-wide text-white">Total Balance</h3>
       </div>
 
-      {/* Row containing Pill Add Card and Visa Card */}
+      {}
       <div className="flex items-center gap-6 my-auto">
-        {/* Vertical Add New Card button */}
+        {}
         <button className="flex flex-col items-center justify-center border border-dashed border-[#be0919]/60 rounded-full py-4 px-2.5 h-[160px] w-[45px] shrink-0 text-[#be0919] hover:text-white hover:border-white/30 transition-colors cursor-pointer select-none bg-transparent">
           <span className="text-[10px] font-bold uppercase tracking-widest [writing-mode:vertical-lr] rotate-180 leading-none">
             Add New Card
@@ -39,7 +39,7 @@ export default function EmployeeVisaCard({
           <span className="text-lg font-bold mt-2.5 leading-none">+</span>
         </button>
 
-        {/* Visa Card container */}
+        {}
         <div className="bg-[#0f0708] border border-red-950/30 rounded-2xl p-5 flex flex-col justify-between h-[160px] flex-1 relative shadow-inner">
           <div>
             <div className="flex justify-between items-start">
@@ -73,7 +73,7 @@ export default function EmployeeVisaCard({
         </div>
       </div>
 
-      {/* Bottom regular fee text */}
+      {}
       <div className="mt-4">
         <span className="text-xs sm:text-sm text-neutral-400 font-normal">Monthly Regular fee $677</span>
       </div>

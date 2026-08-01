@@ -85,7 +85,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#1b1b1b] font-poppins text-white select-none">
 
-      {/* Left Column: Branding, Hero & Background Image */}
+      {}
       <div className="relative hidden md:flex md:w-[42%] lg:w-[45%] flex-col justify-between p-12 lg:p-16 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
@@ -362,7 +362,7 @@ export default function SignupPage() {
               </span>
             </div>
 
-            {/* Signup Button */}
+            {}
             <button
               type="submit"
               disabled={isLoading}
@@ -371,7 +371,7 @@ export default function SignupPage() {
               {isLoading ? 'Signing up...' : 'Sign up'}
             </button>
 
-            {/* Already have account? Login */}
+            {}
             <div className="text-center mt-8">
               <span className="text-neutral-500 text-white text-[13px] font-light">
                 Already have account?{' '}

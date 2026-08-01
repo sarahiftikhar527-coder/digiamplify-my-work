@@ -20,13 +20,13 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Validate PIN is exactly 4 digits
+    
     if (typeof pin !== 'string' || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
       res.status(400).json({ error: 'PIN must be exactly 4 digits' });
       return;
     }
 
-    // Check if user already exists
+    
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -36,12 +36,12 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Hash password and pin
+    
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const hashedPin = await bcrypt.hash(pin, salt);
 
-    // Create user
+    
     const user = await prisma.user.create({
       data: {
         email,
@@ -52,7 +52,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    // Generate JWT
+    
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,
@@ -83,7 +83,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Find user
+    
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -93,26 +93,26 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check password
+    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
 
-    // Check approval status
+    
     if (user.role.toLowerCase() === 'employee' && user.status !== 'APPROVED') {
       res.status(403).json({ error: 'Your signup request is pending approval or has been rejected' });
       return;
     }
 
-    // Update lastLogin and isOnline status
+    
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLogin: new Date(), isOnline: true },
     });
 
-    // Generate JWT
+    
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,

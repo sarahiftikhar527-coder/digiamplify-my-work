@@ -29,6 +29,8 @@ export default function AdminClockInView({
   filteredRecords,
   onViewNoteClick
 }: AdminClockInViewProps) {
+  const hasActiveRecords = filteredRecords.some(rec => rec.status.toUpperCase() !== 'ABSENT');
+
   const handleDownloadCSV = () => {
     const headers = [
       'Employee ID',
@@ -154,70 +156,71 @@ export default function AdminClockInView({
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-900 font-light text-neutral-300">
-              {filteredRecords.length > 0 ? (
-                filteredRecords.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-[#050505]/45 transition-colors">
-                    <td className="py-4.5 px-6">
-                      <div className="flex flex-col">
-                        <span className="text-base font-semibold text-white leading-tight">{rec.fullName}</span>
-                        <span className="text-xs text-neutral-500 font-light mt-1 leading-none">{rec.email}</span>
-                      </div>
-                    </td>
-                    <td className="py-4.5 px-6">
-                      <span className="text-sm px-3.5 py-1.5 bg-neutral-900 border border-neutral-800 rounded font-semibold text-neutral-300 select-none">
-                        {rec.shift.toLowerCase() === 'night' ? 'Night' : 'Day'}
-                      </span>
-                    </td>
-                    <td className="py-4.5 px-6">
-                      <span className={rec.clockIn !== '--:--' ? 'text-emerald-400 font-semibold text-sm whitespace-nowrap' : 'text-neutral-500 font-light text-sm whitespace-nowrap'}>
-                        {rec.clockIn}
-                      </span>
-                    </td>
-                    <td className="py-4.5 px-6">
-                      <span className={rec.clockOut !== '--:--' ? 'text-emerald-400 font-semibold text-sm whitespace-nowrap' : 'text-neutral-500 font-light text-sm whitespace-nowrap'}>
-                        {rec.clockOut}
-                      </span>
-                    </td>
-                    <td className="py-4.5 px-6 text-center">
-                      <span className={`inline-block px-3 py-1 rounded text-xs font-bold uppercase border select-none whitespace-nowrap ${rec.status.toLowerCase() === 'on time' || rec.status.toLowerCase().includes('late')
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                        : rec.status.toLowerCase() === 'clocked out'
-                          ? 'bg-red-500/10 text-[#ff4d5a] border-red-500/20'
-                          : rec.status.toLowerCase() === 'on break'
-                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                            : 'bg-neutral-900 border-neutral-800 text-neutral-400'
-                        }`}>
-                        {rec.status}
-                      </span>
-                    </td>
-                    <td className="py-4.5 px-6 text-right pr-6">
-                      {rec.description ? (
-                        <button
-                          onClick={() => onViewNoteClick(rec)}
-                          className="px-3.5 py-1.5 bg-neutral-900 border border-neutral-800 text-xs font-bold text-white hover:bg-neutral-850 transition-colors rounded-lg flex items-center gap-1.5 ml-auto cursor-pointer whitespace-nowrap"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Note</span>
-                        </button>
-                      ) : (
-                        <span className="text-xs text-neutral-600 font-light select-none">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              ) :
-                (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-sm text-neutral-500 font-light select-none">
-                      No employee attendance records found.
-                    </td>
-                  </tr>
-                )}
+              {hasActiveRecords ? (
+                filteredRecords
+                  .filter((rec) => rec.status.toUpperCase() !== 'ABSENT')
+                  .map((rec) => (
+                    <tr key={rec.id} className="hover:bg-[#050505]/45 transition-colors">
+                      <td className="py-4.5 px-6">
+                        <div className="flex flex-col">
+                          <span className="text-base font-semibold text-white leading-tight">{rec.fullName}</span>
+                          <span className="text-xs text-neutral-500 font-light mt-1 leading-none">{rec.email}</span>
+                        </div>
+                      </td>
+                      <td className="py-4.5 px-6">
+                        <span className="text-sm px-3.5 py-1.5 bg-neutral-900 border border-neutral-800 rounded font-semibold text-neutral-300 select-none">
+                          {rec.shift.toLowerCase() === 'night' ? 'Night' : 'Day'}
+                        </span>
+                      </td>
+                      <td className="py-4.5 px-6">
+                        <span className={rec.clockIn !== '--:--' ? 'text-emerald-400 font-semibold text-sm whitespace-nowrap' : 'text-neutral-500 font-light text-sm whitespace-nowrap'}>
+                          {rec.clockIn}
+                        </span>
+                      </td>
+                      <td className="py-4.5 px-6">
+                        <span className={rec.clockOut !== '--:--' ? 'text-emerald-400 font-semibold text-sm whitespace-nowrap' : 'text-neutral-500 font-light text-sm whitespace-nowrap'}>
+                          {rec.clockOut}
+                        </span>
+                      </td>
+                      <td className="py-4.5 px-6 text-center">
+                        <span className={`inline-block px-3 py-1 rounded text-xs font-bold uppercase border select-none whitespace-nowrap ${rec.status.toLowerCase() === 'on time' || rec.status.toLowerCase().includes('late')
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : rec.status.toLowerCase() === 'clocked out'
+                            ? 'bg-red-500/10 text-[#ff4d5a] border-red-500/20'
+                            : rec.status.toLowerCase() === 'on break'
+                              ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                              : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                          }`}>
+                          {rec.status}
+                        </span>
+                      </td>
+                      <td className="py-4.5 px-6 text-right pr-6">
+                        {rec.description ? (
+                          <button
+                            onClick={() => onViewNoteClick(rec)}
+                            className="px-3.5 py-1.5 bg-neutral-900 border border-neutral-800 text-xs font-bold text-white hover:bg-neutral-850 transition-colors rounded-lg flex items-center gap-1.5 ml-auto cursor-pointer whitespace-nowrap"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Note</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-neutral-600 font-light select-none">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-sm text-neutral-500 font-light select-none">
+                    No employee attendance records found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {filteredRecords.length > 0 && (
+        {hasActiveRecords && (
           <div className="flex justify-end p-6 border-t border-neutral-900 bg-[#050505]/20">
             <button
               onClick={handleDownloadCSV}

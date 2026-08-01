@@ -9,7 +9,7 @@ export default function ContactPage() {
     <div className="w-full bg-[#0d0d0d] min-h-screen">
       <div className="max-w-[1200px] mx-auto pt-24 pb-20 px-6 lg:px-8 font-sans w-full">
         
-        {/* Header Section */}
+        {}
         <header className="flex flex-col lg:flex-row justify-between items-start gap-12 lg:gap-8 mb-20 w-full">
           <div className="w-full lg:w-[55%]">
             <Title as="h1" className="pl-0 lg:pl-14 mb-18">
@@ -57,12 +57,12 @@ export default function ContactPage() {
           </div>
         </header>
 
-        {/* Contact Form Component*/}
+        {}
         <div className="w-full">
           <ContactForm />
         </div>
 
-        {/* Newsletter Section */}
+        {}
         <Newsletter />
         
       </div>

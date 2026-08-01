@@ -62,7 +62,7 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
     const isVerified = currentStatus === 'Verified';
     
     if (!isAdmin) {
-      // Employee side: static badge, no dropdown icon
+      
       return (
         <div className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border w-fit ${
           isVerified
@@ -74,7 +74,7 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
       );
     }
 
-    // Admin side: has ChevronDown dropdown menu to Verify/Unverify
+    
     return (
       <div className="relative">
         <button
@@ -125,10 +125,10 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Save filename
+    
     onChange(`${fileFieldPrefix}FileName`, file.name);
 
-    // Read file as Base64 string
+    
     const reader = new FileReader();
     reader.onload = () => {
       onChange(`${fileFieldPrefix}Content`, reader.result as string);
@@ -204,7 +204,7 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
           </thead>
           <tbody className="divide-y divide-neutral-900/50">
             
-            {/* CNIC Row */}
+            {}
             <tr>
               <td className="py-4">
                 <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               </td>
             </tr>
 
-            {/* CV Row */}
+            {}
             <tr>
               <td className="py-4">
                 <div className="flex items-center gap-3">
@@ -384,7 +384,7 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               </td>
             </tr>
 
-            {/* Employment Contract Row */}
+            {}
             <tr>
               <td className="py-4">
                 <div className="flex items-center gap-3">
@@ -474,7 +474,7 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               </td>
             </tr>
 
-            {/* Picture Row */}
+            {}
             <tr>
               <td className="py-4">
                 <div className="flex items-center gap-3">
@@ -570,7 +570,7 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               </td>
             </tr>
 
-            {/* Portfolio Row */}
+            {}
             <tr>
               <td className="py-4">
                 <div className="flex items-center gap-3">

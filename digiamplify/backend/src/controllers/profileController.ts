@@ -62,7 +62,7 @@ export const upsertProfile = async (req: AuthRequest, res: Response): Promise<vo
     const calculatedPictureStatus = getStatus(data.pictureUrl, existingProfile?.pictureUrl, existingProfile?.pictureStatus);
     const calculatedPortfolioStatus = getStatus(data.portfolioUrl, existingProfile?.portfolioUrl, existingProfile?.portfolioStatus);
 
-    // Separate updates that are not model fields or keep standard updates
+    
     const profile = await prisma.profile.upsert({
       where: { userId },
       update: {
@@ -178,7 +178,7 @@ export const upsertProfile = async (req: AuthRequest, res: Response): Promise<vo
       },
     });
 
-    // Reset editRequestStatus on successful profile save
+    
     await prisma.user.update({
       where: { id: userId },
       data: { editRequestStatus: 'NONE' }
@@ -200,8 +200,8 @@ export const getAllProfiles = async (req: AuthRequest, res: Response): Promise<v
 
   try {
     const requester = await prisma.user.findUnique({ where: { id: adminId } });
-    if (!requester || requester.role.toLowerCase() !== 'admin') {
-      res.status(403).json({ error: 'Access denied: Admin only' });
+    if (!requester) {
+      res.status(403).json({ error: 'Access denied' });
       return;
     }
 

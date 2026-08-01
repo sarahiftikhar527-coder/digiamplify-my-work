@@ -8,7 +8,7 @@ export default function ContactForm() {
   return (
     <div className="bg-[#0d0d0d] border border-[#1f1f1f] rounded-[24px] p-4 lg:p-8 flex flex-col lg:flex-row gap-8 w-full mt-10">
       
-      {/* Left Side: Live Google Map */}
+      {}
       <div className="relative w-full lg:w-[40%] min-h-[400px] lg:min-h-full rounded-[16px] overflow-hidden border border-[#222]">
         <iframe
           src="https://maps.google.com/maps?q=51.50101,-0.141563&t=&z=15&ie=UTF8&iwloc=&output=embed"
@@ -21,10 +21,10 @@ export default function ContactForm() {
         ></iframe>
       </div>
 
-      {/* Right Side: Form and Info Cards */}
+      {}
       <div className="w-full lg:w-[60%] flex flex-col justify-between">
         
-        {/* Title Section */}
+        {}
         <div className="flex justify-between items-center gap-6 mb-8">
           <div className="max-w-[75%]">
             <Title as="h2" className="mb-4">
@@ -46,9 +46,9 @@ export default function ContactForm() {
           </div>
         </div>
 
-        {/* Form Fields */}
+        {}
         <form onSubmit={(e) => e.preventDefault()} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          {/* Left Inputs */}
+          {}
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-xl p-5 flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label className="font-['Poppins',_sans-serif] text-[0.9rem] text-[#777]">Project Type</label>
@@ -81,7 +81,7 @@ export default function ContactForm() {
             </div>
           </div>
 
-          {/* Right Textarea & Button */}
+          {}
           <div className="bg-[#050505] border border-[#1f1f1f] rounded-xl p-5 flex flex-col justify-between gap-4">
             <div className="flex flex-col gap-2 h-full">
               <label className="font-['Poppins',_sans-serif] text-[0.9rem] text-[#777]">Project Description</label>
@@ -97,7 +97,7 @@ export default function ContactForm() {
           </div>
         </form>
 
-        {/* 4 Info Cards Grid */}
+        {}
         <div className="grid grid-cols-2 lg:grid-cols-[1fr_1.3fr_0.9fr_1.7fr] gap-3 w-full">
           
           <div className="bg-[#050505] border border-[#1f1f1f] p-4 rounded-xl flex flex-col justify-center gap-1.5">

@@ -30,7 +30,7 @@ export default function TicketDetailsModal({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-[#0c0c0c] border border-neutral-900 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative animate-scaleIn">
         
-        {/* Modal Header */}
+        {}
         <div className="flex items-center justify-between p-6 border-b border-neutral-900 bg-[#050505]">
           <div className="flex items-center gap-2 select-none">
             <HelpCircle className="w-5 h-5 text-[#be0919]" />
@@ -44,10 +44,10 @@ export default function TicketDetailsModal({
           </button>
         </div>
 
-        {/* Modal Body */}
+        {}
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-red-scrollbar text-base text-neutral-300 font-light">
           
-          {/* Embedded Custom Red Scrollbar Styles */}
+          {}
           <style dangerouslySetInnerHTML={{__html: `
             .custom-red-scrollbar::-webkit-scrollbar {
               width: 6px;
@@ -65,7 +65,7 @@ export default function TicketDetailsModal({
             }
           `}} />
 
-          {/* Meta details */}
+          {}
           <div className="grid grid-cols-2 gap-4 border-b border-neutral-900 pb-4 select-none">
             <div>
               <span className="text-xs uppercase text-neutral-500 font-bold tracking-wider block">Submitted On</span>
@@ -102,7 +102,7 @@ export default function TicketDetailsModal({
             </div>
           </div>
 
-          {/* Submitter Details (Admin view only) */}
+          {}
           {isAdmin && (
             <div className="border-b border-neutral-900 pb-4">
               <span className="text-xs uppercase text-neutral-500 font-bold tracking-wider block mb-2 select-none">Submitted By</span>
@@ -113,7 +113,7 @@ export default function TicketDetailsModal({
             </div>
           )}
 
-          {/* Subject & Description */}
+          {}
           <div>
             <span className="text-xs uppercase text-neutral-500 font-bold tracking-wider block select-none">Subject</span>
             <span className="text-sm text-white font-medium mt-1.5 block">{selectedTicket.subject}</span>
@@ -126,7 +126,7 @@ export default function TicketDetailsModal({
             </p>
           </div>
 
-          {/* Attachment */}
+          {}
           {selectedTicket.fileName && selectedTicket.fileContent && (
             <div className="flex items-center justify-between bg-[#be0919]/5 border border-[#be0919]/10 rounded-xl p-3.5">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -143,7 +143,7 @@ export default function TicketDetailsModal({
             </div>
           )}
 
-          {/* Contact Method */}
+          {}
           <div>
             <span className="text-xs uppercase text-neutral-500 font-bold tracking-wider block select-none">Preferred Contact Method</span>
             <div className="flex items-center gap-2 text-sm text-white font-medium mt-1.5">
@@ -158,7 +158,7 @@ export default function TicketDetailsModal({
             </div>
           </div>
 
-          {/* Resolution / Admin response */}
+          {}
           {selectedTicket.status === 'RESOLVED' && selectedTicket.adminResponse && (
             <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4.5 space-y-2">
               <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium select-none">
@@ -176,7 +176,7 @@ export default function TicketDetailsModal({
             </div>
           )}
 
-          {/* Resolve Action Panel (Admin only & Pending status) */}
+          {}
           {isAdmin && selectedTicket.status === 'PENDING' && (
             <form onSubmit={onSubmitResponse} className="space-y-4 pt-4 border-t border-neutral-900">
               <div className="flex flex-col">

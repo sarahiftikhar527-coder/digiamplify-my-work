@@ -131,7 +131,7 @@ export default function AdminUsersDirectory({
 
   return (
     <>
-      {/* Pending Registration Requests */}
+      {}
       <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md mb-8 animate-fadeIn">
         <h2 className="text-xl font-bold text-white tracking-wide select-none">Pending Registration Requests</h2>
         <p className="text-xs text-neutral-500 font-light mt-1 mb-6 select-none">Review and approve or reject employee registration requests.</p>
@@ -176,7 +176,7 @@ export default function AdminUsersDirectory({
         </div>
       </div>
 
-      {/* Users Directory */}
+      {}
       <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="select-none">

@@ -40,7 +40,7 @@ export default function LoginPage() {
 
       setSuccess('Login successful! Redirecting to dashboard...');
 
-      // Store JWT token (if we want, or at least simulate it)
+      
       if (typeof window !== 'undefined') {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
@@ -126,7 +126,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Column: Login Form Container */}
+      {}
       <div className="flex-1 flex items-center justify-center py-8 px-4 sm:p-8 lg:p-12 bg-[#353434] relative">
         <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-[radial-gradient(circle_at_bottom_right,rgba(190,9,25,0.06)_0%,transparent_70%)] pointer-events-none" />
 
@@ -235,7 +235,7 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            {/* Login Button */}
+            {}
             <button
               type="submit"
               disabled={isLoading}
@@ -244,7 +244,7 @@ export default function LoginPage() {
               {isLoading ? 'Logging in...' : 'Login'}
             </button>
 
-            {/* Don't have account? Sign up */}
+            {}
             <div className="text-center mt-8">
               <span className="text-neutral-500 text-white text-[13px] font-light">
                 Don&apos;t have account?{' '}

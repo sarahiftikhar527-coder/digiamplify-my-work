@@ -76,6 +76,14 @@ const nextConfig: NextConfig = {
         source: '/admin/finance',
         destination: '/pages/portal/finance',
       },
+      {
+        source: '/portal/task',
+        destination: '/pages/portal/task',
+      },
+      {
+        source: '/admin/task',
+        destination: '/pages/portal/task',
+      },
     ];
   },
 };

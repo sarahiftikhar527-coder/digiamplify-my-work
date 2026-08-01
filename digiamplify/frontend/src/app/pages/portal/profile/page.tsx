@@ -673,7 +673,7 @@ export default function ProfilePage() {
       setProfile(data);
       setFormData(data);
 
-      // Sync with Sidebar (only if not admin)
+      
       if (!isAdmin) {
         if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
         if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
@@ -732,10 +732,10 @@ export default function ProfilePage() {
     <div className="flex w-full min-h-screen bg-[#050505] text-white">
       <Sidebar />
 
-      {/* Main Container */}
+      {}
       <div className="flex-1 p-6 pt-24 sm:p-10 md:pt-10 flex flex-col justify-start overflow-y-auto max-h-screen">
 
-        {/* Top Bar */}
+        {}
         <div className="flex items-center justify-between mb-8">
           <div className="text-neutral-500 font-light text-sm flex items-center gap-1.5">
             <span className="text-red-500 font-medium">Profile</span>
@@ -744,7 +744,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Global Loading / Errors / Success alerts */}
+        {}
         {isLoading && !profile && !isAdmin && (
           <div className="text-center py-20 text-neutral-400 text-sm font-light">Loading profile details...</div>
         )}
@@ -802,7 +802,7 @@ export default function ProfilePage() {
         {isEditing && !isLoading && (isAdmin ? !!selectedUserId : true) && (!profile || !(profile as any).notFound) && (
           <div className="space-y-8 animate-fadeIn">
 
-            {/* Header section card */}
+            {}
             <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl overflow-hidden relative shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
 
               <div
@@ -992,7 +992,7 @@ export default function ProfilePage() {
 
             {isAdmin && isViewingProfile ? (
               <>
-                {/* Admin Header Bar */}
+                {}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div className="flex items-center gap-4">
                     <button
@@ -1020,9 +1020,9 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                {/* Flat Dark Summary Card with Vertical Divider */}
+                {}
                 <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl p-10 shadow-lg flex flex-col md:grid md:grid-cols-[1.1fr_1px_1fr] gap-x-12 items-center text-left">
-                  {/* Left Side */}
+                  {}
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 w-full">
                     <div className="w-28 h-28 rounded-xl border border-neutral-900 bg-neutral-955 shadow-md shrink-0 overflow-hidden flex items-center justify-center">
                       {profile.pictureUrl ? (
@@ -1062,10 +1062,10 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {/* Vertical Divider */}
+                  {}
                   <div className="hidden md:block w-[1px] h-full bg-white/20 self-stretch" />
 
-                  {/* Right Side */}
+                  {}
                   <div className="w-full flex flex-col gap-y-4 text-[13px] self-center md:pl-8">
                     <div className="flex items-center justify-between">
                       <span className="text-white/70">Department</span>
@@ -1108,7 +1108,7 @@ export default function ProfilePage() {
                 </div>
               </>
             ) : (
-              /* Original Header Card for Employee */
+              
               <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl overflow-hidden relative shadow-lg">
                 <div
                   className="h-[220px] bg-cover bg-center flex items-center justify-center relative border-b border-neutral-900"
@@ -1204,10 +1204,10 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Read-Only Details Stack */}
+            {}
             <div className="space-y-8">
 
-              {/* Personal and Contact Information Card */}
+              {}
               <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl p-6 shadow-md w-full">
                 <h3 className="text-sm font-semibold text-white mb-6 border-l-2 border-red-500 pl-3">
                   Personal and Contact Information
@@ -1283,7 +1283,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Job Details Card */}
+              {}
               <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl p-6 shadow-md w-full">
                 <h3 className="text-sm font-semibold text-white mb-6 border-l-2 border-red-500 pl-3">
                   Job Details
@@ -1354,10 +1354,10 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Bottom Row: Payment Details & Documents Card (Side-by-Side) */}
+              {}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-                {/* Payment Details Card */}
+                {}
                 <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl p-6 shadow-md h-full">
                   <h3 className="text-sm font-semibold text-white mb-6 border-l-2 border-red-500 pl-3">
                     Payment Details
@@ -1415,7 +1415,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Documents Summary Card */}
+                {}
                 <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl p-6 shadow-md overflow-hidden h-full">
                   <h3 className="text-sm font-semibold text-white mb-6 border-l-2 border-red-500 pl-3">
                     Documents

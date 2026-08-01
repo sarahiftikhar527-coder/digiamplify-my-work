@@ -159,7 +159,7 @@ export default function EmployeeFinanceView() {
 
   return (
     <div className="w-full flex flex-col justify-start">
-      {/* Scrollbar Custom Styling */}
+      {}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           height: 4px;
@@ -177,7 +177,7 @@ export default function EmployeeFinanceView() {
         }
       `}</style>
 
-      {/* Page Title */}
+      {}
       <div className="mb-10 select-none">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-white flex items-center gap-3">
           <Coins className="w-7 h-7 text-[#be0919]" />
