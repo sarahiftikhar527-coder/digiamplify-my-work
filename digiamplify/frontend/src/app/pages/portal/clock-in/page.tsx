@@ -91,6 +91,16 @@ export default function ClockInPage() {
     }
   }, [userRole]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTodayStatus();
+      if (userRole === 'Admin') {
+        fetchAdminAttendanceLogs();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [userRole]);
+
   const fetchTodayStatus = async () => {
     try {
       const token = localStorage.getItem('token');

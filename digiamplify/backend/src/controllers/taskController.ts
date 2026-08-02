@@ -36,6 +36,31 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    const isAdmin = creatorUser.role.toLowerCase() === 'admin';
+
+    if (!isAdmin) {
+      const taskRequest = await prisma.taskRequest.create({
+        data: {
+          assignedToId,
+          assignedById: adminId,
+          subject,
+          priority,
+          description,
+          dueDate,
+          dueTime: dueTime || null,
+          fileName: fileName || null,
+          fileContent: fileContent || null,
+          status: 'PENDING'
+        }
+      });
+
+      res.status(201).json({
+        message: 'Task creation request sent to Admin for approval',
+        taskRequest
+      });
+      return;
+    }
+
     const task = await prisma.task.create({
       data: {
         assignedToId,
@@ -52,7 +77,7 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
       }
     });
 
-    const adminName = creatorUser.profile?.fullName || creatorUser.email;
+    const adminName = creatorUser.role.toLowerCase() === 'admin' ? 'Admin' : (creatorUser.profile?.fullName || creatorUser.email);
     await prisma.taskActivity.create({
       data: {
         taskId: task.id,
@@ -190,7 +215,7 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
     const updateData: any = {};
     let logDescription = '';
 
-    const userName = user.profile?.fullName || user.email;
+    const userName = user.role.toLowerCase() === 'admin' ? 'Admin' : (user.profile?.fullName || user.email);
 
     if (status !== undefined) {
       updateData.status = status;
@@ -294,6 +319,9 @@ export const getTaskActivities = async (req: AuthRequest, res: Response): Promis
     let activities;
     if (user.role.toLowerCase() === 'admin') {
       activities = await prisma.taskActivity.findMany({
+        where: {
+          userId: { not: userId }
+        },
         include: {
           task: {
             select: {
@@ -321,7 +349,8 @@ export const getTaskActivities = async (req: AuthRequest, res: Response): Promis
         where: {
           task: {
             assignedToId: userId
-          }
+          },
+          userId: { not: userId }
         },
         include: {
           task: {
@@ -351,5 +380,221 @@ export const getTaskActivities = async (req: AuthRequest, res: Response): Promis
   } catch (error: any) {
     console.error('Get task activities error:', error);
     res.status(500).json({ error: 'Internal server error fetching activities' });
+  }
+};
+
+export const getTaskRequests = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized user context' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    let requests;
+    if (user.role.toLowerCase() === 'admin') {
+      requests = await prisma.taskRequest.findMany({
+        include: {
+          assignedTo: {
+            select: {
+              email: true,
+              profile: {
+                select: {
+                  fullName: true,
+                  jobTitle: true,
+                  pictureUrl: true
+                }
+              }
+            }
+          },
+          assignedBy: {
+            select: {
+              email: true,
+              profile: {
+                select: {
+                  fullName: true,
+                  pictureUrl: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+    } else {
+      requests = await prisma.taskRequest.findMany({
+        where: { assignedById: userId },
+        include: {
+          assignedTo: {
+            select: {
+              email: true,
+              profile: {
+                select: {
+                  fullName: true,
+                  jobTitle: true,
+                  pictureUrl: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+    }
+
+    res.status(200).json(requests);
+  } catch (error: any) {
+    console.error('Get task requests error:', error);
+    res.status(500).json({ error: 'Internal server error fetching task requests' });
+  }
+};
+
+export const approveTaskRequest = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const adminId = req.userId;
+    if (!adminId) {
+      res.status(401).json({ error: 'Unauthorized user context' });
+      return;
+    }
+
+    const admin = await prisma.user.findUnique({
+      where: { id: adminId },
+      include: {
+        profile: true
+      }
+    });
+
+    if (!admin || admin.role.toLowerCase() !== 'admin') {
+      res.status(403).json({ error: 'Access denied: Administrator permissions required' });
+      return;
+    }
+
+    const { requestId } = req.params;
+    const request = await prisma.taskRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        assignedBy: {
+          include: {
+            profile: true
+          }
+        }
+      }
+    });
+
+    if (!request) {
+      res.status(404).json({ error: 'Task request not found' });
+      return;
+    }
+
+    if (request.status !== 'PENDING') {
+      res.status(400).json({ error: `Task request is already ${request.status.toLowerCase()}` });
+      return;
+    }
+
+    // Create the task in the database
+    const task = await prisma.task.create({
+      data: {
+        assignedToId: request.assignedToId,
+        assignedById: request.assignedById,
+        subject: request.subject,
+        priority: request.priority,
+        description: request.description,
+        dueDate: request.dueDate,
+        dueTime: request.dueTime,
+        fileName: request.fileName,
+        fileContent: request.fileContent,
+        status: 'PENDING',
+        progress: 0
+      }
+    });
+
+    // Update status to APPROVED
+    await prisma.taskRequest.update({
+      where: { id: requestId },
+      data: { status: 'APPROVED' }
+    });
+
+    // Log the activity
+    const requesterName = request.assignedBy?.profile?.fullName || request.assignedBy?.email || 'Employee';
+    await prisma.taskActivity.create({
+      data: {
+        taskId: task.id,
+        userId: adminId,
+        description: `Task requested by ${requesterName} was approved by Admin and created.`
+      }
+    });
+
+    res.status(200).json({
+      message: 'Task request approved and task created successfully',
+      task
+    });
+  } catch (error: any) {
+    console.error('Approve task request error:', error);
+    res.status(500).json({ error: 'Internal server error approving task request' });
+  }
+};
+
+export const rejectTaskRequest = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const adminId = req.userId;
+    if (!adminId) {
+      res.status(401).json({ error: 'Unauthorized user context' });
+      return;
+    }
+
+    const admin = await prisma.user.findUnique({
+      where: { id: adminId }
+    });
+
+    if (!admin || admin.role.toLowerCase() !== 'admin') {
+      res.status(403).json({ error: 'Access denied: Administrator permissions required' });
+      return;
+    }
+
+    const { requestId } = req.params;
+    const { rejectionReason } = req.body;
+
+    const request = await prisma.taskRequest.findUnique({
+      where: { id: requestId }
+    });
+
+    if (!request) {
+      res.status(404).json({ error: 'Task request not found' });
+      return;
+    }
+
+    if (request.status !== 'PENDING') {
+      res.status(400).json({ error: `Task request is already ${request.status.toLowerCase()}` });
+      return;
+    }
+
+    const updatedRequest = await prisma.taskRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'REJECTED',
+        rejectionReason: rejectionReason || null
+      }
+    });
+
+    res.status(200).json({
+      message: 'Task request rejected successfully',
+      taskRequest: updatedRequest
+    });
+  } catch (error: any) {
+    console.error('Reject task request error:', error);
+    res.status(500).json({ error: 'Internal server error rejecting task request' });
   }
 };

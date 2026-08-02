@@ -206,6 +206,11 @@ export const getAllProfiles = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const users = await prisma.user.findMany({
+      where: {
+        status: {
+          not: 'REJECTED'
+        }
+      },
       select: {
         id: true,
         email: true,

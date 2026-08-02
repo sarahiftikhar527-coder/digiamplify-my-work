@@ -131,38 +131,56 @@ export default function AdminUsersDirectory({
 
   return (
     <>
+      <style>{`
+        .custom-red-scrollbar-h::-webkit-scrollbar {
+          height: 6px;
+        }
+        .custom-red-scrollbar-h::-webkit-scrollbar-track {
+          background: #050505;
+          border-radius: 4px;
+        }
+        .custom-red-scrollbar-h::-webkit-scrollbar-thumb {
+          background: #be0919;
+          border-radius: 4px;
+        }
+        .custom-red-scrollbar-h::-webkit-scrollbar-thumb:hover {
+          background: #990714;
+        }
+      `}</style>
       {}
       <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md mb-8 animate-fadeIn">
         <h2 className="text-xl font-bold text-white tracking-wide select-none">Pending Registration Requests</h2>
         <p className="text-xs text-neutral-500 font-light mt-1 mb-6 select-none">Review and approve or reject employee registration requests.</p>
 
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse min-w-[600px]">
+        <div className="overflow-x-auto w-full custom-red-scrollbar-h pb-2">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="border-b border-neutral-900 text-neutral-400 text-xs font-semibold uppercase tracking-wider select-none">
-                <th className="py-4 px-4">User</th>
-                <th className="py-4 px-4">Requested Role</th>
-                <th className="py-4 px-4 text-right pr-6">Actions</th>
+                <th className="py-4 px-4 pr-6">User</th>
+                <th className="py-4 px-4 pr-6">Requested Role</th>
+                <th className="py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-900 text-xs font-medium text-neutral-300">
               {pendingRequests.map((u: any) => (
                 <tr key={u.id} className="hover:bg-white/2 transition-colors">
-                  <td className="py-4 px-4 text-white font-medium">{u.email}</td>
-                  <td className="py-4 px-4 text-neutral-300 font-light">{u.role}</td>
-                  <td className="py-4 px-4 text-right flex items-center justify-end gap-3 pr-6">
-                    <button
-                      onClick={() => handleApproveUser(u.id)}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleRejectUser(u.id)}
-                      className="bg-[#be0919] hover:bg-[#990714] text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] cursor-pointer"
-                    >
-                      Reject
-                    </button>
+                  <td className="py-4 px-4 pr-6 text-white font-medium whitespace-nowrap">{u.email}</td>
+                  <td className="py-4 px-4 pr-6 text-neutral-300 font-light whitespace-nowrap">{u.role}</td>
+                  <td className="py-4 px-4 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => handleApproveUser(u.id)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectUser(u.id)}
+                        className="bg-[#be0919] hover:bg-[#990714] text-white text-[11px] font-bold py-1.5 px-4 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -195,22 +213,22 @@ export default function AdminUsersDirectory({
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse min-w-[750px]">
+        <div className="overflow-x-auto w-full custom-red-scrollbar-h pb-2">
+          <table className="w-full text-left border-collapse min-w-[1150px]">
             <thead>
               <tr className="border-b border-neutral-900 text-neutral-400 text-xs font-semibold uppercase tracking-wider select-none">
-                <th className="py-4 px-4">User</th>
-                <th className="py-4 px-4">Role</th>
-                <th className="py-4 px-4">Full Name</th>
-                <th className="py-4 px-4">Department</th>
-                <th className="py-4 px-4 text-right pr-6">Actions</th>
+                <th className="py-4 px-4 pr-6">User</th>
+                <th className="py-4 px-4 pr-6">Role</th>
+                <th className="py-4 px-4 pr-6">Full Name</th>
+                <th className="py-4 px-4 pr-6">Department</th>
+                <th className="py-4 text-center">Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-neutral-900 text-sm font-medium text-neutral-300">
               {approvedUsers.map((u: any) => (
                 <tr key={u.id} className="hover:bg-white/2 transition-colors">
-                  <td className="py-4.5 px-4 flex items-center gap-3.5">
+                  <td className="py-4.5 px-4 pr-6 flex items-center gap-3.5 whitespace-nowrap">
                     <div className="w-9 h-9 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
                       {u.profile?.pictureUrl ? (
                         <img src={u.profile.pictureUrl} alt="User picture" className="w-full h-full object-cover" />
@@ -222,7 +240,7 @@ export default function AdminUsersDirectory({
                       <span className="text-white font-medium truncate max-w-[150px] sm:max-w-[200px]">{u.email}</span>
                     </div>
                   </td>
-                  <td className="py-4.5 px-4">
+                  <td className="py-4.5 px-4 pr-6 whitespace-nowrap">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold select-none ${
                       u.role.toLowerCase() === 'admin'
                         ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
@@ -231,18 +249,18 @@ export default function AdminUsersDirectory({
                       {u.role}
                     </span>
                   </td>
-                  <td className="py-4.5 px-4 text-neutral-300 font-light">
+                  <td className="py-4.5 px-4 pr-6 text-neutral-300 font-light whitespace-nowrap">
                     {u.profile?.fullName || '—'}
                   </td>
-                  <td className="py-4.5 px-4 text-neutral-300 font-light">
+                  <td className="py-4.5 px-4 pr-6 text-neutral-300 font-light whitespace-nowrap">
                     {u.profile?.department || '—'}
                   </td>
-                  <td className="py-4.5 px-4 text-right pr-6">
-                    <div className="flex items-center justify-end gap-3.5">
+                  <td className="py-4.5 px-4 text-center">
+                    <div className="flex items-center justify-center gap-3.5 whitespace-nowrap">
                       {u.editRequestStatus === 'PENDING' && (
                         <button
                           onClick={() => handleApproveEdit(u.id)}
-                          className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer"
+                          className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(16,185,129,0.2)] cursor-pointer whitespace-nowrap"
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>Approve Edit</span>
@@ -250,14 +268,14 @@ export default function AdminUsersDirectory({
                       )}
                       <button
                         onClick={() => handleViewUser(u.id)}
-                        className="inline-flex items-center gap-1.5 border border-neutral-800 text-neutral-300 hover:text-white hover:bg-white/5 text-xs font-bold py-2 px-4.5 rounded transition-all cursor-pointer"
+                        className="inline-flex items-center gap-1.5 border border-neutral-800 text-neutral-300 hover:text-white hover:bg-white/5 text-xs font-bold py-2 px-4.5 rounded transition-all cursor-pointer whitespace-nowrap"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>View Profile</span>
                       </button>
                       <button
                         onClick={() => handleEditUser(u.id)}
-                        className="inline-flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
+                        className="inline-flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2 px-4.5 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer whitespace-nowrap"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Edit</span>

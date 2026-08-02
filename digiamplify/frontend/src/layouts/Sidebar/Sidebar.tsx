@@ -20,7 +20,7 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email: string; role: string; picture?: string; jobTitle?: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; role: string; picture?: string; jobTitle?: string; fullName?: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const loadUserData = () => {
@@ -28,6 +28,7 @@ export default function Sidebar() {
       const storedUser = localStorage.getItem('user');
       const storedPicture = localStorage.getItem('profilePicture');
       const storedJobTitle = localStorage.getItem('jobTitle');
+      const storedFullName = localStorage.getItem('fullName');
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
@@ -35,6 +36,7 @@ export default function Sidebar() {
             ...parsed,
             picture: storedPicture || parsed.picture || undefined,
             jobTitle: storedJobTitle || parsed.jobTitle || undefined,
+            fullName: storedFullName || parsed.fullName || undefined,
           });
         } catch (e) {
           console.error('Failed to parse user details', e);
@@ -58,12 +60,14 @@ export default function Sidebar() {
         if (data) {
           if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
           if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
+          if (data.fullName) localStorage.setItem('fullName', data.fullName);
           setUser(prev => {
             if (!prev) return null;
             return {
               ...prev,
               picture: data.pictureUrl || undefined,
-              jobTitle: data.jobTitle || undefined
+              jobTitle: data.jobTitle || undefined,
+              fullName: data.fullName || undefined
             };
           });
         }
@@ -130,6 +134,7 @@ export default function Sidebar() {
   
   const getDisplayName = () => {
     if (isCustomAdmin) return 'Admin';
+    if (user?.fullName && user.fullName.trim() !== '') return user.fullName;
     if (!user || !user.email) return 'Jhon Ken';
     const emailPrefix = user.email.split('@')[0];
     return emailPrefix

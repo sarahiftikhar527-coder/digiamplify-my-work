@@ -6,6 +6,17 @@ interface TaskActivityLogProps {
 }
 
 export default function TaskActivityLog({ activities }: TaskActivityLogProps) {
+  const cleanDescription = (description: string) => {
+    if (!description) return '';
+    // Replace "Admin (admin@digiamplify.com)" with "Admin"
+    let clean = description.replace(/Admin\s*\(admin@digiamplify\.com\)/g, 'Admin');
+    // Replace "admin@digiamplify.com" with "Admin"
+    clean = clean.replace(/admin@digiamplify\.com/g, 'Admin');
+    // Replace "Admin (Admin)" with "Admin"
+    clean = clean.replace(/Admin\s*\(Admin\)/g, 'Admin');
+    return clean;
+  };
+
   // Helper: Format dynamic timestamps
   const formatActivityTime = (dateStr: string) => {
     if (!dateStr) return '';
@@ -98,7 +109,7 @@ export default function TaskActivityLog({ activities }: TaskActivityLogProps) {
                     </span>
                   </div>
                   <p className="text-sm text-neutral-400 font-normal mt-1 whitespace-pre-wrap leading-relaxed">
-                    {act.description}
+                    {cleanDescription(act.description)}
                   </p>
                 </div>
               </div>

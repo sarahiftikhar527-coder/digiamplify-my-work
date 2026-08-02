@@ -29,6 +29,21 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const priorityDropdownRef = useRef<HTMLDivElement>(null);
 
+  const getTodayDateStr = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getCurrentTimeStr = () => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -128,6 +143,20 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
       return;
     }
 
+    const todayStr = getTodayDateStr();
+    if (dueDate < todayStr) {
+      setError('Due date cannot be in the past.');
+      return;
+    }
+
+    if (dueDate === todayStr && dueTime) {
+      const nowTimeStr = getCurrentTimeStr();
+      if (dueTime < nowTimeStr) {
+        setError('Due time cannot be in the past.');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
@@ -155,6 +184,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
         throw new Error(data.error || 'Failed to create task');
       }
 
+      alert(data.message || 'Task processed successfully');
       onTaskCreated();
       onClose();
     } catch (err: any) {
@@ -177,6 +207,8 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
   }
 
   const filteredEmployees = employees.filter(emp => {
+    // Only show approved employees
+    if (emp.status !== 'APPROVED') return false;
     // Exclude admins
     if (emp.role?.toLowerCase() === 'admin') return false;
     // Exclude self (current user)
@@ -387,6 +419,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
                 <input
                   type="date"
                   value={dueDate}
+                  min={getTodayDateStr()}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="bg-transparent border-none outline-none text-white text-sm w-full font-light cursor-pointer scheme-dark"
                 />
@@ -402,6 +435,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
                 <input
                   type="time"
                   value={dueTime}
+                  min={dueDate === getTodayDateStr() ? getCurrentTimeStr() : undefined}
                   onChange={(e) => setDueTime(e.target.value)}
                   className="bg-transparent border-none outline-none text-white text-sm w-full font-light cursor-pointer scheme-dark"
                 />

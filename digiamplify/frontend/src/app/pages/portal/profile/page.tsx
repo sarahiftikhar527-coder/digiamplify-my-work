@@ -168,8 +168,8 @@ export default function ProfilePage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchAllUsers = async () => {
-    setIsLoading(true);
+  const fetchAllUsers = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('token');
@@ -193,7 +193,7 @@ export default function ProfilePage() {
     } catch (err: any) {
       setError(err.message || 'Error occurred while loading users');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -462,8 +462,8 @@ export default function ProfilePage() {
     }
   };
 
-  const fetchProfile = async () => {
-    setIsLoading(true);
+  const fetchProfile = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('token');
@@ -536,7 +536,7 @@ export default function ProfilePage() {
           portfolioStatus: 'Pending',
         });
         setIsEditing(true);
-        setIsLoading(false);
+        if (!silent) setIsLoading(false);
         return;
       }
 
@@ -550,13 +550,14 @@ export default function ProfilePage() {
 
       if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
       if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
+      if (data.fullName) localStorage.setItem('fullName', data.fullName);
       window.dispatchEvent(new Event('profileUpdate'));
 
       setIsEditing(false);
     } catch (err: any) {
       setError(err.message || 'Error occurred');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -596,6 +597,33 @@ export default function ProfilePage() {
       window.location.href = '/login';
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+    const parsed = JSON.parse(storedUser);
+    const isUserAdmin = parsed.role?.toLowerCase() === 'admin';
+
+    const interval = setInterval(() => {
+      if (isUserAdmin) {
+        let urlUserId = '';
+        if (pathname) {
+          const pathParts = pathname.split('/');
+          const lastSegment = pathParts[pathParts.length - 1];
+          if (lastSegment && lastSegment !== 'profile') {
+            urlUserId = lastSegment;
+          }
+        }
+        if (!urlUserId) {
+          fetchAllUsers(true);
+        }
+      } else {
+        fetchProfile(true);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [pathname, selectedUserId]);
   const handleFieldChange = (field: string, value: any) => {
     setFormData((prev: any) => ({
       ...prev,
@@ -677,6 +705,7 @@ export default function ProfilePage() {
       if (!isAdmin) {
         if (data.pictureUrl) localStorage.setItem('profilePicture', data.pictureUrl);
         if (data.jobTitle) localStorage.setItem('jobTitle', data.jobTitle);
+        if (data.fullName) localStorage.setItem('fullName', data.fullName);
         window.dispatchEvent(new Event('profileUpdate'));
       }
 
