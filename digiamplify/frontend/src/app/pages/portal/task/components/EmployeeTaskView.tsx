@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ClipboardList, ChevronLeft, ChevronRight, Download, Link as LinkIcon } from 'lucide-react';
 import TaskStatsCards from './employee/TaskStatsCards';
 import TaskTable from './employee/TaskTable';
 import TaskAnalytics from './employee/TaskAnalytics';
@@ -37,6 +37,31 @@ export default function EmployeeTaskView() {
   const totalPagesRequests = Math.max(1, Math.ceil(requests.length / itemsPerPage));
   const startIndexRequests = (currentPageRequests - 1) * itemsPerPage;
   const paginatedRequests = requests.slice(startIndexRequests, startIndexRequests + itemsPerPage);
+
+  const handleDownload = (fileName: string, fileContent: string) => {
+    if (fileName.trim().startsWith('[') && fileContent.trim().startsWith('[')) {
+      try {
+        const names = JSON.parse(fileName);
+        const contents = JSON.parse(fileContent);
+        if (Array.isArray(names) && Array.isArray(contents)) {
+          names.forEach((name, index) => {
+            const content = contents[index];
+            if (content) {
+              const link = document.createElement('a');
+              link.href = content;
+              link.download = name;
+              link.click();
+            }
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+    const link = document.createElement('a');
+    link.href = fileContent;
+    link.download = fileName;
+    link.click();
+  };
 
   const tasksAssignedByMe = tasks.filter(t => t.assignedById === currentUser?.id && t.assignedToId !== currentUser?.id);
   const totalPagesAssigned = Math.max(1, Math.ceil(tasksAssignedByMe.length / itemsPerPage));
@@ -314,7 +339,7 @@ export default function EmployeeTaskView() {
           </div>
 
           <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2">
-            <table className="w-full text-left border-collapse min-w-[1050px]">
+            <table className="w-full text-left border-collapse min-w-[1150px]">
               <thead>
                 <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">
                   <th className="pb-3 pl-4 font-normal">Task Details</th>
@@ -322,13 +347,14 @@ export default function EmployeeTaskView() {
                   <th className="pb-3 font-normal w-56 pr-6">Assigned To</th>
                   <th className="pb-3 font-normal w-44 pr-6">Due Date</th>
                   <th className="pb-3 font-normal w-36 pr-6">Progress</th>
-                  <th className="pb-3 pr-4 font-normal w-36">Status</th>
+                  <th className="pb-3 font-normal w-36 pr-6">Status</th>
+                  <th className="pb-3 pr-4 font-normal w-36">Proof</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-900 text-sm font-light text-neutral-300">
                 {paginatedAssigned.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-xs text-neutral-500 font-light font-normal">
+                    <td colSpan={7} className="py-12 text-center text-xs text-neutral-500 font-light font-normal">
                       No assigned tasks found.
                     </td>
                   </tr>
@@ -417,6 +443,34 @@ export default function EmployeeTaskView() {
                           <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-normal text-xs uppercase tracking-wider ${getStatusStylesLocal(task.status)}`}>
                             {getStatusLabelLocal(task.status)}
                           </span>
+                        </td>
+                        <td className="py-4 pr-4 w-36">
+                          <div className="flex flex-col gap-1.5 items-start">
+                            {task.completionUrl && (
+                              <a 
+                                href={task.completionUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[120px]"
+                                title={task.completionUrl}
+                              >
+                                <LinkIcon className="w-3.5 h-3.5 shrink-0" />
+                                <span>Proof Link</span>
+                              </a>
+                            )}
+                            {task.completionFileName && task.completionFileContent && (
+                              <button
+                                onClick={() => handleDownload(task.completionFileName, task.completionFileContent)}
+                                className="text-sm text-emerald-400 hover:text-emerald-300 font-normal hover:underline flex items-center gap-1.5 cursor-pointer border-none bg-transparent p-0 outline-none"
+                              >
+                                <Download className="w-3.5 h-3.5 shrink-0" />
+                                <span>Proof Doc</span>
+                              </button>
+                            )}
+                            {!task.completionUrl && !(task.completionFileName && task.completionFileContent) && (
+                              <span className="text-neutral-500 font-normal text-sm">—</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

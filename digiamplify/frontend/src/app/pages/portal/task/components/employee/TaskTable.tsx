@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, Link as LinkIcon } from 'lucide-react';
 
 interface TaskTableProps {
   tasks: any[];
@@ -54,6 +54,31 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
       month: 'long',
       year: 'numeric'
     });
+  };
+
+  const handleDownloadLocal = (fileName: string, fileContent: string) => {
+    if (fileName.trim().startsWith('[') && fileContent.trim().startsWith('[')) {
+      try {
+        const names = JSON.parse(fileName);
+        const contents = JSON.parse(fileContent);
+        if (Array.isArray(names) && Array.isArray(contents)) {
+          names.forEach((name, index) => {
+            const content = contents[index];
+            if (content) {
+              const link = document.createElement('a');
+              link.href = content;
+              link.download = name;
+              link.click();
+            }
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+    const link = document.createElement('a');
+    link.href = fileContent;
+    link.download = fileName;
+    link.click();
   };
 
   // Filtering Logic
@@ -182,14 +207,15 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
 
       {/* Task Table with dynamic red horizontal scrollbar */}
       <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2">
-        <table className="w-full text-left border-collapse min-w-[700px]">
+        <table className="w-full text-left border-collapse min-w-[850px]">
           <thead>
             <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">
               <th className="pb-3 pl-4 font-normal">Task Details</th>
               <th className="pb-3 font-normal w-28">Priority</th>
               <th className="pb-3 font-normal w-40">Assigned By</th>
               <th className="pb-3 font-normal w-36">Due Date</th>
-              <th className="pb-3 pr-4 font-normal w-32">Status</th>
+              <th className="pb-3 font-normal w-32">Status</th>
+              <th className="pb-3 pr-4 font-normal w-36">Proof</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-900 text-sm font-light text-neutral-300">
@@ -278,7 +304,14 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
                               return (
                                 <button
                                   key={option}
-                                  onClick={() => handleStatusSelect(task.id, apiStatus)}
+                                  onClick={() => {
+                                    if (apiStatus === 'COMPLETED') {
+                                      alert('To mark this task as Finished, please click on the task row to upload the mandatory completion proof (document or URL link).');
+                                      setOpenDropdownId(null);
+                                    } else {
+                                      handleStatusSelect(task.id, apiStatus);
+                                    }
+                                  }}
                                   className="w-full text-left px-3.5 py-2 text-xs text-neutral-300 hover:bg-[#be0919]/10 hover:text-white transition-all font-normal"
                                 >
                                   {option}
@@ -286,6 +319,36 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
                               );
                             })}
                           </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Completion Proof */}
+                    <td className="py-4 pr-4 w-36">
+                      <div className="flex flex-col gap-1.5 items-start">
+                        {task.completionUrl && (
+                          <a 
+                            href={task.completionUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[120px]"
+                            title={task.completionUrl}
+                          >
+                            <LinkIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>Proof Link</span>
+                          </a>
+                        )}
+                        {task.completionFileName && task.completionFileContent && (
+                          <button
+                            onClick={() => handleDownloadLocal(task.completionFileName, task.completionFileContent)}
+                            className="text-sm text-emerald-400 hover:text-emerald-300 font-normal hover:underline flex items-center gap-1.5 cursor-pointer border-none bg-transparent p-0 outline-none"
+                          >
+                            <Download className="w-3.5 h-3.5 shrink-0" />
+                            <span>Proof Doc</span>
+                          </button>
+                        )}
+                        {!task.completionUrl && !(task.completionFileName && task.completionFileContent) && (
+                          <span className="text-neutral-500 font-normal text-sm">—</span>
                         )}
                       </div>
                     </td>

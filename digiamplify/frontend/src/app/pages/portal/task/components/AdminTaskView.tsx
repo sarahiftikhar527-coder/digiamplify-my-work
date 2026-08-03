@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle, ChevronLeft, ChevronRight, LinkIcon } from 'lucide-react';
 import CreateTaskModal from './CreateTaskModal';
 
 export default function AdminTaskView() {
@@ -313,8 +313,8 @@ export default function AdminTaskView() {
         <button
           onClick={() => { setActiveTab('tasks'); setCurrentPageTasks(1); }}
           className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'tasks'
-              ? 'bg-[#be0919] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white'
+            ? 'bg-[#be0919] text-white shadow-sm'
+            : 'text-neutral-400 hover:text-white'
             }`}
         >
           Active Tasks
@@ -322,8 +322,8 @@ export default function AdminTaskView() {
         <button
           onClick={() => { setActiveTab('requests'); setCurrentPageRequests(1); }}
           className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 ${activeTab === 'requests'
-              ? 'bg-[#be0919] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white'
+            ? 'bg-[#be0919] text-white shadow-sm'
+            : 'text-neutral-400 hover:text-white'
             }`}
         >
           <span>Approval Requests</span>
@@ -358,7 +358,7 @@ export default function AdminTaskView() {
             <div className="py-12 text-center text-xs text-neutral-500 font-light">No tasks found.</div>
           ) : (
             <div className="overflow-x-auto custom-red-scrollbar-h pb-2">
-              <table className="w-full text-left border-collapse min-w-[1150px]">
+              <table className="w-full text-left border-collapse min-w-[1250px]">
                 <thead>
                   <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">
                     <th className="pb-4 pl-4 font-normal w-56 pr-8">Assignee</th>
@@ -367,6 +367,7 @@ export default function AdminTaskView() {
                     <th className="pb-4 font-normal w-40 pr-8">Due Date</th>
                     <th className="pb-4 font-normal w-36 pr-8">Progress</th>
                     <th className="pb-4 font-normal w-36 pr-8">Status</th>
+                    <th className="pb-4 font-normal w-44 pr-8">Proof</th>
                     <th className="pb-4 text-right font-normal w-32 pr-4">Actions</th>
                   </tr>
                 </thead>
@@ -396,10 +397,10 @@ export default function AdminTaskView() {
                       </td>
                       <td className="py-4 pr-8 w-32">
                         <span className={`inline-flex items-center px-3 py-1 rounded font-normal text-xs uppercase border ${task.priority === 'High'
-                            ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
-                            : task.priority === 'Medium'
-                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                              : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
+                          : task.priority === 'Medium'
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                           }`}>
                           {task.priority}
                         </span>
@@ -417,7 +418,7 @@ export default function AdminTaskView() {
                             <span className="font-normal text-white">{task.progress || 0}%</span>
                           </div>
                           <div className="w-full bg-neutral-900 rounded-full h-1">
-                            <div 
+                            <div
                               className="bg-[#be0919] h-1 rounded-full transition-all duration-350"
                               style={{ width: `${task.progress || 0}%` }}
                             />
@@ -428,6 +429,34 @@ export default function AdminTaskView() {
                         <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-normal text-xs uppercase tracking-wider ${getStatusBadgeClass(task.status)}`}>
                           {getStatusLabel(task.status)}
                         </span>
+                      </td>
+                      <td className="py-4 pr-8 w-44">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          {task.completionUrl && (
+                            <a
+                              href={task.completionUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[150px]"
+                              title={task.completionUrl}
+                            >
+                              <LinkIcon className="w-3.5 h-3.5 shrink-0" />
+                              <span>Proof Link</span>
+                            </a>
+                          )}
+                          {task.completionFileName && task.completionFileContent && (
+                            <button
+                              onClick={() => handleDownload(task.completionFileName, task.completionFileContent)}
+                              className="text-sm text-emerald-400 hover:text-emerald-300 font-normal hover:underline flex items-center gap-1.5 cursor-pointer border-none bg-transparent p-0 outline-none"
+                            >
+                              <Download className="w-3.5 h-3.5 shrink-0" />
+                              <span>Proof Doc</span>
+                            </button>
+                          )}
+                          {!task.completionUrl && !(task.completionFileName && task.completionFileContent) && (
+                            <span className="text-neutral-500 font-normal text-sm">—</span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 text-right w-32 pr-4">
                         <div className="flex items-center justify-end gap-2.5">
@@ -483,8 +512,8 @@ export default function AdminTaskView() {
                     key={page}
                     onClick={() => setCurrentPageTasks(page)}
                     className={`w-8 h-8 rounded-lg text-xs font-normal transition-all duration-200 cursor-pointer ${currentPageTasks === page
-                        ? 'bg-[#be0919] text-white shadow-sm'
-                        : 'border border-neutral-900 text-neutral-400 hover:text-white'
+                      ? 'bg-[#be0919] text-white shadow-sm'
+                      : 'border border-neutral-900 text-neutral-400 hover:text-white'
                       }`}
                   >
                     {page}
@@ -565,10 +594,10 @@ export default function AdminTaskView() {
                       </td>
                       <td className="py-4 pr-6">
                         <span className={`inline-flex items-center px-3 py-1 rounded font-medium text-xs uppercase border ${req.priority === 'High'
-                            ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
-                            : req.priority === 'Medium'
-                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                              : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
+                          : req.priority === 'Medium'
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                           }`}>
                           {req.priority}
                         </span>
@@ -582,10 +611,10 @@ export default function AdminTaskView() {
                       <td className="py-4 pr-6">
                         <div>
                           <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-medium text-xs uppercase tracking-wider ${req.status === 'APPROVED'
-                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                              : req.status === 'REJECTED'
-                                ? 'bg-[#be0919]/15 text-[#ff4d5a] border border-[#be0919]/20'
-                                : 'bg-amber-500/15 text-amber-400 border-amber-500/20'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                            : req.status === 'REJECTED'
+                              ? 'bg-[#be0919]/15 text-[#ff4d5a] border border-[#be0919]/20'
+                              : 'bg-amber-500/15 text-amber-400 border-amber-500/20'
                             }`}>
                             {req.status}
                           </span>
@@ -654,11 +683,10 @@ export default function AdminTaskView() {
                   <button
                     key={page}
                     onClick={() => setCurrentPageRequests(page)}
-                    className={`w-8 h-8 rounded-lg text-xs font-normal transition-all duration-200 cursor-pointer ${
-                      currentPageRequests === page
+                    className={`w-8 h-8 rounded-lg text-xs font-normal transition-all duration-200 cursor-pointer ${currentPageRequests === page
                         ? 'bg-[#be0919] text-white shadow-sm'
                         : 'border border-neutral-900 text-neutral-400 hover:text-white'
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>

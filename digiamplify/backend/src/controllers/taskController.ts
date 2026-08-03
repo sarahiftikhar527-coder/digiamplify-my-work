@@ -195,7 +195,7 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
   try {
     const userId = req.userId;
     const { taskId } = req.params;
-    const { status, progress } = req.body;
+    const { status, progress, completionFileName, completionFileContent, completionUrl } = req.body;
 
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized user context' });
@@ -234,8 +234,26 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
 
     const userName = user.role.toLowerCase() === 'admin' ? 'Admin' : (user.profile?.fullName || user.email);
 
+    if (completionFileName !== undefined) {
+      updateData.completionFileName = completionFileName;
+    }
+    if (completionFileContent !== undefined) {
+      updateData.completionFileContent = completionFileContent;
+    }
+    if (completionUrl !== undefined) {
+      updateData.completionUrl = completionUrl;
+    }
+
     if (status !== undefined) {
       const upperStatus = status.toUpperCase();
+      if (upperStatus === 'COMPLETED' || upperStatus === 'FINISHED') {
+        const hasIncomingAttachment = (completionFileName && completionFileContent) || completionUrl;
+        const hasExistingAttachment = (task.completionFileName && task.completionFileContent) || task.completionUrl;
+        if (!hasIncomingAttachment && !hasExistingAttachment) {
+          res.status(400).json({ error: 'An attachment (document or URL link) is mandatory to set task status to completed/finished.' });
+          return;
+        }
+      }
       updateData.status = upperStatus;
       logDescription += `Status updated to ${upperStatus}`;
       if (upperStatus === 'COMPLETED' || upperStatus === 'FINISHED') {

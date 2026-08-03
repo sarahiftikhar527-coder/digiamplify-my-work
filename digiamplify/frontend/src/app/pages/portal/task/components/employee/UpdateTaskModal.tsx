@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Download, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Calendar, Clock, Download, FileText, AlertCircle, RefreshCw, UploadCloud, Link as LinkIcon } from 'lucide-react';
 
 interface UpdateTaskModalProps {
   isOpen: boolean;
@@ -11,13 +11,72 @@ interface UpdateTaskModalProps {
 export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }: UpdateTaskModalProps) {
   const [status, setStatus] = useState('ONGOING');
   const [progress, setProgress] = useState(0);
+  const [completionUrl, setCompletionUrl] = useState('');
+  const [completionAttachments, setCompletionAttachments] = useState<{ name: string; content: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        processFile(files[i]);
+      }
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (let i = 0; i < files.length; i++) {
+      processFile(files[i]);
+    }
+  };
+
+  const processFile = (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      setError(`File ${file.name} exceeds 10MB limit.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCompletionAttachments((prev) => [...prev, { name: file.name, content: reader.result as string }]);
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (task) {
       setStatus(task.status.toUpperCase());
       setProgress(task.progress || 0);
+      setCompletionUrl(task.completionUrl || '');
+      
+      if (task.completionFileName && task.completionFileContent) {
+        if (task.completionFileName.trim().startsWith('[') && task.completionFileContent.trim().startsWith('[')) {
+          try {
+            const names = JSON.parse(task.completionFileName);
+            const contents = JSON.parse(task.completionFileContent);
+            if (Array.isArray(names) && Array.isArray(contents)) {
+              setCompletionAttachments(names.map((name, index) => ({
+                name,
+                content: contents[index] || ''
+              })));
+            }
+          } catch (e) {
+            setCompletionAttachments([{ name: task.completionFileName, content: task.completionFileContent }]);
+          }
+        } else {
+          setCompletionAttachments([{ name: task.completionFileName, content: task.completionFileContent }]);
+        }
+      } else {
+        setCompletionAttachments([]);
+      }
       setError('');
     }
   }, [task, isOpen]);
@@ -34,10 +93,26 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const hasAttachment = completionAttachments.length > 0 || completionUrl.trim() !== '';
+    if (status === 'COMPLETED' && !hasAttachment) {
+      setError('An attachment (document or URL link) is mandatory to set task status to Finished.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const token = localStorage.getItem('token');
+
+      let finalFileName = null;
+      let finalFileContent = null;
+
+      if (completionAttachments.length > 0) {
+        finalFileName = JSON.stringify(completionAttachments.map(a => a.name));
+        finalFileContent = JSON.stringify(completionAttachments.map(a => a.content));
+      }
+
       const res = await fetch(`http://localhost:5000/api/tasks/${task.id}`, {
         method: 'PATCH',
         headers: {
@@ -46,7 +121,10 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
         },
         body: JSON.stringify({
           status,
-          progress
+          progress,
+          completionFileName: finalFileName,
+          completionFileContent: finalFileContent,
+          completionUrl: completionUrl || null
         })
       });
 
@@ -218,6 +296,74 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
               />
             </div>
           </div>
+
+          {/* Completion Section */}
+          {status === 'COMPLETED' && (
+            <div className="space-y-4 border-t border-neutral-900 pt-4 animate-fadeIn">
+              <div>
+                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider block mb-2">
+                  Completion Proof (Required - Document or URL Link)
+                </span>
+                
+                {/* URL Input */}
+                <div className="mb-3">
+                  <label className="text-[11px] text-neutral-500 font-semibold block mb-1.5">COMPLETION URL LINK</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/project-link"
+                    value={completionUrl}
+                    onChange={(e) => setCompletionUrl(e.target.value)}
+                    className="w-full bg-[#050505] border border-neutral-900 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-750 outline-none focus:border-neutral-750 transition-all font-normal"
+                  />
+                </div>
+
+                {/* File Upload Dropzone */}
+                <div>
+                  <label className="text-[11px] text-neutral-500 font-semibold block mb-1.5">UPLOAD DOCUMENTS</label>
+                  <div
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border border-dashed border-neutral-900 hover:border-[#be0919]/50 rounded-xl p-6 text-center cursor-pointer transition-all bg-[#050505]/50 group"
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      multiple
+                      className="hidden"
+                    />
+                    <UploadCloud className="w-8 h-8 text-neutral-600 group-hover:text-[#be0919] mx-auto mb-2.5 transition-all" />
+                    <p className="text-sm text-neutral-300 font-normal">
+                      Drag & drop your files here or <span className="text-[#be0919] hover:underline">browse</span>
+                    </p>
+                    <p className="text-xs text-neutral-550 mt-1.5 font-normal">Max file size 10MB</p>
+                  </div>
+                </div>
+
+                {/* Selected Attachments List */}
+                {completionAttachments.length > 0 && (
+                  <div className="mt-3.5 space-y-2">
+                    {completionAttachments.map((file, idx) => (
+                      <div key={idx} className="bg-[#050505] border border-neutral-900 rounded-lg p-2.5 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-[#be0919] shrink-0" />
+                          <span className="text-xs text-white truncate font-normal">{file.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCompletionAttachments(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-[10px] text-[#ff4d5a] hover:underline font-normal cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Error notice */}
           {error && (
