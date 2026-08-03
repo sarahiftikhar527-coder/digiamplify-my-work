@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle } from 'lucide-react';
+import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import CreateTaskModal from './CreateTaskModal';
 
 export default function AdminTaskView() {
@@ -9,7 +9,7 @@ export default function AdminTaskView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [activeTab, setActiveTab] = useState<'tasks' | 'requests'>('tasks');
   const [requests, setRequests] = useState<any[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
@@ -20,18 +20,35 @@ export default function AdminTaskView() {
     completed: 0
   });
 
-  const fetchTasks = async () => {
+  const [currentPageTasks, setCurrentPageTasks] = useState(1);
+  const [currentPageRequests, setCurrentPageRequests] = useState(1);
+  const itemsPerPage = 5;
+
+  const totalPagesTasks = Math.max(1, Math.ceil(filteredTasks.length / itemsPerPage));
+  const startIndexTasks = (currentPageTasks - 1) * itemsPerPage;
+  const paginatedTasks = filteredTasks.slice(startIndexTasks, startIndexTasks + itemsPerPage);
+
+  const totalPagesRequests = Math.max(1, Math.ceil(requests.length / itemsPerPage));
+  const startIndexRequests = (currentPageRequests - 1) * itemsPerPage;
+  const paginatedRequests = requests.slice(startIndexRequests, startIndexRequests + itemsPerPage);
+
+  const fetchTasks = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:5000/api/tasks', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setTasks(data);
-        setFilteredTasks(data);
-        calculateStats(data);
+        setTasks(prev => {
+          if (JSON.stringify(prev) !== JSON.stringify(data)) {
+            setFilteredTasks(data);
+            calculateStats(data);
+            return data;
+          }
+          return prev;
+        });
       } else {
         const data = await res.json();
         setError(data.error || 'Failed to fetch tasks');
@@ -40,25 +57,30 @@ export default function AdminTaskView() {
       console.error(err);
       setError('Connection error fetching tasks');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (silent = false) => {
     try {
-      setLoadingRequests(true);
+      if (!silent) setLoadingRequests(true);
       const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:5000/api/tasks/requests', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setRequests(data);
+        setRequests(prev => {
+          if (JSON.stringify(prev) !== JSON.stringify(data)) {
+            return data;
+          }
+          return prev;
+        });
       }
     } catch (err) {
       console.error('Error fetching task requests:', err);
     } finally {
-      setLoadingRequests(false);
+      if (!silent) setLoadingRequests(false);
     }
   };
 
@@ -67,8 +89,8 @@ export default function AdminTaskView() {
     fetchRequests();
 
     const interval = setInterval(() => {
-      fetchTasks();
-      fetchRequests();
+      fetchTasks(true);
+      fetchRequests(true);
     }, 5000);
 
     return () => clearInterval(interval);
@@ -90,6 +112,36 @@ export default function AdminTaskView() {
     const pending = taskList.filter(t => t.status === 'PENDING').length;
     const completed = taskList.filter(t => t.status === 'COMPLETED').length;
     setStats({ total, pending, completed });
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    const s = status.toUpperCase();
+    if (s === 'COMPLETED' || s === 'FINISHED') {
+      return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25';
+    }
+    if (s === 'DELAYED') {
+      return 'bg-[#be0919]/15 text-[#ff4d5a] border border-[#be0919]/25';
+    }
+    if (s === 'PENDING') {
+      return 'bg-amber-500/15 text-amber-400 border border-amber-500/25';
+    }
+    if (s === 'ONGOING') {
+      return 'bg-blue-500/15 text-blue-400 border border-blue-500/25';
+    }
+    if (s === 'CANCELLED') {
+      return 'bg-purple-500/15 text-purple-400 border border-purple-500/25';
+    }
+    return 'bg-neutral-900 text-neutral-400 border border-neutral-850';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const s = status.toUpperCase();
+    if (s === 'COMPLETED' || s === 'FINISHED') return 'Finished';
+    if (s === 'DELAYED') return 'Delayed';
+    if (s === 'PENDING') return 'Pending';
+    if (s === 'ONGOING') return 'Ongoing';
+    if (s === 'CANCELLED') return 'Cancelled';
+    return status;
   };
 
   const handleDelete = async (taskId: string) => {
@@ -140,9 +192,9 @@ export default function AdminTaskView() {
       const token = localStorage.getItem('token');
       const res = await fetch(`http://localhost:5000/api/tasks/requests/${requestId}/reject`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ rejectionReason: reason })
       });
@@ -259,22 +311,20 @@ export default function AdminTaskView() {
       {/* Tabs */}
       <div className="flex items-center bg-[#050505] p-1 rounded-lg border border-neutral-900 w-fit mb-6">
         <button
-          onClick={() => setActiveTab('tasks')}
-          className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${
-            activeTab === 'tasks'
+          onClick={() => { setActiveTab('tasks'); setCurrentPageTasks(1); }}
+          className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'tasks'
               ? 'bg-[#be0919] text-white shadow-sm'
               : 'text-neutral-400 hover:text-white'
-          }`}
+            }`}
         >
           Active Tasks
         </button>
         <button
-          onClick={() => setActiveTab('requests')}
-          className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 ${
-            activeTab === 'requests'
+          onClick={() => { setActiveTab('requests'); setCurrentPageRequests(1); }}
+          className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 ${activeTab === 'requests'
               ? 'bg-[#be0919] text-white shadow-sm'
               : 'text-neutral-400 hover:text-white'
-          }`}
+            }`}
         >
           <span>Approval Requests</span>
           {requests.filter(r => r.status === 'PENDING').length > 0 && (
@@ -308,21 +358,22 @@ export default function AdminTaskView() {
             <div className="py-12 text-center text-xs text-neutral-500 font-light">No tasks found.</div>
           ) : (
             <div className="overflow-x-auto custom-red-scrollbar-h pb-2">
-              <table className="w-full text-left border-collapse min-w-[900px]">
+              <table className="w-full text-left border-collapse min-w-[1150px]">
                 <thead>
-                  <tr className="border-b border-neutral-900 text-sm font-semibold text-neutral-300 uppercase tracking-wider">
-                    <th className="pb-4">Assignee</th>
-                    <th className="pb-4">Subject</th>
-                    <th className="pb-4">Priority</th>
-                    <th className="pb-4">Due Date</th>
-                    <th className="pb-4">Status</th>
-                    <th className="pb-4 text-right">Actions</th>
+                  <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">
+                    <th className="pb-4 pl-4 font-normal w-56 pr-8">Assignee</th>
+                    <th className="pb-4 font-normal w-60 pr-8">Subject</th>
+                    <th className="pb-4 font-normal w-32 pr-8">Priority</th>
+                    <th className="pb-4 font-normal w-40 pr-8">Due Date</th>
+                    <th className="pb-4 font-normal w-36 pr-8">Progress</th>
+                    <th className="pb-4 font-normal w-36 pr-8">Status</th>
+                    <th className="pb-4 text-right font-normal w-32 pr-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-900 text-sm font-light text-neutral-300">
-                  {filteredTasks.map((task) => (
+                  {paginatedTasks.map((task) => (
                     <tr key={task.id} className="hover:bg-neutral-950/30 transition-colors">
-                      <td className="py-4 pr-4">
+                      <td className="py-4 pr-8 pl-4 w-56">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-850 flex items-center justify-center overflow-hidden font-bold text-sm text-neutral-400 shrink-0">
                             {task.assignedTo?.profile?.pictureUrl ? (
@@ -332,44 +383,53 @@ export default function AdminTaskView() {
                             )}
                           </div>
                           <div>
-                            <p className="font-semibold text-white text-sm">{task.assignedTo?.profile?.fullName || 'No Name'}</p>
+                            <p className="font-normal text-white text-sm">{task.assignedTo?.profile?.fullName || 'No Name'}</p>
                             <p className="text-xs text-neutral-500 font-light mt-0.5">{task.assignedTo?.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 pr-4 max-w-[200px]">
+                      <td className="py-4 pr-8 w-60 max-w-[200px]">
                         <div>
-                          <p className="font-semibold text-white text-sm truncate">{task.subject}</p>
+                          <p className="font-normal text-white text-sm truncate">{task.subject}</p>
                           <p className="text-xs text-neutral-500 font-light mt-0.5 truncate">{task.description}</p>
                         </div>
                       </td>
-                      <td className="py-4 pr-4">
-                        <span className={`inline-flex items-center px-3 py-1 rounded font-semibold text-xs uppercase border ${
-                          task.priority === 'High' 
-                            ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20' 
+                      <td className="py-4 pr-8 w-32">
+                        <span className={`inline-flex items-center px-3 py-1 rounded font-normal text-xs uppercase border ${task.priority === 'High'
+                            ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
                             : task.priority === 'Medium'
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                        }`}>
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          }`}>
                           {task.priority}
                         </span>
                       </td>
-                      <td className="py-4 pr-4">
+                      <td className="py-4 pr-8 w-40">
                         <div>
-                          <p className="text-white text-sm">{task.dueDate}</p>
+                          <p className="text-white text-sm font-normal">{task.dueDate}</p>
                           {task.dueTime && <p className="text-xs text-neutral-500 mt-0.5">{task.dueTime}</p>}
                         </div>
                       </td>
-                      <td className="py-4 pr-4">
-                        <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider ${
-                          task.status === 'COMPLETED' 
-                            ? 'bg-emerald-500/15 text-emerald-400' 
-                            : 'bg-neutral-900 text-neutral-400 border border-neutral-800'
-                        }`}>
-                          {task.status}
+                      <td className="py-4 pr-8 w-36">
+                        <div className="flex flex-col gap-1.5 w-24">
+                          <div className="flex justify-between items-center text-[11px] text-neutral-400 font-normal">
+                            <span className="font-normal">Progress</span>
+                            <span className="font-normal text-white">{task.progress || 0}%</span>
+                          </div>
+                          <div className="w-full bg-neutral-900 rounded-full h-1">
+                            <div 
+                              className="bg-[#be0919] h-1 rounded-full transition-all duration-350"
+                              style={{ width: `${task.progress || 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 pr-8 w-36">
+                        <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-normal text-xs uppercase tracking-wider ${getStatusBadgeClass(task.status)}`}>
+                          {getStatusLabel(task.status)}
                         </span>
                       </td>
-                      <td className="py-4 text-right">
+                      <td className="py-4 text-right w-32 pr-4">
                         <div className="flex items-center justify-end gap-2.5">
                           {task.fileName && task.fileContent && (
                             <button
@@ -392,6 +452,53 @@ export default function AdminTaskView() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Section */}
+          {filteredTasks.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 border-t border-neutral-900 pt-5">
+              <p className="text-xs text-neutral-500 font-light flex items-center">
+                Showing
+                <span className="text-neutral-300 font-normal mx-1.5">{startIndexTasks + 1}</span>
+                to
+                <span className="text-neutral-300 font-normal mx-1.5">
+                  {Math.min(startIndexTasks + itemsPerPage, filteredTasks.length)}
+                </span>
+                of
+                <span className="text-neutral-300 font-normal ml-1.5">{filteredTasks.length}</span>
+              </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPageTasks(p => Math.max(1, p - 1))}
+                  disabled={currentPageTasks === 1}
+                  className="p-2 border border-neutral-900 rounded-lg text-neutral-400 hover:text-white disabled:opacity-40 disabled:hover:text-neutral-400 transition-all cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {Array.from({ length: totalPagesTasks }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPageTasks(page)}
+                    className={`w-8 h-8 rounded-lg text-xs font-normal transition-all duration-200 cursor-pointer ${currentPageTasks === page
+                        ? 'bg-[#be0919] text-white shadow-sm'
+                        : 'border border-neutral-900 text-neutral-400 hover:text-white'
+                      }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPageTasks(p => Math.min(totalPagesTasks, p + 1))}
+                  disabled={currentPageTasks === totalPagesTasks}
+                  className="p-2 border border-neutral-900 rounded-lg text-neutral-400 hover:text-white disabled:opacity-40 disabled:hover:text-neutral-400 transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -418,7 +525,7 @@ export default function AdminTaskView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-900 text-sm font-normal text-neutral-300">
-                  {requests.map((req) => (
+                  {paginatedRequests.map((req) => (
                     <tr key={req.id} className="hover:bg-neutral-950/30 transition-colors">
                       <td className="py-4 pr-6">
                         <div className="flex items-center gap-3">
@@ -457,13 +564,12 @@ export default function AdminTaskView() {
                         </div>
                       </td>
                       <td className="py-4 pr-6">
-                        <span className={`inline-flex items-center px-3 py-1 rounded font-medium text-xs uppercase border ${
-                          req.priority === 'High' 
-                            ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20' 
+                        <span className={`inline-flex items-center px-3 py-1 rounded font-medium text-xs uppercase border ${req.priority === 'High'
+                            ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
                             : req.priority === 'Medium'
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                        }`}>
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          }`}>
                           {req.priority}
                         </span>
                       </td>
@@ -475,13 +581,12 @@ export default function AdminTaskView() {
                       </td>
                       <td className="py-4 pr-6">
                         <div>
-                          <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-medium text-xs uppercase tracking-wider ${
-                            req.status === 'APPROVED' 
-                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' 
+                          <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-medium text-xs uppercase tracking-wider ${req.status === 'APPROVED'
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                               : req.status === 'REJECTED'
-                              ? 'bg-[#be0919]/15 text-[#ff4d5a] border border-[#be0919]/20'
-                              : 'bg-amber-500/15 text-amber-400 border-amber-500/20'
-                          }`}>
+                                ? 'bg-[#be0919]/15 text-[#ff4d5a] border border-[#be0919]/20'
+                                : 'bg-amber-500/15 text-amber-400 border-amber-500/20'
+                            }`}>
                             {req.status}
                           </span>
                           {req.status === 'REJECTED' && req.rejectionReason && (
@@ -519,6 +624,54 @@ export default function AdminTaskView() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Section */}
+          {requests.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 border-t border-neutral-900 pt-5">
+              <p className="text-xs text-neutral-500 font-light flex items-center">
+                Showing
+                <span className="text-neutral-300 font-normal mx-1.5">{startIndexRequests + 1}</span>
+                to
+                <span className="text-neutral-300 font-normal mx-1.5">
+                  {Math.min(startIndexRequests + itemsPerPage, requests.length)}
+                </span>
+                of
+                <span className="text-neutral-300 font-normal ml-1.5">{requests.length}</span>
+              </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPageRequests(p => Math.max(1, p - 1))}
+                  disabled={currentPageRequests === 1}
+                  className="p-2 border border-neutral-900 rounded-lg text-neutral-400 hover:text-white disabled:opacity-40 disabled:hover:text-neutral-400 transition-all cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {Array.from({ length: totalPagesRequests }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPageRequests(page)}
+                    className={`w-8 h-8 rounded-lg text-xs font-normal transition-all duration-200 cursor-pointer ${
+                      currentPageRequests === page
+                        ? 'bg-[#be0919] text-white shadow-sm'
+                        : 'border border-neutral-900 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPageRequests(p => Math.min(totalPagesRequests, p + 1))}
+                  disabled={currentPageRequests === totalPagesRequests}
+                  className="p-2 border border-neutral-900 rounded-lg text-neutral-400 hover:text-white disabled:opacity-40 disabled:hover:text-neutral-400 transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>

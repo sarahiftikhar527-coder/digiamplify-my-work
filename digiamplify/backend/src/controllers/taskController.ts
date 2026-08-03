@@ -147,8 +147,25 @@ export const getTasks = async (req: AuthRequest, res: Response): Promise<void> =
       });
     } else {
       tasks = await prisma.task.findMany({
-        where: { assignedToId: userId },
+        where: {
+          OR: [
+            { assignedToId: userId },
+            { assignedById: userId }
+          ]
+        },
         include: {
+          assignedTo: {
+            select: {
+              email: true,
+              profile: {
+                select: {
+                  fullName: true,
+                  jobTitle: true,
+                  pictureUrl: true
+                }
+              }
+            }
+          },
           assignedBy: {
             select: {
               email: true,
@@ -218,11 +235,16 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
     const userName = user.role.toLowerCase() === 'admin' ? 'Admin' : (user.profile?.fullName || user.email);
 
     if (status !== undefined) {
-      updateData.status = status;
-      logDescription += `Status updated to ${status}`;
+      const upperStatus = status.toUpperCase();
+      updateData.status = upperStatus;
+      logDescription += `Status updated to ${upperStatus}`;
+      if (upperStatus === 'COMPLETED' || upperStatus === 'FINISHED') {
+        updateData.progress = 100;
+        logDescription += ` and Progress auto-set to 100%`;
+      }
     }
 
-    if (progress !== undefined) {
+    if (progress !== undefined && !(updateData.status === 'COMPLETED' || updateData.status === 'FINISHED')) {
       const progressInt = parseInt(progress, 10);
       updateData.progress = isNaN(progressInt) ? 0 : progressInt;
       if (logDescription) logDescription += ' and ';

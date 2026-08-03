@@ -76,8 +76,8 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-8 max-w-xl w-full relative animate-fadeIn shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/75 flex justify-center items-start overflow-y-auto p-4 md:p-10 backdrop-blur-sm">
+      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-8 max-w-xl w-full relative animate-fadeIn shadow-2xl my-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -183,7 +183,12 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
                 <button
                   type="button"
                   key={opt.key}
-                  onClick={() => setStatus(opt.key)}
+                  onClick={() => {
+                    setStatus(opt.key);
+                    if (opt.key === 'COMPLETED') {
+                      setProgress(100);
+                    }
+                  }}
                   className={`py-2 px-1 text-center text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                     status === opt.key
                       ? 'bg-[#be0919]/15 border-[#be0919] text-[#ff4d5a]'

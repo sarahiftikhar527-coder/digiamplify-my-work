@@ -112,19 +112,23 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
       return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
     }
     if (s === 'DELAYED') {
-      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      return 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20';
+    }
+    if (s === 'PENDING') {
+      return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
     }
     if (s === 'CANCELLED') {
       return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
     }
-    // Ongoing / Pending
-    return 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20';
+    // Ongoing / Pending fallback
+    return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
   };
 
   const getStatusLabel = (status: string) => {
     const s = status.toUpperCase();
     if (s === 'COMPLETED' || s === 'FINISHED') return 'Finished';
     if (s === 'DELAYED') return 'Delayed';
+    if (s === 'PENDING') return 'Pending';
     if (s === 'CANCELLED') return 'Cancelled';
     return 'Ongoing';
   };
