@@ -208,7 +208,7 @@ export const getAllProfiles = async (req: AuthRequest, res: Response): Promise<v
     const users = await prisma.user.findMany({
       where: {
         status: {
-          not: 'REJECTED'
+          notIn: ['REJECTED', 'rejected']
         }
       },
       select: {
@@ -471,12 +471,11 @@ export const rejectUserRequest = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const updatedUser = await prisma.user.update({
+    const deletedUser = await prisma.user.delete({
       where: { id: userId },
-      data: { status: 'REJECTED' },
     });
 
-    res.json({ message: 'User rejected successfully', user: updatedUser });
+    res.json({ message: 'User rejected and deleted successfully', user: deletedUser });
   } catch (error: any) {
     console.error('Error rejecting user:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });

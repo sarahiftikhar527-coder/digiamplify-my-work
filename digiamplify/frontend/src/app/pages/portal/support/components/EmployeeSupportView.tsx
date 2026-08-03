@@ -12,9 +12,9 @@ interface EmployeeSupportViewProps {
   setDescription: (val: string) => void;
   contactMethod: string;
   setContactMethod: (val: string) => void;
-  fileName: string;
+  attachments: { name: string; content: string }[];
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleClearFile: (e: React.MouseEvent) => void;
+  handleRemoveAttachment: (idx: number) => void;
   handleDragOver: (e: React.DragEvent) => void;
   handleDrop: (e: React.DragEvent) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -34,9 +34,9 @@ export default function EmployeeSupportView({
   setDescription,
   contactMethod,
   setContactMethod,
-  fileName,
+  attachments,
   handleFileUpload,
-  handleClearFile,
+  handleRemoveAttachment,
   handleDragOver,
   handleDrop,
   onSubmit,
@@ -137,6 +137,7 @@ export default function EmployeeSupportView({
                 type="file"
                 id="support-file"
                 onChange={handleFileUpload}
+                multiple
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
               />
@@ -145,26 +146,12 @@ export default function EmployeeSupportView({
                 <UploadCloud className="w-6 h-6 text-[#be0919]" />
               </div>
 
-              {fileName ? (
-                <div className="z-10 flex items-center gap-2 max-w-full px-4">
-                  <FileText className="w-5 h-5 text-neutral-400 shrink-0" />
-                  <span className="text-sm text-white font-medium truncate max-w-[200px]">{fileName}</span>
-                  <button
-                    type="button"
-                    onClick={handleClearFile}
-                    className="p-1 rounded bg-[#0c0c0c] hover:bg-neutral-800 text-neutral-400 hover:text-white cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <span className="text-sm text-white font-medium tracking-wide">Drag & Drop files here</span>
-                  <span className="text-xs text-neutral-500 font-light mt-1.5">
-                    or <span className="text-[#be0919] hover:underline font-normal">browse files</span> from computer
-                  </span>
-                </>
-              )}
+              <>
+                <span className="text-sm text-white font-medium tracking-wide">Drag & Drop files here</span>
+                <span className="text-xs text-neutral-500 font-light mt-1.5">
+                  or <span className="text-[#be0919] hover:underline font-normal">browse files</span> from computer
+                </span>
+              </>
 
               <div className="flex gap-2.5 mt-5">
                 <span className="text-xs font-bold py-1.5 px-3.5 bg-white text-black/50 rounded-md">.PDF</span>
@@ -173,6 +160,28 @@ export default function EmployeeSupportView({
                 <span className="text-xs font-bold py-1.5 px-3.5 bg-white text-black/50 rounded-md">.JPG</span>
               </div>
             </div>
+
+            {attachments.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {attachments.map((file, idx) => (
+                  <div key={idx} className="z-10 flex items-center gap-2 max-w-full px-3 py-1.5 bg-[#0c0c0c] border border-neutral-800 rounded-lg text-xs">
+                    <FileText className="w-4.5 h-4.5 text-neutral-400 shrink-0" />
+                    <span className="text-xs text-white font-medium truncate max-w-[150px]">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleRemoveAttachment(idx);
+                      }}
+                      className="p-0.5 rounded bg-neutral-950 hover:bg-neutral-800 text-neutral-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col">

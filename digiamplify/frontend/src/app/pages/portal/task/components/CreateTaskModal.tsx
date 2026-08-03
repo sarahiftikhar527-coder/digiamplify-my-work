@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, Clock, Download, UploadCloud, Edit, AlertCircle, Flag, ChevronDown } from 'lucide-react';
+import { X, Calendar, Clock, Download, UploadCloud, Edit, AlertCircle, Flag, ChevronDown, FileText } from 'lucide-react';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -19,8 +19,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
   const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('');
   
-  const [fileName, setFileName] = useState('');
-  const [fileContent, setFileContent] = useState('');
+  const [attachments, setAttachments] = useState<{ name: string; content: string }[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,26 +85,26 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
     setDescription('');
     setDueDate('');
     setDueTime('');
-    setFileName('');
-    setFileContent('');
+    setAttachments([]);
     setError('');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    processFile(file);
+    const files = e.target.files;
+    if (!files) return;
+    for (let i = 0; i < files.length; i++) {
+      processFile(files[i]);
+    }
   };
 
   const processFile = (file: File) => {
     if (file.size > 10 * 1024 * 1024) {
-      setError('File exceeds 10MB limit.');
+      setError(`File ${file.name} exceeds 10MB limit.`);
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setFileName(file.name);
-      setFileContent(reader.result as string);
+      setAttachments((prev) => [...prev, { name: file.name, content: reader.result as string }]);
     };
     reader.readAsDataURL(file);
   };
@@ -116,9 +115,11 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processFile(file);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        processFile(files[i]);
+      }
     }
   };
 
@@ -174,8 +175,8 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
           description,
           dueDate,
           dueTime: dueTime || null,
-          fileName: fileName || null,
-          fileContent: fileContent || null
+          fileName: attachments.length > 0 ? JSON.stringify(attachments.map(a => a.name)) : null,
+          fileContent: attachments.length > 0 ? JSON.stringify(attachments.map(a => a.content)) : null
         })
       });
 
@@ -457,8 +458,9 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                multiple
                 className="hidden"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
               />
               
               <UploadCloud className="w-10 h-10 text-neutral-400 mb-3" />
@@ -473,24 +475,28 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
                 <span className="px-3.5 py-1.5 bg-white text-black font-bold text-xs rounded shadow-sm">.PNG</span>
                 <span className="px-3.5 py-1.5 bg-white text-black font-bold text-xs rounded shadow-sm">.JPG</span>
               </div>
-
-              {fileName && (
-                <div className="mt-4 px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg flex items-center gap-2 text-xs text-white max-w-full">
-                  <span className="truncate max-w-[200px]">{fileName}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFileName('');
-                      setFileContent('');
-                    }}
-                    className="text-neutral-400 hover:text-white cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
             </div>
+
+            {attachments.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2 max-w-full">
+                {attachments.map((file, idx) => (
+                  <div key={idx} className="px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg flex items-center gap-2 text-xs text-white">
+                    <FileText className="w-4.5 h-4.5 text-neutral-450 shrink-0" />
+                    <span className="truncate max-w-[150px]">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAttachments(prev => prev.filter((_, i) => i !== idx));
+                      }}
+                      className="text-neutral-400 hover:text-white cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end pt-4">

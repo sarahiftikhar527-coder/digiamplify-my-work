@@ -83,57 +83,41 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
 
   // default or cards-only
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full justify-center">
       {/* Assigned Tasks Card */}
-      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl py-3 px-4 flex flex-col hover:border-neutral-800 transition-all duration-300 shadow-md">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#be0919]/10 rounded-md text-[#be0919] shrink-0">
-            <Calendar className="w-4.5 h-4.5" />
-          </div>
-          <span className="text-xl font-normal text-white leading-none">{stats.total}</span>
+      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-3 flex flex-col items-center justify-center text-center hover:border-neutral-800 transition-all duration-300 shadow-md aspect-square w-full max-w-[130px] mx-auto">
+        <div className="p-2 bg-[#be0919]/10 rounded-lg text-[#be0919] mb-2">
+          <Calendar className="w-5 h-5" />
         </div>
-        <div className="mt-2.5">
-          <span className="text-xs text-neutral-450 font-light block">Task Assign</span>
-        </div>
+        <span className="text-xl font-normal text-white leading-none mb-1.5">{stats.total}</span>
+        <span className="text-[10px] text-neutral-450 font-light block">Task Assign</span>
       </div>
 
       {/* Tasks Completed Card */}
-      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl py-3 px-4 flex flex-col hover:border-neutral-800 transition-all duration-300 shadow-md">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#be0919]/10 rounded-md text-[#be0919] shrink-0">
-            <CheckSquare className="w-4.5 h-4.5" />
-          </div>
-          <span className="text-xl font-normal text-white leading-none">{stats.completed}</span>
+      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-3 flex flex-col items-center justify-center text-center hover:border-neutral-800 transition-all duration-300 shadow-md aspect-square w-full max-w-[130px] mx-auto">
+        <div className="p-2 bg-[#be0919]/10 rounded-lg text-[#be0919] mb-2">
+          <CheckSquare className="w-5 h-5" />
         </div>
-        <div className="mt-2.5">
-          <span className="text-xs text-neutral-450 font-light block">Tasks Completed</span>
-        </div>
+        <span className="text-xl font-normal text-white leading-none mb-1.5">{stats.completed}</span>
+        <span className="text-[10px] text-neutral-450 font-light block">Tasks Completed</span>
       </div>
 
       {/* In Progress Card */}
-      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl py-3 px-4 flex flex-col hover:border-neutral-800 transition-all duration-300 shadow-md">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#be0919]/10 rounded-md text-[#be0919] shrink-0">
-            <Loader2 className="w-4.5 h-4.5 animate-spin" style={{ animationDuration: '3s' }} />
-          </div>
-          <span className="text-xl font-normal text-white leading-none">{stats.ongoing}</span>
+      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-3 flex flex-col items-center justify-center text-center hover:border-neutral-800 transition-all duration-300 shadow-md aspect-square w-full max-w-[130px] mx-auto">
+        <div className="p-2 bg-[#be0919]/10 rounded-lg text-[#be0919] mb-2">
+          <Loader2 className="w-5 h-5 animate-spin" style={{ animationDuration: '3s' }} />
         </div>
-        <div className="mt-2.5">
-          <span className="text-xs text-neutral-450 font-light block">In Progress</span>
-        </div>
+        <span className="text-xl font-normal text-white leading-none mb-1.5">{stats.ongoing}</span>
+        <span className="text-[10px] text-neutral-450 font-light block">In Progress</span>
       </div>
 
       {/* Overdue Tasks Card */}
-      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl py-3 px-4 flex flex-col hover:border-neutral-800 transition-all duration-300 shadow-md">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#be0919]/10 rounded-md text-[#be0919] shrink-0">
-            <AlertTriangle className="w-4.5 h-4.5 text-[#be0919]" />
-          </div>
-          <span className="text-xl font-normal text-white leading-none">{stats.overdue}</span>
+      <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-3 flex flex-col items-center justify-center text-center hover:border-neutral-800 transition-all duration-300 shadow-md aspect-square w-full max-w-[130px] mx-auto">
+        <div className="p-2 bg-[#be0919]/10 rounded-lg text-[#be0919] mb-2">
+          <AlertTriangle className="w-5 h-5 text-[#be0919]" />
         </div>
-        <div className="mt-2.5">
-          <span className="text-xs text-neutral-450 font-light block">Overdue Tasks</span>
-        </div>
+        <span className="text-xl font-normal text-white leading-none mb-1.5">{stats.overdue}</span>
+        <span className="text-[10px] text-neutral-450 font-light block">Overdue Tasks</span>
       </div>
     </div>
   );

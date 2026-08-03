@@ -100,10 +100,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    
-    if (user.role.toLowerCase() === 'employee' && user.status !== 'APPROVED') {
-      res.status(403).json({ error: 'Your signup request is pending approval or has been rejected' });
-      return;
+    // Check approval status
+    if (user.role.toLowerCase() === 'employee') {
+      if (user.status === 'REJECTED' || user.status === 'rejected') {
+        res.status(403).json({ error: 'Your registration request has been rejected. You cannot access the portal.' });
+        return;
+      }
+      if (user.status === 'PENDING' || user.status === 'pending') {
+        res.status(403).json({ error: 'Your registration request is pending approval.' });
+        return;
+      }
     }
 
     

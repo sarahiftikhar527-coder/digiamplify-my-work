@@ -160,6 +160,27 @@ export default function AdminTaskView() {
   };
 
   const handleDownload = (fileName: string, fileContent: string) => {
+    if (fileName.trim().startsWith('[') && fileContent.trim().startsWith('[')) {
+      try {
+        const names = JSON.parse(fileName);
+        const contents = JSON.parse(fileContent);
+        if (Array.isArray(names) && Array.isArray(contents)) {
+          names.forEach((name, index) => {
+            const content = contents[index];
+            if (content) {
+              const link = document.createElement('a');
+              link.href = content;
+              link.download = name;
+              link.click();
+            }
+          });
+          return;
+        }
+      } catch (e) {
+        console.error('Error parsing attachments:', e);
+      }
+    }
+
     const link = document.createElement('a');
     link.href = fileContent;
     link.download = fileName;

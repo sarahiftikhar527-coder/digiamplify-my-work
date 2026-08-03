@@ -23,9 +23,18 @@ export default function AdminUsersDirectory({
   handleViewUser,
   handleEditUser
 }: AdminUsersDirectoryProps) {
-  const pendingRequests = usersList.filter((u: any) => u.status === 'PENDING' && u.role.toLowerCase() !== 'admin');
+  const pendingRequests = usersList.filter((u: any) => 
+    u.status !== 'REJECTED' && 
+    u.status !== 'rejected' && 
+    u.status === 'PENDING' && 
+    u.role.toLowerCase() !== 'admin'
+  );
   
-  const approvedUsers = usersList.filter((u: any) => u.status === 'APPROVED' || u.role.toLowerCase() === 'admin').filter((u: any) => {
+  const approvedUsers = usersList.filter((u: any) => 
+    u.status !== 'REJECTED' && 
+    u.status !== 'rejected' && 
+    (u.status === 'APPROVED' || u.role.toLowerCase() === 'admin')
+  ).filter((u: any) => {
     const q = searchQuery.toLowerCase();
     const emailMatch = (u.email || '').toLowerCase().includes(q);
     const nameMatch = (u.profile?.fullName || '').toLowerCase().includes(q);

@@ -21,8 +21,7 @@ export default function HelpAndSupportPage() {
   const [priority, setPriority] = useState('High');
   const [description, setDescription] = useState('');
   const [contactMethod, setContactMethod] = useState('Email');
-  const [fileName, setFileName] = useState('');
-  const [fileContent, setFileContent] = useState('');
+  const [attachments, setAttachments] = useState<{ name: string; content: string }[]>([]);
 
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'RESOLVED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,8 +44,19 @@ export default function HelpAndSupportPage() {
     }
   }, []);
 
-  const fetchTickets = async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+
+    const interval = setInterval(() => {
+      fetchTickets(true);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchTickets = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('token');
@@ -66,23 +76,27 @@ export default function HelpAndSupportPage() {
     } catch (err: any) {
       setError(err.message || 'Error occurred loading support tickets');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files) return;
+    for (let i = 0; i < files.length; i++) {
+      processFile(files[i]);
+    }
+  };
 
+  const processFile = (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      setError('File size exceeds the 5MB limit.');
+      setError(`File ${file.name} size exceeds the 5MB limit.`);
       return;
     }
 
     const reader = new FileReader();
     reader.onload = () => {
-      setFileName(file.name);
-      setFileContent(reader.result as string);
+      setAttachments(prev => [...prev, { name: file.name, content: reader.result as string }]);
     };
     reader.readAsDataURL(file);
   };
@@ -93,27 +107,16 @@ export default function HelpAndSupportPage() {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size exceeds the 5MB limit.');
-      return;
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        processFile(files[i]);
+      }
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFileName(file.name);
-      setFileContent(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
-  const handleClearFile = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFileName('');
-    setFileContent('');
+  const handleRemoveAttachment = (idx: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleSubmitTicket = async (e: React.FormEvent) => {
@@ -157,8 +160,8 @@ export default function HelpAndSupportPage() {
           subject,
           priority,
           description,
-          fileName,
-          fileContent,
+          fileName: attachments.length > 0 ? JSON.stringify(attachments.map(a => a.name)) : null,
+          fileContent: attachments.length > 0 ? JSON.stringify(attachments.map(a => a.content)) : null,
           contactMethod
         })
       });
@@ -175,8 +178,7 @@ export default function HelpAndSupportPage() {
       setSubject('');
       setPriority('High');
       setDescription('');
-      setFileName('');
-      setFileContent('');
+      setAttachments([]);
       setContactMethod('Email');
 
       fetchTickets();
@@ -225,6 +227,29 @@ export default function HelpAndSupportPage() {
   };
 
   const downloadAttachment = (fileName: string, fileContent: string) => {
+    if (fileName.trim().startsWith('[') && fileContent.trim().startsWith('[')) {
+      try {
+        const names = JSON.parse(fileName);
+        const contents = JSON.parse(fileContent);
+        if (Array.isArray(names) && Array.isArray(contents)) {
+          names.forEach((name, index) => {
+            const content = contents[index];
+            if (content) {
+              const link = document.createElement('a');
+              link.href = content;
+              link.download = name;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+          });
+          return;
+        }
+      } catch (e) {
+        console.error('Error parsing attachments:', e);
+      }
+    }
+
     const link = document.createElement('a');
     link.href = fileContent;
     link.download = fileName;
@@ -315,9 +340,9 @@ export default function HelpAndSupportPage() {
               setDescription={setDescription}
               contactMethod={contactMethod}
               setContactMethod={setContactMethod}
-              fileName={fileName}
+              attachments={attachments}
               handleFileUpload={handleFileUpload}
-              handleClearFile={handleClearFile}
+              handleRemoveAttachment={handleRemoveAttachment}
               handleDragOver={handleDragOver}
               handleDrop={handleDrop}
               onSubmit={handleSubmitTicket}

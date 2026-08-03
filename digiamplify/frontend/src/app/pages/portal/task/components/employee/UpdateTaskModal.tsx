@@ -129,21 +129,43 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
 
         {/* Attachment Section */}
         {task.fileName && task.fileContent && (
-          <div className="bg-[#050505] border border-neutral-900 rounded-lg p-3 flex items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <FileText className="w-5 h-5 text-[#be0919] shrink-0" />
-              <div className="min-w-0">
-                <span className="text-[9px] text-neutral-500 block">ATTACHED FILE</span>
-                <span className="text-xs text-white truncate block font-medium">{task.fileName}</span>
-              </div>
-            </div>
-            <button
-              onClick={() => handleDownload(task.fileName, task.fileContent)}
-              className="p-2 bg-neutral-900 border border-neutral-850 hover:bg-[#be0919]/10 text-neutral-400 hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
-              title="Download File"
-            >
-              <Download className="w-4 h-4" />
-            </button>
+          <div className="space-y-2 mb-6">
+            <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider block mb-1">Attached Files</span>
+            {(() => {
+              const getAttachments = (n: string, c: string) => {
+                if (n.trim().startsWith('[') && c.trim().startsWith('[')) {
+                  try {
+                    const names = JSON.parse(n);
+                    const contents = JSON.parse(c);
+                    if (Array.isArray(names) && Array.isArray(contents)) {
+                      return names.map((name, index) => ({
+                        name,
+                        content: contents[index] || ''
+                      }));
+                    }
+                  } catch (e) {}
+                }
+                return [{ name: n, content: c }];
+              };
+              return getAttachments(task.fileName, task.fileContent).map((file, idx) => (
+                <div key={idx} className="bg-[#050505] border border-neutral-900 rounded-lg p-3 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileText className="w-5 h-5 text-[#be0919] shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-xs text-white truncate block font-medium">{file.name}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(file.name, file.content)}
+                    className="p-2 bg-neutral-900 border border-neutral-850 hover:bg-[#be0919]/10 text-neutral-400 hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
+                    title={`Download ${file.name}`}
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+              ));
+            })()}
           </div>
         )}
 

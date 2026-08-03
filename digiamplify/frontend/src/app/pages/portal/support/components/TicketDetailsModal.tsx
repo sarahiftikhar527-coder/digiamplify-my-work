@@ -128,18 +128,40 @@ export default function TicketDetailsModal({
 
           {}
           {selectedTicket.fileName && selectedTicket.fileContent && (
-            <div className="flex items-center justify-between bg-[#be0919]/5 border border-[#be0919]/10 rounded-xl p-3.5">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <FileText className="w-4.5 h-4.5 text-[#be0919] shrink-0" />
-                <span className="text-sm font-medium text-white truncate max-w-[220px]">{selectedTicket.fileName}</span>
-              </div>
-              <button
-                onClick={() => downloadAttachment(selectedTicket.fileName, selectedTicket.fileContent)}
-                className="flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2 px-3.5 rounded-md cursor-pointer transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download</span>
-              </button>
+            <div className="space-y-2">
+              <span className="text-xs uppercase text-neutral-500 font-bold tracking-wider block select-none">Attachments</span>
+              {(() => {
+                const getAttachments = (n: string, c: string) => {
+                  if (n.trim().startsWith('[') && c.trim().startsWith('[')) {
+                    try {
+                      const names = JSON.parse(n);
+                      const contents = JSON.parse(c);
+                      if (Array.isArray(names) && Array.isArray(contents)) {
+                        return names.map((name, index) => ({
+                          name,
+                          content: contents[index] || ''
+                        }));
+                      }
+                    } catch (e) {}
+                  }
+                  return [{ name: n, content: c }];
+                };
+                return getAttachments(selectedTicket.fileName, selectedTicket.fileContent).map((file, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-[#be0919]/5 border border-[#be0919]/10 rounded-xl p-3.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FileText className="w-4.5 h-4.5 text-[#be0919] shrink-0" />
+                      <span className="text-sm font-medium text-white truncate max-w-[220px]">{file.name}</span>
+                    </div>
+                    <button
+                      onClick={() => downloadAttachment(file.name, file.content)}
+                      className="flex items-center gap-1.5 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2 px-3.5 rounded-md cursor-pointer transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download</span>
+                    </button>
+                  </div>
+                ));
+              })()}
             </div>
           )}
 
