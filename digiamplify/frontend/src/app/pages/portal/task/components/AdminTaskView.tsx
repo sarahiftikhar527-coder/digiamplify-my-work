@@ -1,6 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle, ChevronLeft, ChevronRight, LinkIcon } from 'lucide-react';
 import CreateTaskModal from './CreateTaskModal';
+interface TaskGroup {
+  taskGroupId: string | null;
+  tasks: any[];
+}
+
+const groupTasks = (taskList: any[]): TaskGroup[] => {
+  const groups: TaskGroup[] = [];
+  const groupMap: { [key: string]: TaskGroup } = {};
+
+  taskList.forEach(task => {
+    if (task.taskGroupId) {
+      if (!groupMap[task.taskGroupId]) {
+        groupMap[task.taskGroupId] = {
+          taskGroupId: task.taskGroupId,
+          tasks: []
+        };
+        groups.push(groupMap[task.taskGroupId]);
+      }
+      groupMap[task.taskGroupId].tasks.push(task);
+    } else {
+      groups.push({
+        taskGroupId: null,
+        tasks: [task]
+      });
+    }
+  });
+
+  return groups;
+};
 
 export default function AdminTaskView() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -9,6 +38,7 @@ export default function AdminTaskView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Ongoing' | 'Delayed' | 'Completed' | 'Cancelled' | 'Overdue'>('All');
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'requests'>('tasks');
   const [requests, setRequests] = useState<any[]>([]);
@@ -24,9 +54,13 @@ export default function AdminTaskView() {
   const [currentPageRequests, setCurrentPageRequests] = useState(1);
   const itemsPerPage = 5;
 
-  const totalPagesTasks = Math.max(1, Math.ceil(filteredTasks.length / itemsPerPage));
+  const taskGroups = React.useMemo(() => {
+    return groupTasks(filteredTasks);
+  }, [filteredTasks]);
+
+  const totalPagesTasks = Math.max(1, Math.ceil(taskGroups.length / itemsPerPage));
   const startIndexTasks = (currentPageTasks - 1) * itemsPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndexTasks, startIndexTasks + itemsPerPage);
+  const paginatedTaskGroups = taskGroups.slice(startIndexTasks, startIndexTasks + itemsPerPage);
 
   const totalPagesRequests = Math.max(1, Math.ceil(requests.length / itemsPerPage));
   const startIndexRequests = (currentPageRequests - 1) * itemsPerPage;
@@ -99,13 +133,29 @@ export default function AdminTaskView() {
   useEffect(() => {
     const query = searchQuery.toLowerCase();
     const filtered = tasks.filter(task => {
+      // 1. Search filter
       const subject = task.subject?.toLowerCase() || '';
       const name = task.assignedTo?.profile?.fullName?.toLowerCase() || '';
       const email = task.assignedTo?.email?.toLowerCase() || '';
-      return subject.includes(query) || name.includes(query) || email.includes(query);
+      const matchesSearch = subject.includes(query) || name.includes(query) || email.includes(query);
+      if (!matchesSearch) return false;
+
+      // 2. Status filter
+      const status = task.status.toUpperCase();
+      const isOverdue = !['COMPLETED', 'FINISHED'].includes(status) && new Date(task.dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
+
+      if (statusFilter === 'Pending') return status === 'PENDING';
+      if (statusFilter === 'Ongoing') return status === 'ONGOING';
+      if (statusFilter === 'Delayed') return status === 'DELAYED';
+      if (statusFilter === 'Completed') return status === 'COMPLETED' || status === 'FINISHED';
+      if (statusFilter === 'Cancelled') return status === 'CANCELLED';
+      if (statusFilter === 'Overdue') return isOverdue;
+
+      return true; // 'All'
     });
     setFilteredTasks(filtered);
-  }, [searchQuery, tasks]);
+    setCurrentPageTasks(1);
+  }, [searchQuery, statusFilter, tasks]);
 
   const calculateStats = (taskList: any[]) => {
     const total = taskList.length;
@@ -337,15 +387,33 @@ export default function AdminTaskView() {
 
       {activeTab === 'tasks' ? (
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6">
-          <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-3 max-w-md mb-6 focus-within:border-neutral-700 transition-all">
-            <Search className="w-4 h-4 text-neutral-500 mr-2 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search by subject or assignee name"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-white text-xs w-full font-light"
-            />
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-3 max-w-md w-full focus-within:border-neutral-700 transition-all shrink-0">
+              <Search className="w-4 h-4 text-neutral-500 mr-2 shrink-0" />
+              <input
+                type="text"
+                placeholder="Search by subject or assignee name"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-white text-xs w-full font-light"
+              />
+            </div>
+
+            <div className="flex items-center bg-[#050505] p-1 rounded-lg border border-neutral-900 overflow-x-auto custom-red-scrollbar-h w-fit max-w-full">
+              {(['All', 'Pending', 'Ongoing', 'Delayed', 'Completed', 'Cancelled', 'Overdue'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  className={`px-4 py-2 rounded-md text-xs font-normal transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                    statusFilter === tab
+                      ? 'bg-[#be0919] text-white shadow-sm'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {tab === 'All' ? 'All Tasks' : tab}
+                </button>
+              ))}
+            </div>
           </div>
 
           {loading ? (
@@ -357,7 +425,7 @@ export default function AdminTaskView() {
           ) : filteredTasks.length === 0 ? (
             <div className="py-12 text-center text-xs text-neutral-500 font-light">No tasks found.</div>
           ) : (
-            <div className="overflow-x-auto custom-red-scrollbar-h pb-2">
+            <div className="overflow-x-auto custom-red-scrollbar-h pb-2 mt-12">
               <table className="w-full text-left border-collapse min-w-[1250px]">
                 <thead>
                   <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">
@@ -372,130 +440,140 @@ export default function AdminTaskView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-900 text-sm font-light text-neutral-300">
-                  {paginatedTasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-neutral-950/30 transition-colors">
-                      <td className="py-4 pr-8 pl-4 w-56">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-850 flex items-center justify-center overflow-hidden font-bold text-sm text-neutral-400 shrink-0">
-                            {task.assignedTo?.profile?.pictureUrl ? (
-                              <img src={task.assignedTo.profile.pictureUrl} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                              <span>{(task.assignedTo?.profile?.fullName || 'U').charAt(0)}</span>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-normal text-white text-sm">{task.assignedTo?.profile?.fullName || 'No Name'}</p>
-                            <p className="text-xs text-neutral-500 font-light mt-0.5">{task.assignedTo?.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-8 w-60 max-w-[200px]">
-                        <div>
-                          <p className="font-normal text-white text-sm truncate">{task.subject}</p>
-                          <p className="text-xs text-neutral-500 font-light mt-0.5 truncate">{task.description}</p>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-8 w-32">
-                        <span className={`inline-flex items-center px-3 py-1 rounded font-normal text-xs uppercase border ${task.priority === 'High'
-                          ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
-                          : task.priority === 'Medium'
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                          }`}>
-                          {task.priority}
-                        </span>
-                      </td>
-                      <td className="py-4 pr-8 w-40">
-                        <div>
-                          <p className="text-white text-sm font-normal">{task.dueDate}</p>
-                          {task.dueTime && <p className="text-xs text-neutral-500 mt-0.5">{task.dueTime}</p>}
-                        </div>
-                      </td>
-                      <td className="py-4 pr-8 w-36">
-                        <div className="flex flex-col gap-1.5 w-24">
-                          <div className="flex justify-between items-center text-[11px] text-neutral-400 font-normal">
-                            <span className="font-normal">Progress</span>
-                            <span className="font-normal text-white">{task.progress || 0}%</span>
-                          </div>
-                          <div className="w-full bg-neutral-900 rounded-full h-1">
-                            <div
-                              className="bg-[#be0919] h-1 rounded-full transition-all duration-350"
-                              style={{ width: `${task.progress || 0}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-8 w-36">
-                        <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-normal text-xs uppercase tracking-wider ${getStatusBadgeClass(task.status)}`}>
-                          {getStatusLabel(task.status)}
-                        </span>
-                      </td>
-                      <td className="py-4 pr-8 w-44">
-                        <div className="flex flex-col gap-1.5 items-start">
-                          {task.completionUrl && (
-                            <a
-                              href={task.completionUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[150px]"
-                              title={task.completionUrl}
-                            >
-                              <LinkIcon className="w-3.5 h-3.5 shrink-0" />
-                              <span>Proof Link</span>
-                            </a>
+                  {paginatedTaskGroups.map((group) => {
+                    return group.tasks.map((task, taskIdx) => {
+                      const isFirst = taskIdx === 0;
+                      const spanCount = group.tasks.length;
+                      return (
+                        <tr key={task.id} className="hover:bg-neutral-950/30 transition-colors">
+                          <td className="py-4 pr-8 pl-4 w-56 align-middle border-r border-neutral-900/40">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-850 flex items-center justify-center overflow-hidden font-bold text-sm text-neutral-400 shrink-0">
+                                {task.assignedTo?.profile?.pictureUrl ? (
+                                  <img src={task.assignedTo.profile.pictureUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span>{(task.assignedTo?.profile?.fullName || 'U').charAt(0)}</span>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-normal text-white text-sm">{task.assignedTo?.profile?.fullName || 'No Name'}</p>
+                                <p className="text-xs text-neutral-500 font-light mt-0.5">{task.assignedTo?.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          {isFirst && (
+                            <>
+                              <td rowSpan={spanCount} className="py-4 pr-8 w-60 max-w-[200px] align-middle">
+                                <div>
+                                  <p className="font-normal text-white text-sm truncate">{task.subject}</p>
+                                  <p className="text-xs text-neutral-500 font-light mt-0.5 truncate">{task.description}</p>
+                                </div>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-8 w-32 align-middle">
+                                <span className={`inline-flex items-center px-3 py-1 rounded font-normal text-xs uppercase border ${task.priority === 'High'
+                                  ? 'bg-[#be0919]/10 text-[#ff4d5a] border-[#be0919]/20'
+                                  : task.priority === 'Medium'
+                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                  }`}>
+                                  {task.priority}
+                                </span>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-8 w-40 align-middle">
+                                <div>
+                                  <p className="text-white text-sm font-normal">{task.dueDate}</p>
+                                  {task.dueTime && <p className="text-xs text-neutral-500 mt-0.5">{task.dueTime}</p>}
+                                </div>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-8 w-36 align-middle">
+                                <div className="flex flex-col gap-1.5 w-24">
+                                  <div className="flex justify-between items-center text-[11px] text-neutral-400 font-normal">
+                                    <span className="font-normal">Progress</span>
+                                    <span className="font-normal text-white">{task.progress || 0}%</span>
+                                  </div>
+                                  <div className="w-full bg-neutral-900 rounded-full h-1">
+                                    <div
+                                      className="bg-[#be0919] h-1 rounded-full transition-all duration-350"
+                                      style={{ width: `${task.progress || 0}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-8 w-36 align-middle">
+                                <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-normal text-xs uppercase tracking-wider ${getStatusBadgeClass(task.status)}`}>
+                                  {getStatusLabel(task.status)}
+                                </span>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-8 w-44 align-middle">
+                                <div className="flex flex-col gap-1.5 items-start">
+                                  {task.completionUrl && (
+                                    <a
+                                      href={task.completionUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[150px]"
+                                      title={task.completionUrl}
+                                    >
+                                      <LinkIcon className="w-3.5 h-3.5 shrink-0" />
+                                      <span>Proof Link</span>
+                                    </a>
+                                  )}
+                                  {task.completionFileName && task.completionFileContent && (
+                                    <button
+                                      onClick={() => handleDownload(task.completionFileName, task.completionFileContent)}
+                                      className="text-sm text-emerald-400 hover:text-emerald-300 font-normal hover:underline flex items-center gap-1.5 cursor-pointer border-none bg-transparent p-0 outline-none"
+                                    >
+                                      <Download className="w-3.5 h-3.5 shrink-0" />
+                                      <span>Proof Doc</span>
+                                    </button>
+                                  )}
+                                  {!task.completionUrl && !(task.completionFileName && task.completionFileContent) && (
+                                    <span className="text-neutral-500 font-normal text-sm">—</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 text-right w-32 pr-4 align-middle">
+                                <div className="flex items-center justify-end gap-2.5">
+                                  {task.fileName && task.fileContent && (
+                                    <button
+                                      onClick={() => handleDownload(task.fileName, task.fileContent)}
+                                      title={`Download ${task.fileName}`}
+                                      className="p-2.5 bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-all cursor-pointer flex items-center justify-center"
+                                    >
+                                      <Download className="w-4.5 h-4.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDelete(task.id)}
+                                    className="p-2.5 bg-[#be0919]/10 hover:bg-[#be0919]/20 border border-[#be0919]/20 rounded-lg text-[#ff4d5a] transition-all cursor-pointer flex items-center justify-center"
+                                  >
+                                    <Trash2 className="w-4.5 h-4.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
                           )}
-                          {task.completionFileName && task.completionFileContent && (
-                            <button
-                              onClick={() => handleDownload(task.completionFileName, task.completionFileContent)}
-                              className="text-sm text-emerald-400 hover:text-emerald-300 font-normal hover:underline flex items-center gap-1.5 cursor-pointer border-none bg-transparent p-0 outline-none"
-                            >
-                              <Download className="w-3.5 h-3.5 shrink-0" />
-                              <span>Proof Doc</span>
-                            </button>
-                          )}
-                          {!task.completionUrl && !(task.completionFileName && task.completionFileContent) && (
-                            <span className="text-neutral-500 font-normal text-sm">—</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-4 text-right w-32 pr-4">
-                        <div className="flex items-center justify-end gap-2.5">
-                          {task.fileName && task.fileContent && (
-                            <button
-                              onClick={() => handleDownload(task.fileName, task.fileContent)}
-                              title={`Download ${task.fileName}`}
-                              className="p-2.5 bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-all cursor-pointer flex items-center justify-center"
-                            >
-                              <Download className="w-4.5 h-4.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDelete(task.id)}
-                            className="p-2.5 bg-[#be0919]/10 hover:bg-[#be0919]/20 border border-[#be0919]/20 rounded-lg text-[#ff4d5a] transition-all cursor-pointer flex items-center justify-center"
-                          >
-                            <Trash2 className="w-4.5 h-4.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </tr>
+                      );
+                    });
+                  })}
                 </tbody>
               </table>
             </div>
           )}
 
           {/* Pagination Section */}
-          {filteredTasks.length > 0 && (
+          {taskGroups.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 border-t border-neutral-900 pt-5">
               <p className="text-xs text-neutral-500 font-light flex items-center">
                 Showing
                 <span className="text-neutral-300 font-normal mx-1.5">{startIndexTasks + 1}</span>
                 to
                 <span className="text-neutral-300 font-normal mx-1.5">
-                  {Math.min(startIndexTasks + itemsPerPage, filteredTasks.length)}
+                  {Math.min(startIndexTasks + itemsPerPage, taskGroups.length)}
                 </span>
                 of
-                <span className="text-neutral-300 font-normal ml-1.5">{filteredTasks.length}</span>
+                <span className="text-neutral-300 font-normal ml-1.5">{taskGroups.length}</span>
               </p>
 
               <div className="flex items-center gap-2">
@@ -540,7 +618,7 @@ export default function AdminTaskView() {
           ) : requests.length === 0 ? (
             <div className="py-12 text-center text-xs text-neutral-500 font-light">No task requests found.</div>
           ) : (
-            <div className="overflow-x-auto custom-red-scrollbar-h pb-2">
+            <div className="overflow-x-auto custom-red-scrollbar-h pb-2 mt-12">
               <table className="w-full text-left border-collapse min-w-[1250px]">
                 <thead>
                   <tr className="border-b border-neutral-900 text-sm font-semibold text-neutral-300 uppercase tracking-wider">

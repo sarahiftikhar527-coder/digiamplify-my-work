@@ -93,9 +93,7 @@ export default function TaskAnalytics({ tasks }: TaskAnalyticsProps) {
           {/* SVG Doughnut (Moved slightly right and made compact) */}
           <div className="relative w-40 h-40 flex items-center justify-center shrink-0 ml-4">
             {totalCount === 0 ? (
-              <div className="w-full h-full rounded-full border-8 border-neutral-850 flex items-center justify-center">
-                <span className="text-[10px] text-neutral-500 font-light">No Data</span>
-              </div>
+              <div className="w-full h-full rounded-full border-8 border-neutral-850" />
             ) : (
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 144 144">
                 {/* Completed (Green) */}

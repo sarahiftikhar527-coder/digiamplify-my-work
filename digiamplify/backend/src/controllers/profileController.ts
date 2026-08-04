@@ -1,6 +1,13 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import prisma from '../config/prisma';
+import bcrypt from 'bcryptjs';
+
+const isUserOnline = (user: { isOnline: boolean; lastSeen: number | null }): boolean => {
+  if (!user.isOnline || !user.lastSeen) return false;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return (nowSeconds - user.lastSeen) <= 90;
+};
 
 export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
@@ -219,11 +226,17 @@ export const getAllProfiles = async (req: AuthRequest, res: Response): Promise<v
         editRequestStatus: true,
         lastLogin: true,
         isOnline: true,
+        lastSeen: true,
         profile: true,
       },
     });
 
-    res.json(users);
+    const mappedUsers = users.map(u => ({
+      ...u,
+      isOnline: isUserOnline(u)
+    }));
+
+    res.json(mappedUsers);
   } catch (error: any) {
     console.error('Error fetching all profiles:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -256,7 +269,7 @@ export const getProfileByUserId = async (req: AuthRequest, res: Response): Promi
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { status: true, lastLogin: true, editRequestStatus: true, isOnline: true }
+      select: { status: true, lastLogin: true, editRequestStatus: true, isOnline: true, lastSeen: true }
     });
 
     res.json({
@@ -264,7 +277,7 @@ export const getProfileByUserId = async (req: AuthRequest, res: Response): Promi
       status: user?.status || 'PENDING',
       lastLogin: user?.lastLogin || null,
       editRequestStatus: user?.editRequestStatus || 'NONE',
-      isOnline: user?.isOnline || false
+      isOnline: user ? isUserOnline(user) : false
     });
   } catch (error: any) {
     console.error('Error fetching profile by user ID:', error);
@@ -572,6 +585,80 @@ export const verifyDocument = async (req: AuthRequest, res: Response): Promise<v
     res.json(updatedProfile);
   } catch (error: any) {
     console.error('Error verifying document:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const addEmployee = async (req: AuthRequest, res: Response): Promise<void> => {
+  const adminId = req.userId;
+  if (!adminId) {
+    res.status(401).json({ error: 'Unauthorized user context' });
+    return;
+  }
+
+  try {
+    const requester = await prisma.user.findUnique({ where: { id: adminId } });
+    if (!requester || requester.role.toLowerCase() !== 'admin') {
+      res.status(403).json({ error: 'Access denied: Admin only' });
+      return;
+    }
+
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      res.status(400).json({ error: 'Name, email, and password are required' });
+      return;
+    }
+
+    // Check existing email
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      res.status(400).json({ error: 'A user with this email address already exists' });
+      return;
+    }
+
+    // Hash password and default PIN
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const defaultPinHash = await bcrypt.hash("0000", salt);
+
+    // Create user and profile in a transaction
+    const newUser = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          role: 'Employee',
+          pin: defaultPinHash,
+          status: 'APPROVED',
+        },
+      });
+
+      await tx.profile.create({
+        data: {
+          userId: u.id,
+          fullName: name,
+          email: email,
+        },
+      });
+
+      return u;
+    });
+
+    res.status(201).json({
+      message: 'Employee added successfully',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+        status: newUser.status,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error adding employee:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };

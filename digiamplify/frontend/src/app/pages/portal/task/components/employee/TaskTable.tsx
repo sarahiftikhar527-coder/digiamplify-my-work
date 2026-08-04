@@ -73,7 +73,7 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
           });
           return;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     const link = document.createElement('a');
     link.href = fileContent;
@@ -184,11 +184,10 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}
-              className={`px-4 py-2 rounded-md text-xs font-normal transition-all duration-200 cursor-pointer ${
-                activeTab === tab
+              className={`px-4 py-2 rounded-md text-xs font-normal transition-all duration-200 cursor-pointer ${activeTab === tab
                   ? 'bg-[#be0919] text-white shadow-sm'
                   : 'text-neutral-400 hover:text-white'
-              }`}
+                }`}
             >
               {tab}
             </button>
@@ -206,7 +205,7 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
       </div>
 
       {/* Task Table with dynamic red horizontal scrollbar */}
-      <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2">
+      <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2 mt-6">
         <table className="w-full text-left border-collapse min-w-[850px]">
           <thead>
             <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">
@@ -221,12 +220,12 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
           <tbody className="divide-y divide-neutral-900 text-sm font-light text-neutral-300">
             {paginatedTasks.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-xs text-neutral-500 font-light font-normal">
+                <td colSpan={6} className="py-12 text-center text-xs text-neutral-500 font-light font-normal">
                   No tasks found in this tab.
                 </td>
               </tr>
             ) : (
-              paginatedTasks.map(task => {
+              paginatedTasks.map((task, index) => {
                 const daysInfo = getDaysLeft(task.dueDate, task.status);
                 const assignedByName = task.assignedBy?.profile?.fullName || 'Admin';
                 const assignedByAvatar = task.assignedBy?.profile?.pictureUrl;
@@ -293,7 +292,8 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
                         </button>
 
                         {openDropdownId === task.id && (
-                          <div className="absolute right-0 mt-1.5 w-32 bg-[#0c0c0c] border border-neutral-900 rounded-lg shadow-xl z-50 overflow-hidden py-1 animate-fadeIn">
+                          <div className={`absolute right-0 w-32 bg-[#0c0c0c] border border-neutral-900 rounded-lg shadow-xl z-50 overflow-hidden py-1 animate-fadeIn ${index >= 3 ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+                            }`}>
                             {(['Ongoing', 'Delayed', 'Finished', 'Cancelled'] as const).map(option => {
                               // map ui values to api values
                               let apiStatus = 'ONGOING';
@@ -327,9 +327,9 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
                     <td className="py-4 pr-4 w-36">
                       <div className="flex flex-col gap-1.5 items-start">
                         {task.completionUrl && (
-                          <a 
-                            href={task.completionUrl} 
-                            target="_blank" 
+                          <a
+                            href={task.completionUrl}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[120px]"
                             title={task.completionUrl}
@@ -387,11 +387,10 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
               <button
                 key={page}
                 onClick={() => handlePageChange(page)}
-                className={`w-8 h-8 rounded-lg text-xs font-normal transition-all duration-200 cursor-pointer ${
-                  currentPage === page
+                className={`w-8 h-8 rounded-lg text-xs font-normal transition-all duration-200 cursor-pointer ${currentPage === page
                     ? 'bg-[#be0919] text-white shadow-sm'
                     : 'border border-neutral-900 text-neutral-400 hover:text-white'
-                }`}
+                  }`}
               >
                 {page}
               </button>

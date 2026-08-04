@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { randomUUID } from 'crypto';
 import prisma from '../config/prisma';
 import { AuthRequest } from '../middleware/authMiddleware';
 
@@ -20,28 +21,69 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const { assignedToId, subject, priority, description, dueDate, dueTime, fileName, fileContent } = req.body;
+    const { assignedToId, assignedToIds, subject, priority, description, dueDate, dueTime, fileName, fileContent } = req.body;
 
-    if (!assignedToId || !subject || !priority || !description || !dueDate) {
+    const targetIds: string[] = [];
+    if (Array.isArray(assignedToIds)) {
+      targetIds.push(...assignedToIds);
+    } else if (assignedToId) {
+      targetIds.push(assignedToId);
+    }
+
+    if (targetIds.length === 0 || !subject || !priority || !description || !dueDate) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
 
-    const assignee = await prisma.user.findUnique({
-      where: { id: assignedToId }
+    const assignees = await prisma.user.findMany({
+      where: { id: { in: targetIds } },
+      include: { profile: true }
     });
 
-    if (!assignee) {
-      res.status(404).json({ error: 'Assigned employee not found' });
+    if (assignees.length !== targetIds.length) {
+      res.status(404).json({ error: 'One or more assigned employees not found' });
       return;
     }
 
     const isAdmin = creatorUser.role.toLowerCase() === 'admin';
+    const taskGroupId = targetIds.length > 1 ? randomUUID() : null;
 
     if (!isAdmin) {
-      const taskRequest = await prisma.taskRequest.create({
+      const createdRequests = [];
+      for (const targetId of targetIds) {
+        const reqItem = await prisma.taskRequest.create({
+          data: {
+            taskGroupId,
+            assignedToId: targetId,
+            assignedById: adminId,
+            subject,
+            priority,
+            description,
+            dueDate,
+            dueTime: dueTime || null,
+            fileName: fileName || null,
+            fileContent: fileContent || null,
+            status: 'PENDING'
+          }
+        });
+        createdRequests.push(reqItem);
+      }
+
+      res.status(201).json({
+        message: 'Task creation request sent to Admin for approval',
+        taskRequest: createdRequests[0],
+        taskRequests: createdRequests
+      });
+      return;
+    }
+
+    const createdTasks = [];
+    const adminName = creatorUser.role.toLowerCase() === 'admin' ? 'Admin' : (creatorUser.profile?.fullName || creatorUser.email);
+    for (const targetId of targetIds) {
+      const taskItem = await prisma.task.create({
         data: {
-          assignedToId,
+          taskGroupId,
+          assignedToId: targetId,
           assignedById: adminId,
           subject,
           priority,
@@ -50,45 +92,25 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
           dueTime: dueTime || null,
           fileName: fileName || null,
           fileContent: fileContent || null,
-          status: 'PENDING'
+          status: 'PENDING',
+          progress: 0
         }
       });
+      createdTasks.push(taskItem);
 
-      res.status(201).json({
-        message: 'Task creation request sent to Admin for approval',
-        taskRequest
+      await prisma.taskActivity.create({
+        data: {
+          taskId: taskItem.id,
+          userId: adminId,
+          description: `Task created and assigned by ${adminName}`
+        }
       });
-      return;
     }
-
-    const task = await prisma.task.create({
-      data: {
-        assignedToId,
-        assignedById: adminId,
-        subject,
-        priority,
-        description,
-        dueDate,
-        dueTime: dueTime || null,
-        fileName: fileName || null,
-        fileContent: fileContent || null,
-        status: 'PENDING',
-        progress: 0
-      }
-    });
-
-    const adminName = creatorUser.role.toLowerCase() === 'admin' ? 'Admin' : (creatorUser.profile?.fullName || creatorUser.email);
-    await prisma.taskActivity.create({
-      data: {
-        taskId: task.id,
-        userId: adminId,
-        description: `Task created and assigned by ${adminName}`
-      }
-    });
 
     res.status(201).json({
       message: 'Task created successfully',
-      task
+      task: createdTasks[0],
+      tasks: createdTasks
     });
   } catch (error: any) {
     console.error('Create task error:', error);
@@ -274,19 +296,36 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
-    const updatedTask = await prisma.task.update({
+    let updatedTask = await prisma.task.update({
       where: { id: taskId },
       data: updateData
     });
 
+    if (task.taskGroupId) {
+      await prisma.task.updateMany({
+        where: { taskGroupId: task.taskGroupId },
+        data: updateData
+      });
+      const latest = await prisma.task.findUnique({
+        where: { id: taskId }
+      });
+      if (latest) updatedTask = latest;
+    }
+
     // Create activity log
-    await prisma.taskActivity.create({
-      data: {
-        taskId: task.id,
-        userId: userId,
-        description: `${logDescription} by ${userName}`
-      }
-    });
+    const affectedTasks = task.taskGroupId
+      ? await prisma.task.findMany({ where: { taskGroupId: task.taskGroupId } })
+      : [task];
+
+    for (const t of affectedTasks) {
+      await prisma.taskActivity.create({
+        data: {
+          taskId: t.id,
+          userId: userId,
+          description: `${logDescription} by ${userName}`
+        }
+      });
+    }
 
     res.status(200).json({
       message: 'Task status updated successfully',
@@ -326,9 +365,15 @@ export const deleteTask = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    await prisma.task.delete({
-      where: { id: taskId }
-    });
+    if (task.taskGroupId) {
+      await prisma.task.deleteMany({
+        where: { taskGroupId: task.taskGroupId }
+      });
+    } else {
+      await prisma.task.delete({
+        where: { id: taskId }
+      });
+    }
 
     res.status(200).json({
       message: 'Task deleted successfully'

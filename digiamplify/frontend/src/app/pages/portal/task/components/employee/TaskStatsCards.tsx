@@ -90,7 +90,7 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
           <Calendar className="w-5 h-5" />
         </div>
         <span className="text-xl font-normal text-white leading-none mb-1.5">{stats.total}</span>
-        <span className="text-[10px] text-neutral-450 font-light block">Task Assign</span>
+        <span className="text-[10px] text-neutral-450 font-light block">Tasks Assigned</span>
       </div>
 
       {/* Tasks Completed Card */}

@@ -805,6 +805,7 @@ export default function ProfilePage() {
             handleApproveEdit={handleApproveEdit}
             handleViewUser={handleViewUser}
             handleEditUser={handleEditUser}
+            onRefresh={fetchAllUsers}
           />
         )}
         {isEditing && !isLoading && profile && (profile as any).notFound && (
@@ -1115,10 +1116,10 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between">
                       <span className="text-white/70">Status</span>
                       <div>
-                        <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-medium border ${(profile as any).status?.toLowerCase() === 'approved'
+                        <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[13px] font-medium border ${(profile as any).status?.toLowerCase() === 'approved'
                             ? ((profile as any).isOnline
                               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              : 'bg-neutral-800/40 text-neutral-400 border border-neutral-700/50')
+                              : 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20')
                             : (profile as any).status?.toLowerCase() === 'rejected'
                               ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
                               : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'

@@ -17,6 +17,7 @@ model User {
   editRequestStatus String   @default("NONE")
   lastLogin         DateTime?
   isOnline          Boolean   @default(false)
+  lastSeen          Int?
   profile           Profile?
   supportTickets    SupportTicket[]
   attendances       Attendance[]
@@ -165,6 +166,7 @@ model Transaction {
 
 model Task {
   id             String   @id @default(uuid())
+  taskGroupId    String?
   assignedToId   String
   assignedTo     User     @relation("UserTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
   assignedById   String?
@@ -198,6 +200,7 @@ model TaskActivity {
 
 model TaskRequest {
   id              String   @id @default(uuid())
+  taskGroupId     String?
   assignedToId    String
   assignedTo      User     @relation("AssignedToUser", fields: [assignedToId], references: [id], onDelete: Cascade)
   assignedById    String

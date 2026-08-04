@@ -115,7 +115,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     
     await prisma.user.update({
       where: { id: user.id },
-      data: { lastLogin: new Date(), isOnline: true },
+      data: { lastLogin: new Date(), lastSeen: Math.floor(Date.now() / 1000), isOnline: true },
     });
 
     
@@ -156,5 +156,24 @@ export const logout = async (req: AuthRequest, res: Response): Promise<void> => 
   } catch (error: any) {
     console.error('Logout error:', error);
     res.status(500).json({ error: 'Internal server error during logout' });
+  }
+};
+
+export const heartbeat = async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized user context' });
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isOnline: true, lastSeen: Math.floor(Date.now() / 1000) },
+    });
+    res.sendStatus(200);
+  } catch (error: any) {
+    console.error('Heartbeat error:', error);
+    res.status(500).json({ error: 'Internal server error during heartbeat' });
   }
 };

@@ -7,6 +7,35 @@ import TaskActivityLog from './employee/TaskActivityLog';
 import PriorityBreakdown from './employee/PriorityBreakdown';
 import UpdateTaskModal from './employee/UpdateTaskModal';
 import CreateTaskModal from './CreateTaskModal';
+interface TaskGroup {
+  taskGroupId: string | null;
+  tasks: any[];
+}
+
+const groupTasks = (taskList: any[]): TaskGroup[] => {
+  const groups: TaskGroup[] = [];
+  const groupMap: { [key: string]: TaskGroup } = {};
+
+  taskList.forEach(task => {
+    if (task.taskGroupId) {
+      if (!groupMap[task.taskGroupId]) {
+        groupMap[task.taskGroupId] = {
+          taskGroupId: task.taskGroupId,
+          tasks: []
+        };
+        groups.push(groupMap[task.taskGroupId]);
+      }
+      groupMap[task.taskGroupId].tasks.push(task);
+    } else {
+      groups.push({
+        taskGroupId: null,
+        tasks: [task]
+      });
+    }
+  });
+
+  return groups;
+};
 
 export default function EmployeeTaskView() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -64,9 +93,12 @@ export default function EmployeeTaskView() {
   };
 
   const tasksAssignedByMe = tasks.filter(t => t.assignedById === currentUser?.id && t.assignedToId !== currentUser?.id);
-  const totalPagesAssigned = Math.max(1, Math.ceil(tasksAssignedByMe.length / itemsPerPage));
+  const assignedTaskGroups = React.useMemo(() => {
+    return groupTasks(tasksAssignedByMe);
+  }, [tasksAssignedByMe]);
+  const totalPagesAssigned = Math.max(1, Math.ceil(assignedTaskGroups.length / itemsPerPage));
   const startIndexAssigned = (currentPageAssigned - 1) * itemsPerPage;
-  const paginatedAssigned = tasksAssignedByMe.slice(startIndexAssigned, startIndexAssigned + itemsPerPage);
+  const paginatedAssignedGroups = assignedTaskGroups.slice(startIndexAssigned, startIndexAssigned + itemsPerPage);
 
   const fetchTasks = async () => {
     try {
@@ -338,13 +370,13 @@ export default function EmployeeTaskView() {
             </button>
           </div>
 
-          <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2">
+          <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2 mt-6">
             <table className="w-full text-left border-collapse min-w-[1150px]">
               <thead>
                 <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">
-                  <th className="pb-3 pl-4 font-normal">Task Details</th>
+                  <th className="pb-3 pl-4 font-normal w-56 pr-6">Assigned To</th>
+                  <th className="pb-3 font-normal">Task Details</th>
                   <th className="pb-3 font-normal w-32 pr-6">Priority</th>
-                  <th className="pb-3 font-normal w-56 pr-6">Assigned To</th>
                   <th className="pb-3 font-normal w-44 pr-6">Due Date</th>
                   <th className="pb-3 font-normal w-36 pr-6">Progress</th>
                   <th className="pb-3 font-normal w-36 pr-6">Status</th>
@@ -352,128 +384,136 @@ export default function EmployeeTaskView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-900 text-sm font-light text-neutral-300">
-                {paginatedAssigned.length === 0 ? (
+                {paginatedAssignedGroups.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-xs text-neutral-500 font-light font-normal">
                       No assigned tasks found.
                     </td>
                   </tr>
                 ) : (
-                  paginatedAssigned.map(task => {
-                    const assignedToName = task.assignedTo?.profile?.fullName || task.assignedTo?.email || 'Employee';
-                    const assignedToAvatar = task.assignedTo?.profile?.pictureUrl;
-                    
-                    const getStatusStylesLocal = (status: string) => {
-                      const s = status.toUpperCase();
-                      if (s === 'COMPLETED' || s === 'FINISHED') return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-                      if (s === 'DELAYED') return 'bg-[#be0919]/10 text-[#ff4d5a] border border-[#be0919]/20';
-                      if (s === 'PENDING') return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
-                      if (s === 'ONGOING') return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
-                      if (s === 'CANCELLED') return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
-                      return 'bg-neutral-900 text-neutral-400 border border-neutral-800';
-                    };
+                  paginatedAssignedGroups.map((group) => {
+                    return group.tasks.map((task, taskIdx) => {
+                      const isFirst = taskIdx === 0;
+                      const spanCount = group.tasks.length;
+                      const assignedToName = task.assignedTo?.profile?.fullName || task.assignedTo?.email || 'Employee';
+                      const assignedToAvatar = task.assignedTo?.profile?.pictureUrl;
+                      
+                      const getStatusStylesLocal = (status: string) => {
+                        const s = status.toUpperCase();
+                        if (s === 'COMPLETED' || s === 'FINISHED') return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                        if (s === 'DELAYED') return 'bg-[#be0919]/10 text-[#ff4d5a] border border-[#be0919]/20';
+                        if (s === 'PENDING') return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                        if (s === 'ONGOING') return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+                        if (s === 'CANCELLED') return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+                        return 'bg-neutral-900 text-neutral-400 border border-neutral-800';
+                      };
 
-                    const getStatusLabelLocal = (status: string) => {
-                      const s = status.toUpperCase();
-                      if (s === 'COMPLETED' || s === 'FINISHED') return 'Finished';
-                      if (s === 'DELAYED') return 'Delayed';
-                      if (s === 'PENDING') return 'Pending';
-                      if (s === 'ONGOING') return 'Ongoing';
-                      if (s === 'CANCELLED') return 'Cancelled';
-                      return status;
-                    };
+                      const getStatusLabelLocal = (status: string) => {
+                        const s = status.toUpperCase();
+                        if (s === 'COMPLETED' || s === 'FINISHED') return 'Finished';
+                        if (s === 'DELAYED') return 'Delayed';
+                        if (s === 'PENDING') return 'Pending';
+                        if (s === 'ONGOING') return 'Ongoing';
+                        if (s === 'CANCELLED') return 'Cancelled';
+                        return status;
+                      };
 
-                    const getPriorityColorLocal = (priority: string) => {
-                      const p = priority.toLowerCase();
-                      if (p === 'high') return 'bg-[#ff4d5a]';
-                      if (p === 'medium') return 'bg-amber-500';
-                      return 'bg-emerald-500';
-                    };
+                      const getPriorityColorLocal = (priority: string) => {
+                        const p = priority.toLowerCase();
+                        if (p === 'high') return 'bg-[#ff4d5a]';
+                        if (p === 'medium') return 'bg-amber-500';
+                        return 'bg-emerald-500';
+                      };
 
-                    return (
-                      <tr key={task.id} className="hover:bg-neutral-950/40 transition-all font-normal">
-                        <td className="py-4 pl-4 pr-6 max-w-[260px]">
-                          <div>
-                            <p className="font-normal text-[15px] text-white truncate">{task.subject}</p>
-                            <p className="text-[13px] text-neutral-500 mt-1 line-clamp-1 font-normal">
-                              {task.description}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="py-4 pr-6 w-32">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2.5 h-2.5 rounded-full ${getPriorityColorLocal(task.priority)}`} />
-                            <span className="text-sm text-neutral-300 font-normal">{task.priority}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 pr-6 w-56">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-6 h-6 rounded-full bg-neutral-900 border border-neutral-850 flex items-center justify-center overflow-hidden text-[10px] font-normal text-neutral-400 shrink-0">
-                              {assignedToAvatar ? (
-                                <img src={assignedToAvatar} alt={assignedToName} className="w-full h-full object-cover" />
-                              ) : (
-                                <span>{assignedToName.charAt(0)}</span>
-                              )}
+                      return (
+                        <tr key={task.id} className="hover:bg-neutral-950/40 transition-all font-normal">
+                          <td className="py-4 pl-4 pr-6 w-56 align-middle border-r border-neutral-900/40">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-6 h-6 rounded-full bg-neutral-900 border border-neutral-850 flex items-center justify-center overflow-hidden text-[10px] font-normal text-neutral-400 shrink-0">
+                                {assignedToAvatar ? (
+                                  <img src={assignedToAvatar} alt={assignedToName} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span>{assignedToName.charAt(0)}</span>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-sm text-neutral-300 font-normal truncate max-w-[150px]">{assignedToName}</p>
+                                <p className="text-xs text-neutral-500 font-normal truncate max-w-[150px]">{task.assignedTo?.email}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm text-neutral-300 font-normal truncate max-w-[150px]">{assignedToName}</p>
-                              <p className="text-xs text-neutral-500 font-normal truncate max-w-[150px]">{task.assignedTo?.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 pr-6 w-44">
-                          <span className="text-sm text-neutral-300 font-normal">{task.dueDate}</span>
-                          {task.dueTime && <span className="block text-xs text-neutral-500 font-normal mt-0.5">{task.dueTime}</span>}
-                        </td>
-                        <td className="py-4 pr-6 w-36">
-                          <div className="flex flex-col gap-1.5 w-24">
-                            <div className="flex justify-between items-center text-[11px] text-neutral-400 font-normal">
-                              <span className="font-normal">Progress</span>
-                              <span className="font-normal text-white">{task.progress || 0}%</span>
-                            </div>
-                            <div className="w-full bg-neutral-900 rounded-full h-1">
-                              <div 
-                                className="bg-[#be0919] h-1 rounded-full transition-all duration-350"
-                                style={{ width: `${task.progress || 0}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 pr-4 w-36">
-                          <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-normal text-xs uppercase tracking-wider ${getStatusStylesLocal(task.status)}`}>
-                            {getStatusLabelLocal(task.status)}
-                          </span>
-                        </td>
-                        <td className="py-4 pr-4 w-36">
-                          <div className="flex flex-col gap-1.5 items-start">
-                            {task.completionUrl && (
-                              <a 
-                                href={task.completionUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[120px]"
-                                title={task.completionUrl}
-                              >
-                                <LinkIcon className="w-3.5 h-3.5 shrink-0" />
-                                <span>Proof Link</span>
-                              </a>
-                            )}
-                            {task.completionFileName && task.completionFileContent && (
-                              <button
-                                onClick={() => handleDownload(task.completionFileName, task.completionFileContent)}
-                                className="text-sm text-emerald-400 hover:text-emerald-300 font-normal hover:underline flex items-center gap-1.5 cursor-pointer border-none bg-transparent p-0 outline-none"
-                              >
-                                <Download className="w-3.5 h-3.5 shrink-0" />
-                                <span>Proof Doc</span>
-                              </button>
-                            )}
-                            {!task.completionUrl && !(task.completionFileName && task.completionFileContent) && (
-                              <span className="text-neutral-500 font-normal text-sm">—</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
+                          </td>
+                          {isFirst && (
+                            <>
+                              <td rowSpan={spanCount} className="py-4 pr-6 max-w-[260px] align-middle">
+                                <div>
+                                  <p className="font-normal text-[15px] text-white truncate">{task.subject}</p>
+                                  <p className="text-[13px] text-neutral-500 mt-1 line-clamp-1 font-normal">
+                                    {task.description}
+                                  </p>
+                                </div>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-6 w-32 align-middle">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2.5 h-2.5 rounded-full ${getPriorityColorLocal(task.priority)}`} />
+                                  <span className="text-sm text-neutral-300 font-normal">{task.priority}</span>
+                                </div>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-6 w-44 align-middle">
+                                <span className="text-sm text-neutral-300 font-normal">{task.dueDate}</span>
+                                {task.dueTime && <span className="block text-xs text-neutral-500 font-normal mt-0.5">{task.dueTime}</span>}
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-6 w-36 align-middle">
+                                <div className="flex flex-col gap-1.5 w-24">
+                                  <div className="flex justify-between items-center text-[11px] text-neutral-400 font-normal">
+                                    <span className="font-normal">Progress</span>
+                                    <span className="font-normal text-white">{task.progress || 0}%</span>
+                                  </div>
+                                  <div className="w-full bg-neutral-900 rounded-full h-1">
+                                    <div 
+                                      className="bg-[#be0919] h-1 rounded-full transition-all duration-350"
+                                      style={{ width: `${task.progress || 0}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-4 w-36 align-middle">
+                                <span className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-normal text-xs uppercase tracking-wider ${getStatusStylesLocal(task.status)}`}>
+                                  {getStatusLabelLocal(task.status)}
+                                </span>
+                              </td>
+                              <td rowSpan={spanCount} className="py-4 pr-4 w-36 align-middle">
+                                <div className="flex flex-col gap-1.5 items-start">
+                                  {task.completionUrl && (
+                                    <a 
+                                      href={task.completionUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-400 hover:text-blue-300 font-normal hover:underline flex items-center gap-1.5 truncate max-w-[120px]"
+                                      title={task.completionUrl}
+                                    >
+                                      <LinkIcon className="w-3.5 h-3.5 shrink-0" />
+                                      <span>Proof Link</span>
+                                    </a>
+                                  )}
+                                  {task.completionFileName && task.completionFileContent && (
+                                    <button
+                                      onClick={() => handleDownload(task.completionFileName, task.completionFileContent)}
+                                      className="text-sm text-emerald-400 hover:text-emerald-300 font-normal hover:underline flex items-center gap-1.5 cursor-pointer border-none bg-transparent p-0 outline-none"
+                                    >
+                                      <Download className="w-3.5 h-3.5 shrink-0" />
+                                      <span>Proof Doc</span>
+                                    </button>
+                                  )}
+                                  {!task.completionUrl && !(task.completionFileName && task.completionFileContent) && (
+                                    <span className="text-neutral-500 font-normal text-sm">—</span>
+                                  )}
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      );
+                    });
                   })
                 )}
               </tbody>
@@ -481,17 +521,17 @@ export default function EmployeeTaskView() {
           </div>
 
           {/* Pagination Section */}
-          {tasksAssignedByMe.length > 0 && (
+          {assignedTaskGroups.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 border-t border-neutral-900 pt-5">
               <p className="text-xs text-neutral-500 font-light flex items-center">
                 Showing
                 <span className="text-neutral-300 font-normal mx-1.5">{startIndexAssigned + 1}</span>
                 to
                 <span className="text-neutral-300 font-normal mx-1.5">
-                  {Math.min(startIndexAssigned + itemsPerPage, tasksAssignedByMe.length)}
+                  {Math.min(startIndexAssigned + itemsPerPage, assignedTaskGroups.length)}
                 </span>
                 of
-                <span className="text-neutral-300 font-normal ml-1.5">{tasksAssignedByMe.length}</span>
+                <span className="text-neutral-300 font-normal ml-1.5">{assignedTaskGroups.length}</span>
               </p>
 
               <div className="flex items-center gap-2">
@@ -545,7 +585,7 @@ export default function EmployeeTaskView() {
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#be0919]" />
             </div>
           ) : (
-            <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2">
+            <div className="overflow-x-auto min-h-[300px] custom-red-scrollbar-h pb-2 mt-6">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="border-b border-neutral-900 text-[11px] font-normal text-neutral-500 uppercase tracking-wider">

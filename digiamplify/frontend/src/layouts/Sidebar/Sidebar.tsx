@@ -93,9 +93,27 @@ export default function Sidebar() {
     window.addEventListener('profileUpdate', handleProfileUpdate);
     window.addEventListener('storage', handleProfileUpdate);
 
+    // Heartbeat logic
+    const sendHeartbeat = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        await fetch('http://localhost:5000/api/auth/heartbeat', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } catch (e) {}
+    };
+
+    sendHeartbeat();
+    const heartbeatInterval = setInterval(sendHeartbeat, 30 * 1000);
+
     return () => {
       window.removeEventListener('profileUpdate', handleProfileUpdate);
       window.removeEventListener('storage', handleProfileUpdate);
+      clearInterval(heartbeatInterval);
     };
   }, []);
 

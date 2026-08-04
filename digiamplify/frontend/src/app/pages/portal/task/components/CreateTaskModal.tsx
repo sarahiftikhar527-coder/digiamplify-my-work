@@ -11,7 +11,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
   const [employees, setEmployees] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
+  const [selectedEmps, setSelectedEmps] = useState<any[]>([]);
 
   const [subject, setSubject] = useState('');
   const [priority, setPriority] = useState('High');
@@ -78,7 +78,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
   }, []);
 
   const resetForm = () => {
-    setSelectedEmp(null);
+    setSelectedEmps([]);
     setSearchQuery('');
     setSubject('');
     setPriority('High');
@@ -127,8 +127,8 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
     e.preventDefault();
     setError('');
 
-    if (!selectedEmp) {
-      setError('Please select an employee to assign this task.');
+    if (selectedEmps.length === 0) {
+      setError('Please select at least one employee to assign this task.');
       return;
     }
     if (!subject) {
@@ -169,7 +169,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          assignedToId: selectedEmp.id,
+          assignedToIds: selectedEmps.map(emp => emp.id),
           subject,
           priority,
           description,
@@ -272,69 +272,85 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
               Assign To <span className="text-red-500">*</span>
             </label>
             
-            {!selectedEmp ? (
-              <>
-                <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-3 focus-within:border-[#be0919]/50 transition-all">
-                  <input
-                    type="text"
-                    placeholder="Search and select employee"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowDropdown(true);
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    className="bg-transparent border-none outline-none text-white text-sm w-full font-light"
-                  />
-                </div>
-                {showDropdown && (
-                  <div className="absolute top-[80px] z-30 w-full bg-[#0c0c0c] border border-neutral-900 rounded-lg shadow-xl max-h-48 overflow-y-auto custom-red-scrollbar">
-                    {filteredEmployees.map((emp) => (
-                      <div
-                        key={emp.id}
-                        onClick={() => {
-                          setSelectedEmp(emp);
-                          setShowDropdown(false);
-                        }}
-                        className="px-4 py-3 hover:bg-[#be0919]/10 cursor-pointer flex items-center justify-between border-b border-neutral-900 last:border-none"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-white">{emp.profile?.fullName || 'No Name'}</p>
-                          <p className="text-xs text-neutral-500 font-light mt-0.5">{emp.email}</p>
-                        </div>
+            {/* Selected employee chips list */}
+            {selectedEmps.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3 max-h-32 overflow-y-auto custom-red-scrollbar pr-1 pb-1">
+                {selectedEmps.map(emp => (
+                  <div key={emp.id} className="flex items-center gap-1.5 bg-[#be0919]/10 border border-[#be0919]/25 text-white px-3 py-1.5 rounded-full text-xs font-normal animate-fadeIn">
+                    <div className="w-4.5 h-4.5 rounded-full bg-neutral-900 border border-neutral-850 flex items-center justify-center overflow-hidden font-bold text-[9px] text-neutral-400 shrink-0">
+                      {emp.profile?.pictureUrl ? (
+                        <img src={emp.profile.pictureUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{(emp.profile?.fullName || 'U').charAt(0)}</span>
+                      )}
+                    </div>
+                    <span>{emp.profile?.fullName || emp.email}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEmps(prev => prev.filter(e => e.id !== emp.id))}
+                      className="p-0.5 hover:bg-neutral-800 rounded-full cursor-pointer flex items-center justify-center text-neutral-400 hover:text-white"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-3 focus-within:border-[#be0919]/50 transition-all">
+              <input
+                type="text"
+                placeholder="Search and select employee(s)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                className="bg-transparent border-none outline-none text-white text-sm w-full font-light"
+              />
+            </div>
+
+            {showDropdown && (
+              <div className="absolute top-full mt-1.5 z-30 w-full bg-[#0c0c0c] border border-neutral-900 rounded-lg shadow-xl max-h-48 overflow-y-auto custom-red-scrollbar">
+                {filteredEmployees.map((emp) => {
+                  const isSelected = selectedEmps.some(e => e.id === emp.id);
+                  return (
+                    <div
+                      key={emp.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedEmps(prev => prev.filter(e => e.id !== emp.id));
+                        } else {
+                          setSelectedEmps(prev => [...prev, emp]);
+                        }
+                      }}
+                      className={`px-4 py-3 hover:bg-[#be0919]/10 cursor-pointer flex items-center justify-between border-b border-neutral-900 last:border-none ${
+                        isSelected ? 'bg-[#be0919]/5' : ''
+                      }`}
+                    >
+                      <div>
+                        <p className={`text-sm font-semibold ${isSelected ? 'text-[#ff4d5a]' : 'text-white'}`}>
+                          {emp.profile?.fullName || 'No Name'}
+                        </p>
+                        <p className="text-xs text-neutral-500 font-light mt-0.5">{emp.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isSelected && (
+                          <span className="text-[10px] uppercase font-bold text-[#ff4d5a] tracking-wider px-2 py-0.5 bg-[#be0919]/10 rounded border border-[#be0919]/20">
+                            Selected
+                          </span>
+                        )}
                         <span className="text-xs text-neutral-400 font-medium px-2 py-0.5 bg-neutral-900 rounded border border-neutral-800">
                           {emp.profile?.jobTitle || 'Staff'}
                         </span>
                       </div>
-                    ))}
-                    {filteredEmployees.length === 0 && (
-                      <p className="p-4 text-center text-xs text-neutral-500 font-light">No employees found.</p>
-                    )}
-                  </div>
+                    </div>
+                  );
+                })}
+                {filteredEmployees.length === 0 && (
+                  <p className="p-4 text-center text-xs text-neutral-500 font-light">No employees found.</p>
                 )}
-              </>
-            ) : (
-              <div className="border border-neutral-800 bg-[#050505] rounded-xl p-4 flex items-center justify-between animate-fadeIn">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-850 flex items-center justify-center overflow-hidden font-bold text-sm text-neutral-400">
-                    {selectedEmp.profile?.pictureUrl ? (
-                      <img src={selectedEmp.profile.pictureUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{(selectedEmp.profile?.fullName || 'U').charAt(0)}</span>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-white">{selectedEmp.profile?.fullName || 'No Name'}</h4>
-                    <p className="text-xs text-neutral-400 font-light mt-0.5">{selectedEmp.profile?.jobTitle || 'Employee'}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedEmp(null)}
-                  className="p-1 text-neutral-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
             )}
           </div>

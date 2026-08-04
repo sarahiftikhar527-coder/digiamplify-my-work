@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProfile, upsertProfile, getAllProfiles, getProfileByUserId, upsertProfileByUserId, approveUserRequest, rejectUserRequest, requestEditPermission, approveEditPermission, verifyDocument } from '../controllers/profileController';
+import { getProfile, upsertProfile, getAllProfiles, getProfileByUserId, upsertProfileByUserId, approveUserRequest, rejectUserRequest, requestEditPermission, approveEditPermission, verifyDocument, addEmployee } from '../controllers/profileController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -11,6 +11,7 @@ router.post('/request-edit', authenticateToken as any, requestEditPermission);
 
 
 router.get('/all', authenticateToken as any, getAllProfiles);
+router.post('/add-employee', authenticateToken as any, addEmployee);
 router.get('/:userId', authenticateToken as any, getProfileByUserId);
 router.post('/:userId', authenticateToken as any, upsertProfileByUserId);
 router.post('/approve/:userId', authenticateToken as any, approveUserRequest);

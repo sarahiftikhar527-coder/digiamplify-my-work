@@ -56,7 +56,7 @@ export default function TaskActivityLog({ activities }: TaskActivityLogProps) {
     return activities.filter(act => new Date(act.createdAt).getTime() >= startOfToday).length;
   };
 
-  const newCount = getTodayNewCount() || 4; // Fallback to 4 like the mockup if 0
+  const newCount = getTodayNewCount();
 
   return (
     <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 shadow-md flex flex-col gap-6">
@@ -80,9 +80,11 @@ export default function TaskActivityLog({ activities }: TaskActivityLogProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-900/60 pb-5 mb-5">
           <h3 className="text-base font-normal text-white tracking-wide">Recently Updated Task</h3>
-          <span className="text-xs text-[#ff4d5a] font-normal bg-[#be0919]/10 px-2.5 py-1 rounded">
-            {newCount} New
-          </span>
+          {newCount > 0 && (
+            <span className="text-xs text-[#ff4d5a] font-normal bg-[#be0919]/10 px-2.5 py-1 rounded">
+              {newCount} New
+            </span>
+          )}
         </div>
 
         {/* Activities List */}
