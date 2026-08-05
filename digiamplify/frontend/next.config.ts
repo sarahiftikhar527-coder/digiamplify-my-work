@@ -84,6 +84,14 @@ const nextConfig: NextConfig = {
         source: '/admin/task',
         destination: '/pages/portal/task',
       },
+      {
+        source: '/portal/chat',
+        destination: '/pages/portal/chat',
+      },
+      {
+        source: '/admin/chat',
+        destination: '/pages/portal/chat',
+      },
     ];
   },
 };

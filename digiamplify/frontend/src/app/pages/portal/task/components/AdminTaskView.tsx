@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle, ChevronLeft, ChevronRight, LinkIcon } from 'lucide-react';
 import CreateTaskModal from './CreateTaskModal';
+import { downloadCSV } from '@/utils/csvHelper';
 interface TaskGroup {
   taskGroupId: string | null;
   tasks: any[];
@@ -162,6 +163,44 @@ export default function AdminTaskView() {
     const pending = taskList.filter(t => t.status === 'PENDING').length;
     const completed = taskList.filter(t => t.status === 'COMPLETED').length;
     setStats({ total, pending, completed });
+  };
+
+  const handleDownloadCSV = () => {
+    const headers = [
+      'Task ID',
+      'Task Group ID',
+      'Assignee Name',
+      'Assignee Email',
+      'Assigned By Name',
+      'Assigned By Email',
+      'Subject',
+      'Description',
+      'Priority',
+      'Due Date',
+      'Due Time',
+      'Status',
+      'Progress (%)',
+      'Created At',
+      'Completion Proof Link'
+    ];
+
+    downloadCSV(headers, filteredTasks, 'tasks.csv', (task: any) => [
+      task.id,
+      task.taskGroupId || '',
+      task.assignedTo?.profile?.fullName || '',
+      task.assignedTo?.email || '',
+      task.assignedBy?.profile?.fullName || '',
+      task.assignedBy?.email || '',
+      task.subject || '',
+      task.description || '',
+      task.priority || '',
+      task.dueDate ? `\u200B${task.dueDate}` : '',
+      task.dueTime ? `\u200B${task.dueTime}` : '',
+      task.status || '',
+      task.progress || 0,
+      task.createdAt ? `\u200B${task.createdAt}` : '',
+      task.completionUrl || ''
+    ]);
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -606,6 +645,19 @@ export default function AdminTaskView() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Download CSV Section */}
+          {filteredTasks.length > 0 && (
+            <div className="flex justify-end mt-6 border-t border-neutral-900 pt-6">
+              <button
+                onClick={handleDownloadCSV}
+                className="inline-flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded transition-all shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)] cursor-pointer"
+              >
+                <Download className="w-4.5 h-4.5" />
+                <span>Download Tasks CSV</span>
+              </button>
             </div>
           )}
         </div>

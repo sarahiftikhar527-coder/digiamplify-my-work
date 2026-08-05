@@ -22,6 +22,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [user, setUser] = useState<{ email: string; role: string; picture?: string; jobTitle?: string; fullName?: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [showSignoutConfirm, setShowSignoutConfirm] = useState(false);
 
   const loadUserData = () => {
     if (typeof window !== 'undefined') {
@@ -163,7 +164,7 @@ export default function Sidebar() {
 
 
   const getDisplayRole = () => {
-    if (isCustomAdmin) return 'Admin';
+    if (isCustomAdmin) return user?.jobTitle || 'System Administrator';
     if (user?.jobTitle) return user.jobTitle;
     if (user?.role) return user.role.charAt(0).toUpperCase() + user.role.slice(1);
     return 'Employee';
@@ -175,7 +176,7 @@ export default function Sidebar() {
     { name: isCustomAdmin ? 'Employees' : 'Profile', path: `${pathPrefix}/profile`, icon: User },
     { name: 'Finance', path: `${pathPrefix}/finance`, icon: Coins },
     { name: 'Calendar', path: '#', icon: Calendar },
-    { name: 'Chat', path: '#', icon: MessageSquare },
+    { name: 'Chat', path: `${pathPrefix}/chat`, icon: MessageSquare },
     { name: isCustomAdmin ? 'Clocked In Users' : 'Clock In', path: `${pathPrefix}/clock-in`, icon: Clock },
     { name: 'Help & Support', path: `${pathPrefix}/support`, icon: HelpCircle },
   ];
@@ -277,7 +278,7 @@ export default function Sidebar() {
 
           { }
           <button
-            onClick={handleSignout}
+            onClick={() => setShowSignoutConfirm(true)}
             title="Sign Out"
             className="p-2 rounded-lg text-neutral-500 hover:text-[#be0919] hover:bg-[#be0919]/5 transition-all duration-200 group cursor-pointer"
           >
@@ -286,6 +287,47 @@ export default function Sidebar() {
         </div>
 
       </div>
+
+      {showSignoutConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 select-none animate-fadeIn">
+          <div className="bg-[#0c0c0c] border border-neutral-900 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-neutral-900 flex items-center justify-between">
+              <span className="text-sm font-semibold text-white tracking-wide">Confirm Sign Out</span>
+              <button 
+                onClick={() => setShowSignoutConfirm(false)}
+                className="p-1 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors cursor-pointer border-none bg-transparent outline-none"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                Are you sure you want to sign out? You will need to enter your email and password to access your portal again.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="p-6 border-t border-neutral-900 flex justify-end gap-3 bg-[#050505]/20">
+              <button
+                onClick={() => setShowSignoutConfirm(false)}
+                className="px-5 py-2.5 border border-neutral-900 hover:bg-neutral-900 text-neutral-400 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSignout}
+                className="px-5 py-2.5 bg-[#be0919] hover:bg-[#990714] text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-[0_2px_8px_rgba(190,9,25,0.2)] hover:shadow-[0_2px_12px_rgba(190,9,25,0.35)]"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

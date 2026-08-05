@@ -7,6 +7,7 @@ import supportRoutes from './routes/supportRoutes';
 import attendanceRoutes from './routes/attendanceRoutes';
 import financeRoutes from './routes/financeRoutes';
 import taskRoutes from './routes/taskRoutes';
+import chatRoutes from './routes/chatRoutes';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/api/support', supportRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/chat', chatRoutes);
 
 
 app.get('/health', (req, res) => {

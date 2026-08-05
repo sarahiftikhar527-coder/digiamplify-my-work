@@ -18,6 +18,7 @@ model User {
   lastLogin         DateTime?
   isOnline          Boolean   @default(false)
   lastSeen          Int?
+  chatLastActive    Int?
   profile           Profile?
   supportTickets    SupportTicket[]
   attendances       Attendance[]
@@ -27,6 +28,9 @@ model User {
   taskActivities         TaskActivity[]
   taskRequestsAssignedTo TaskRequest[]  @relation("AssignedToUser")
   taskRequestsCreated    TaskRequest[]  @relation("RequestedByUser")
+  chatParticipants  Participant[]
+  chatMessages      Message[]
+  groupRequestsCreated GroupRequest[] @relation("GroupRequestsCreated")
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 }
@@ -214,6 +218,56 @@ model TaskRequest {
   fileContent     String?  @db.LongText
   status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
   rejectionReason String?  @db.LongText
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ChatRoom {
+  id               String        @id @default(uuid())
+  name             String?       // null for 1-to-1 direct message
+  isGroup          Boolean       @default(false)
+  groupPicture     String?       @db.LongText // base64 representation of group avatar
+  description      String?       @db.LongText
+  pinnedMessageIds String?       @db.LongText // JSON array of pinned message IDs
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  participants     Participant[]
+  messages         Message[]
+}
+
+model Participant {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatRoomId String
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  role       String   @default("MEMBER") // ADMIN, MEMBER
+  joinedAt   DateTime @default(now())
+  lastRead   DateTime @default(now())
+
+  @@unique([userId, chatRoomId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  chatRoomId  String
+  chatRoom    ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content     String   @db.LongText
+  fileName    String?
+  fileContent String?  @db.LongText
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model GroupRequest {
+  id              String   @id @default(uuid())
+  groupName       String
+  requestedById   String
+  requestedBy     User     @relation("GroupRequestsCreated", fields: [requestedById], references: [id], onDelete: Cascade)
+  memberIds       String   @db.LongText // JSON array of user IDs
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

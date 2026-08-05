@@ -38,6 +38,19 @@ async function main() {
     },
   });
 
+  await prisma.profile.upsert({
+    where: { userId: admin.id },
+    update: {
+      fullName: 'Admin',
+      jobTitle: 'System Administrator',
+    },
+    create: {
+      userId: admin.id,
+      fullName: 'Admin',
+      jobTitle: 'System Administrator',
+    },
+  });
+
   console.log(`Successfully seeded/updated Admin user: ${admin.email}`);
 }
 
