@@ -869,6 +869,16 @@ export default function ChatWindow({
       <div 
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto custom-red-scrollbar p-6 space-y-6"
+        style={{
+          backgroundColor: '#030303',
+          backgroundImage: `
+            radial-gradient(circle at 100% 0%, rgba(190, 9, 25, 0.15) 0%, transparent 40%),
+            radial-gradient(circle at 0% 100%, rgba(190, 9, 25, 0.1) 0%, transparent 40%),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M15,15 h10 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-7 l-4,4 v-4 a2,2 0 0 1 -1,-2 v-6 a2,2 0 0 1 2,-2 z' fill='none' stroke='rgba(190,9,25,0.18)' stroke-width='1'/%3E%3Ccircle cx='55' cy='15' r='1.5' fill='rgba(190,9,25,0.22)'/%3E%3Cpath d='M45,25 h6 v6 h-6 z' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1'/%3E%3Cpath d='M25,55 l4,4 l8,-8' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.2'/%3E%3Cpath d='M65,45 h10' stroke='rgba(190,9,25,0.15)' stroke-width='1'/%3E%3Cpath d='M70,40 v10' stroke='rgba(190,9,25,0.15)' stroke-width='1'/%3E%3Ccircle cx='20' cy='45' r='2' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='1'/%3E%3Cpolygon points='55,50 57,54 61,54 58,56 59,60 55,58 51,60 52,56 49,54 53,54' fill='rgba(190,9,25,0.18)'/%3E%3Cpath d='M40,40 h8 l-4,4 z' fill='none' stroke='rgba(190,9,25,0.14)' stroke-width='1'/%3E%3C/svg%3E")
+          `,
+          backgroundRepeat: 'no-repeat, no-repeat, repeat',
+          backgroundSize: '100% 100%, 100% 100%, 80px 80px'
+        }}
       >
         {visibleMessages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-xs text-neutral-500 font-light select-none">
