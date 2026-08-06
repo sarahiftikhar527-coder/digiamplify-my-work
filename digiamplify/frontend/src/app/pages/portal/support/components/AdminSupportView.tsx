@@ -56,13 +56,17 @@ export default function AdminSupportView({
   return (
     <div className="space-y-8 animate-fadeIn">
       
+      {/* Page Heading */}
+      <div className="mb-12 select-none text-left">
+        <h1 className="text-3xl font-medium tracking-wide text-white">Support Tickets Console</h1>
+        <p className="text-sm text-neutral-400 font-medium mt-3 leading-relaxed">
+          Review, respond, and resolve employee queries and problems.
+        </p>
+      </div>
+
       {/* Dashboard summary & tabs */}
       <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <div className="select-none">
-            <h2 className="text-xl font-bold text-white tracking-wide">Support Tickets Console</h2>
-            <p className="text-xs text-neutral-500 font-light mt-1">Review, respond, and resolve employee queries and problems.</p>
-          </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-end gap-6 mb-8">
           
           {/* Search Bar */}
           <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-2.5 w-full md:max-w-[300px] focus-within:border-[#be0919] transition-all">

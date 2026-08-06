@@ -59,7 +59,7 @@ export default function AdminClockInView({
     <div className="w-full flex flex-col justify-start">
 
       <div className="mb-12 select-none">
-        <h1 className="text-3xl font-medium tracking-wide text-white">Clock In</h1>
+        <h1 className="text-3xl font-medium tracking-wide text-white">Clocked In Employees</h1>
         <p className="text-sm text-neutral-400 font-medium mt-3 leading-relaxed">
           Monitor your employees clock in/out statuses, shift logs, breaks, and daily task summaries.
         </p>

@@ -11,7 +11,10 @@ import {
   pingChat,
   updateRoomDetails,
   deleteMessage,
-  pinMessage
+  pinMessage,
+  exitRoom,
+  deleteRoom,
+  addParticipant
 } from '../controllers/chatController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
@@ -23,6 +26,9 @@ router.get('/users', authenticateToken as any, getUsers as any);
 router.get('/rooms', authenticateToken as any, getRooms as any);
 router.post('/rooms', authenticateToken as any, createRoom as any);
 router.put('/rooms/:roomId', authenticateToken as any, updateRoomDetails as any);
+router.post('/rooms/:roomId/exit', authenticateToken as any, exitRoom as any);
+router.delete('/rooms/:roomId', authenticateToken as any, deleteRoom as any);
+router.post('/rooms/:roomId/participants', authenticateToken as any, addParticipant as any);
 router.get('/rooms/:roomId/messages', authenticateToken as any, getRoomMessages as any);
 router.post('/rooms/:roomId/messages', authenticateToken as any, sendMessage as any);
 router.post('/rooms/:roomId/pin', authenticateToken as any, pinMessage as any);

@@ -765,13 +765,7 @@ export default function ProfilePage() {
       <div className="flex-1 p-6 pt-24 sm:p-10 md:pt-10 flex flex-col justify-start overflow-y-auto max-h-screen">
 
         {}
-        <div className="flex items-center justify-between mb-8">
-          <div className="text-neutral-500 font-light text-sm flex items-center gap-1.5">
-            <span className="text-red-500 font-medium">Profile</span>
-            <span>/</span>
-            <span>{isAdmin ? 'Admin Portal' : 'Dashboard'}</span>
-          </div>
-        </div>
+
 
         {}
         {isLoading && !profile && !isAdmin && (

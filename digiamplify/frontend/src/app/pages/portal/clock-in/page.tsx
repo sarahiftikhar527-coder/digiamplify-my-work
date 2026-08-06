@@ -403,11 +403,7 @@ export default function ClockInPage() {
 
       <div className="flex-1 p-6 pt-24 sm:p-10 md:pt-10 flex flex-col justify-start overflow-y-auto max-h-screen">
 
-        <div className="flex items-center justify-between mb-8">
-          <div className="text-neutral-500 font-light text-sm flex items-center gap-1.5">
-            <span className="text-red-500 font-medium select-none">Clock In</span>
-          </div>
-        </div>
+
 
         {error && (
           <div className="bg-[#be0919]/10 border border-[#be0919]/30 text-[#ff4d5a] text-xs py-3.5 px-4 rounded-[14px] mb-6 text-center font-light relative animate-fadeIn">

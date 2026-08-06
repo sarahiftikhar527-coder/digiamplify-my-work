@@ -105,7 +105,7 @@ export default function Sidebar() {
             'Authorization': `Bearer ${token}`
           }
         });
-      } catch (e) {}
+      } catch (e) { }
     };
 
     sendHeartbeat();
@@ -149,6 +149,160 @@ export default function Sidebar() {
 
   const isCustomAdmin = user?.role?.toLowerCase() === 'admin';
   const pathPrefix = isCustomAdmin ? '/admin' : '/portal';
+
+  // Badges state
+  const [badgeValues, setBadgeValues] = useState<{ [key: string]: number }>({});
+
+  const checkUpdates = async () => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (!token || !storedUser) return;
+
+    let parsedUser;
+    try {
+      parsedUser = JSON.parse(storedUser);
+    } catch {
+      return;
+    }
+
+    const isAdm = parsedUser.role?.toLowerCase() === 'admin';
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+
+    const newValues: { [key: string]: number } = {};
+
+    try {
+      // 1. Chat Section unread count check
+      const chatRes = await fetch('http://localhost:5000/api/chat/rooms', { headers });
+      if (chatRes.ok) {
+        const rooms = await chatRes.json();
+        if (Array.isArray(rooms)) {
+          const totalUnread = rooms.reduce((acc: number, r: any) => acc + (r.unreadCount || 0), 0);
+          newValues['Chat'] = totalUnread;
+        }
+      }
+    } catch (e) { }
+
+    try {
+      // 2. Tasks / Assign Tasks Section update check
+      if (isAdm) {
+        // Admin: check for pending task requests from employees
+        const taskReqRes = await fetch('http://localhost:5000/api/tasks/requests', { headers });
+        if (taskReqRes.ok) {
+          const reqs = await taskReqRes.json();
+          if (Array.isArray(reqs)) {
+            const maxTime = reqs.reduce((max: number, r: any) => {
+              const t = new Date(r.updatedAt || r.createdAt).getTime();
+              return t > max ? t : max;
+            }, 0);
+            newValues['Assign Tasks'] = maxTime;
+          }
+        }
+      } else {
+        // Employee: check for assigned tasks updates
+        const tasksRes = await fetch('http://localhost:5000/api/tasks', { headers });
+        if (tasksRes.ok) {
+          const tasks = await tasksRes.json();
+          if (Array.isArray(tasks)) {
+            const maxTime = tasks.reduce((max: number, t: any) => {
+              const time = new Date(t.updatedAt || t.createdAt).getTime();
+              return time > max ? time : max;
+            }, 0);
+            newValues['Tasks'] = maxTime;
+          }
+        }
+      }
+    } catch (e) { }
+
+    try {
+      // 3. Employees / Profile Section update check
+      if (isAdm) {
+        // Admin: check for pending employee registrations or profile edit requests
+        const usersRes = await fetch('http://localhost:5000/api/profile/all', { headers });
+        if (usersRes.ok) {
+          const users = await usersRes.json();
+          if (Array.isArray(users)) {
+            const maxTime = users.reduce((max: number, u: any) => {
+              const t1 = u.updatedAt ? new Date(u.updatedAt).getTime() : 0;
+              const t2 = u.profile?.updatedAt ? new Date(u.profile.updatedAt).getTime() : 0;
+              const t = Math.max(t1, t2);
+              return t > max ? t : max;
+            }, 0);
+            newValues['Employees'] = maxTime;
+          }
+        }
+      }
+    } catch (e) { }
+
+    try {
+      // 4. Finance Section check
+      if (isAdm) {
+        // Admin: check if there are pending transaction requests
+        const finRes = await fetch('http://localhost:5000/api/finance/admin/overview', { headers });
+        if (finRes.ok) {
+          const finData = await finRes.json();
+          const transactions = finData?.transactions || [];
+          if (Array.isArray(transactions)) {
+            const maxTime = transactions.reduce((max: number, tx: any) => {
+              const t = new Date(tx.updatedAt || tx.createdAt).getTime();
+              return t > max ? t : max;
+            }, 0);
+            newValues['Finance'] = maxTime;
+          }
+        }
+      } else {
+        // Employee: check if any transaction/claim is pending
+        const finRes = await fetch('http://localhost:5000/api/finance/employee', { headers });
+        if (finRes.ok) {
+          const finData = await finRes.json();
+          const claims = finData?.claims || finData?.transactions || [];
+          if (Array.isArray(claims)) {
+            const maxTime = claims.reduce((max: number, tx: any) => {
+              const t = new Date(tx.updatedAt || tx.createdAt).getTime();
+              return t > max ? t : max;
+            }, 0);
+            newValues['Finance'] = maxTime;
+          }
+        }
+      }
+    } catch (e) { }
+
+    try {
+      // 5. Help & Support Section check
+      const supportRes = await fetch('http://localhost:5000/api/support', { headers });
+      if (supportRes.ok) {
+        const tickets = await supportRes.json();
+        if (Array.isArray(tickets)) {
+          const maxTime = tickets.reduce((max: number, t: any) => {
+            const time = new Date(t.updatedAt || t.createdAt).getTime();
+            return time > max ? time : max;
+          }, 0);
+          newValues['Help & Support'] = maxTime;
+        }
+      }
+    } catch (e) { }
+
+    try {
+      // 6. Clock In reminder for employees
+      if (!isAdm) {
+        const attRes = await fetch('http://localhost:5000/api/attendance/today', { headers });
+        if (attRes.ok) {
+          const att = await attRes.json();
+          newValues['Clock In'] = (!att || !att.clockIn) ? 1 : 0;
+        }
+      }
+    } catch (e) { }
+
+    setBadgeValues(newValues);
+  };
+
+  useEffect(() => {
+    checkUpdates();
+    const interval = setInterval(checkUpdates, 5000); // Check every 5 seconds for fast updates!
+    return () => clearInterval(interval);
+  }, []);
 
 
   const getDisplayName = () => {
@@ -222,6 +376,31 @@ export default function Sidebar() {
             {navItems.map((item) => {
               const isActive = pathname === item.path || (item.path !== '#' && pathname?.startsWith(item.path));
               const Icon = item.icon;
+              const currentValue = badgeValues[item.name] || 0;
+
+              // Read seen value from localStorage
+              let seenValue = 0;
+              if (typeof window !== 'undefined') {
+                const stored = localStorage.getItem(`badge_seen_${item.name}`);
+                seenValue = stored ? parseInt(stored, 10) : 0;
+              }
+
+              // If seenValue is 0 (first load), initialize it to prevent historical alerts
+              if (typeof window !== 'undefined' && !localStorage.getItem(`badge_seen_${item.name}`)) {
+                const initVal = currentValue > 0 ? currentValue : Date.now();
+                localStorage.setItem(`badge_seen_${item.name}`, initVal.toString());
+                seenValue = initVal;
+              }
+
+              // If active, sync the seen value in localStorage to current
+              if (isActive && currentValue !== seenValue) {
+                if (typeof window !== 'undefined') {
+                  const syncVal = currentValue > 0 ? currentValue : Date.now();
+                  localStorage.setItem(`badge_seen_${item.name}`, syncVal.toString());
+                }
+              }
+
+              const showBadge = !isActive && currentValue > seenValue;
 
               return (
                 <Link
@@ -235,6 +414,9 @@ export default function Sidebar() {
                   <Icon className={`w-[18px] h-[18px] shrink-0 transition-transform group-hover:scale-105 ${isActive ? 'text-white' : 'text-white group-hover:text-white'
                     }`} />
                   <span>{item.name}</span>
+                  {showBadge && (
+                    <span className="w-3 h-3 rounded-full bg-[#7a0008] animate-pulse ml-auto shrink-0 border border-[#7a0008]/50 shadow-[0_0_8px_#7a0008]" />
+                  )}
                 </Link>
               );
             })}
@@ -291,11 +473,11 @@ export default function Sidebar() {
       {showSignoutConfirm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 select-none animate-fadeIn">
           <div className="bg-[#0c0c0c] border border-neutral-900 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative">
-            
+
             {/* Header */}
             <div className="p-6 border-b border-neutral-900 flex items-center justify-between">
               <span className="text-sm font-semibold text-white tracking-wide">Confirm Sign Out</span>
-              <button 
+              <button
                 onClick={() => setShowSignoutConfirm(false)}
                 className="p-1 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors cursor-pointer border-none bg-transparent outline-none"
               >

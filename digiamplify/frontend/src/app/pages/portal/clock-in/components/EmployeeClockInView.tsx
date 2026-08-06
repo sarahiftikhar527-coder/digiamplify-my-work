@@ -51,6 +51,18 @@ export default function EmployeeClockInView({
   const shiftTimeStr = isNightShift ? '06:00 PM - 12:00 AM' : '09:00 AM - 03:00 PM';
   const breakTimeStr = isNightShift ? '08:00 PM - 09:00 PM' : '12:00 PM - 01:00 PM';
 
+  const isWithinBreakTime = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    if (isNightShift) {
+      // 08:00 PM to 09:00 PM (Hour 20)
+      return currentHour === 20;
+    } else {
+      // 12:00 PM to 01:00 PM (Hour 12)
+      return currentHour === 12;
+    }
+  };
+
   return (
     <div className="w-full flex flex-col justify-start">
 
@@ -105,7 +117,7 @@ export default function EmployeeClockInView({
                   <Coffee className="w-4 h-4" />
                   <span>End Break</span>
                 </button>
-              ) : (
+              ) : isWithinBreakTime() ? (
                 <button
                   onClick={() => onBreakAction('start')}
                   className="w-full py-3 bg-[#be0919] hover:bg-[#990714] text-white rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
@@ -113,7 +125,7 @@ export default function EmployeeClockInView({
                   <Coffee className="w-4 h-4" />
                   <span>Take Break</span>
                 </button>
-              )}
+              ) : null}
             </div>
           )}
 

@@ -223,6 +223,14 @@ export default function AdminUsersDirectory({
         }
       `}</style>
 
+      {/* Page Heading */}
+      <div className="mb-12 select-none text-left">
+        <h1 className="text-3xl font-medium tracking-wide text-white">Employees Directory</h1>
+        <p className="text-sm text-neutral-400 font-medium mt-3 leading-relaxed">
+          Manage, monitor, and edit employee registration requests and profiles in the portal.
+        </p>
+      </div>
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 select-none">
         {/* Total Employees */}
@@ -293,8 +301,7 @@ export default function AdminUsersDirectory({
 
       {activeTab === 'pending' && (
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md mb-8 animate-fadeIn">
-          <h2 className="text-xl font-bold text-white tracking-wide select-none">Pending Registration Requests</h2>
-          <p className="text-xs text-neutral-500 font-light mt-1 mb-6 select-none">Review and approve or reject employee registration requests.</p>
+          <div className="mt-2"></div>
 
           <div className="overflow-x-auto w-full custom-red-scrollbar-h pb-2">
             <table className="w-full text-left border-collapse min-w-[800px]">
@@ -341,11 +348,7 @@ export default function AdminUsersDirectory({
 
       {activeTab === 'directory' && (
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 lg:p-8 shadow-md animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            <div className="select-none">
-              <h2 className="text-xl font-bold text-white tracking-wide">Employees Directory</h2>
-              <p className="text-xs text-neutral-500 font-light mt-1">Manage and edit employee profiles in the portal.</p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mb-8">
 
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:max-w-[450px]">
               <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-2.5 w-full focus-within:border-[#be0919] transition-all">

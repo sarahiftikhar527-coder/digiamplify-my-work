@@ -20,15 +20,15 @@ export default function AdminFinanceView() {
     totalEmployeesCount: 0
   });
 
-  
+
   const [employees, setEmployees] = useState<any[]>([]);
 
-  
+
   const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
   const [empTransactions, setEmpTransactions] = useState<any[]>([]);
   const [isManagingTx, setIsManagingTx] = useState(false);
 
-  
+
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   const [showAddTxForm, setShowAddTxForm] = useState(false);
 
@@ -160,7 +160,7 @@ export default function AdminFinanceView() {
       if (res.ok) {
         setSuccess('Payment profile settings updated successfully!');
         setIsEditingPayment(false);
-        
+
         const updatedEmp = {
           ...selectedEmp,
           bankName: settings.bankName,
@@ -191,7 +191,7 @@ export default function AdminFinanceView() {
 
   return (
     <div className="w-full flex flex-col justify-start">
-      {}
+      { }
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           height: 4px;
@@ -209,18 +209,18 @@ export default function AdminFinanceView() {
         }
       `}</style>
 
-      {}
+      { }
       <div className="mb-10 select-none">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-white flex items-center gap-3">
           <Coins className="w-7 h-7 text-[#be0919]" />
-          <span>Finance Management (Admin)</span>
+          <span>Finance Management</span>
         </h1>
         <p className="text-sm sm:text-base text-neutral-400 font-normal mt-3 leading-relaxed">
           Monitor company payroll statistics, update employee bank credentials, and process salary transfers, bonuses, or deductions.
         </p>
       </div>
 
-      {}
+      { }
       {error && (
         <div className="bg-[#be0919]/10 border border-[#be0919]/30 text-[#ff4d5a] text-sm py-4 px-6 rounded-xl mb-6 text-center font-normal">
           {error}

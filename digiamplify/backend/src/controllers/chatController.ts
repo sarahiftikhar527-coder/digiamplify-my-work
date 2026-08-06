@@ -11,6 +11,7 @@ const mapUserChatOnline = (user: any) => {
     email: user.email,
     role: user.role,
     profile: user.profile,
+    chatLastActive: user.chatLastActive,
     isOnline: user.chatLastActive ? (nowSeconds - user.chatLastActive <= 12) : false
   };
 };
@@ -97,7 +98,9 @@ export const getRooms = async (req: AuthRequest, res: Response): Promise<void> =
       where: { userId: currentUserId },
       select: {
         chatRoomId: true,
-        lastRead: true
+        lastRead: true,
+        role: true,
+        joinedAt: true
       }
     });
 
@@ -147,14 +150,41 @@ export const getRooms = async (req: AuthRequest, res: Response): Promise<void> =
     const roomsWithUnread = await Promise.all(rooms.map(async (room) => {
       const userParticipation = participations.find(p => p.chatRoomId === room.id);
       const lastRead = userParticipation ? userParticipation.lastRead : new Date(0);
+      const isLeft = userParticipation?.role === 'LEFT';
+      const exitTime = userParticipation?.joinedAt || new Date();
 
-      const unreadCount = await prisma.message.count({
-        where: {
-          chatRoomId: room.id,
-          createdAt: { gt: lastRead },
-          senderId: { not: currentUserId }
-        }
-      });
+      let unreadCount = 0;
+      if (!isLeft) {
+        unreadCount = await prisma.message.count({
+          where: {
+            chatRoomId: room.id,
+            createdAt: { gt: lastRead },
+            senderId: { not: currentUserId }
+          }
+        });
+      } else {
+        // Fetch the latest message up to the exit time for preview
+        const latestMessages = await prisma.message.findMany({
+          where: {
+            chatRoomId: room.id,
+            createdAt: { lte: exitTime }
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            sender: {
+              select: {
+                profile: {
+                  select: {
+                    fullName: true
+                  }
+                }
+              }
+            }
+          }
+        });
+        (room as any).messages = latestMessages;
+      }
 
       return {
         ...mapRoomChatOnline(room),
@@ -622,21 +652,28 @@ export const getRoomMessages = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    const now = new Date();
-    await prisma.participant.update({
-      where: {
-        userId_chatRoomId: {
-          userId: currentUserId,
-          chatRoomId: roomId
+    const isLeft = participation.role === 'LEFT';
+
+    if (!isLeft) {
+      const now = new Date();
+      await prisma.participant.update({
+        where: {
+          userId_chatRoomId: {
+            userId: currentUserId,
+            chatRoomId: roomId
+          }
+        },
+        data: {
+          lastRead: now
         }
-      },
-      data: {
-        lastRead: now
-      }
-    });
+      });
+    }
 
     const messages = await prisma.message.findMany({
-      where: { chatRoomId: roomId },
+      where: { 
+        chatRoomId: roomId,
+        createdAt: isLeft ? { lte: participation.joinedAt } : undefined
+      },
       include: {
         sender: {
           select: {
@@ -694,8 +731,8 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
       }
     });
 
-    if (!participation) {
-      res.status(403).json({ error: 'You are not a participant in this room' });
+    if (!participation || participation.role === 'LEFT') {
+      res.status(403).json({ error: 'You are no longer an active participant in this room' });
       return;
     }
 
@@ -767,26 +804,34 @@ export const updateRoomDetails = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const participation = await prisma.participant.findUnique({
-      where: {
-        userId_chatRoomId: {
-          userId: currentUserId,
-          chatRoomId: roomId
-        }
-      },
-      include: {
-        user: {
-          select: { role: true }
-        }
-      }
+    const user = await prisma.user.findUnique({
+      where: { id: currentUserId }
     });
 
-    if (!participation) {
-      res.status(403).json({ error: 'You are not a participant in this room' });
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const isGroupAdmin = participation.role === 'ADMIN' || participation.user?.role?.toLowerCase() === 'admin';
+    const isSystemAdmin = user.role.toLowerCase() === 'admin';
+
+    let isGroupAdmin = false;
+    if (isSystemAdmin) {
+      isGroupAdmin = true;
+    } else {
+      const participation = await prisma.participant.findUnique({
+        where: {
+          userId_chatRoomId: {
+            userId: currentUserId,
+            chatRoomId: roomId
+          }
+        }
+      });
+      if (participation && participation.role === 'ADMIN') {
+        isGroupAdmin = true;
+      }
+    }
+
     if (!isGroupAdmin) {
       res.status(403).json({ error: 'Forbidden: Group Admins only can modify group details' });
       return;
@@ -906,9 +951,7 @@ export const pinMessage = async (req: AuthRequest, res: Response): Promise<void>
     } catch { pinnedIds = []; }
 
     if (pin) {
-      if (!pinnedIds.includes(messageId)) {
-        pinnedIds.push(messageId);
-      }
+      pinnedIds = [messageId];
     } else {
       pinnedIds = pinnedIds.filter((id: string) => id !== messageId);
     }
@@ -922,5 +965,213 @@ export const pinMessage = async (req: AuthRequest, res: Response): Promise<void>
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error pinning message' });
+  }
+};
+
+export const exitRoom = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const currentUserId = req.userId;
+    const { roomId } = req.params;
+
+    if (!currentUserId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      include: {
+        participants: true
+      }
+    });
+
+    if (!room) {
+      res.status(404).json({ error: 'Room not found' });
+      return;
+    }
+
+    const participation = room.participants.find(p => p.userId === currentUserId);
+    if (!participation || participation.role === 'LEFT') {
+      res.status(400).json({ error: 'You are not an active participant in this room' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      include: { profile: true }
+    });
+
+    const userName = user?.profile?.fullName || user?.email || 'Someone';
+
+    // Update role to LEFT and joinedAt to the exit time
+    await prisma.participant.update({
+      where: { id: participation.id },
+      data: {
+        role: 'LEFT',
+        joinedAt: new Date()
+      }
+    });
+
+    // Create system message
+    await prisma.message.create({
+      data: {
+        chatRoomId: roomId,
+        senderId: currentUserId,
+        content: `${userName} left the group`,
+        isSystem: true
+      }
+    });
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error exiting group' });
+  }
+};
+
+export const deleteRoom = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const currentUserId = req.userId;
+    const { roomId } = req.params;
+
+    if (!currentUserId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Find and delete the participant record for the current user
+    const participation = await prisma.participant.findUnique({
+      where: {
+        userId_chatRoomId: {
+          userId: currentUserId,
+          chatRoomId: roomId
+        }
+      }
+    });
+
+    if (!participation) {
+      res.status(404).json({ error: 'Participant not found in this room' });
+      return;
+    }
+
+    await prisma.participant.delete({
+      where: { id: participation.id }
+    });
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error deleting group conversation' });
+  }
+};
+
+export const addParticipant = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const currentUserId = req.userId;
+    const { roomId } = req.params;
+    const { targetUserId } = req.body;
+
+    if (!currentUserId || !targetUserId) {
+      res.status(400).json({ error: 'Missing target user ID' });
+      return;
+    }
+
+    // Verify current user is a group admin or system admin
+    const user = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const isSystemAdmin = user.role.toLowerCase() === 'admin';
+    let isGroupAdmin = false;
+
+    if (isSystemAdmin) {
+      isGroupAdmin = true;
+    } else {
+      const participation = await prisma.participant.findUnique({
+        where: {
+          userId_chatRoomId: {
+            userId: currentUserId,
+            chatRoomId: roomId
+          }
+        }
+      });
+      if (participation && participation.role === 'ADMIN') {
+        isGroupAdmin = true;
+      }
+    }
+
+    if (!isGroupAdmin) {
+      res.status(403).json({ error: 'Only group admins can add members' });
+      return;
+    }
+
+    // Check if target user exists
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      include: { profile: true }
+    });
+
+    if (!targetUser) {
+      res.status(404).json({ error: 'Target user not found' });
+      return;
+    }
+
+    const adminName = user.profile?.fullName || user.email || 'Admin';
+    const targetName = targetUser.profile?.fullName || targetUser.email || 'User';
+
+    // Upsert participant record
+    const existingParticipation = await prisma.participant.findUnique({
+      where: {
+        userId_chatRoomId: {
+          userId: targetUserId,
+          chatRoomId: roomId
+        }
+      }
+    });
+
+    if (existingParticipation) {
+      if (existingParticipation.role !== 'LEFT') {
+        res.status(400).json({ error: 'User is already a participant in this room' });
+        return;
+      }
+      // Reactivate user
+      await prisma.participant.update({
+        where: { id: existingParticipation.id },
+        data: {
+          role: 'MEMBER',
+          joinedAt: new Date()
+        }
+      });
+    } else {
+      await prisma.participant.create({
+        data: {
+          userId: targetUserId,
+          chatRoomId: roomId,
+          role: 'MEMBER',
+          joinedAt: new Date()
+        }
+      });
+    }
+
+    // Create system message
+    await prisma.message.create({
+      data: {
+        chatRoomId: roomId,
+        senderId: currentUserId,
+        content: `${adminName} added ${targetName}`,
+        isSystem: true
+      }
+    });
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error adding participant' });
   }
 };
