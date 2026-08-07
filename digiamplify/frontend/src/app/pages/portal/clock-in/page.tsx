@@ -118,16 +118,16 @@ export default function ClockInPage() {
         setStats(data.stats);
         if (data.attendance?.description) {
           setTodayDescription(data.attendance.description);
+        }
+        if (data.attendance?.clockIn && !data.attendance?.clockOut) {
           setShowDescriptionInput(true);
-        } else {
-          setTodayDescription('');
-          setShowDescriptionInput(false);
         }
       }
     } catch (err: any) {
       console.error('Error fetching today status:', err);
     }
   };
+
 
   const fetchAdminAttendanceLogs = async () => {
     try {
@@ -185,16 +185,12 @@ export default function ClockInPage() {
     const isClockedOut = !!attendance?.clockOut;
 
     if (isClockedIn && !isClockedOut) {
-      if (!showDescriptionInput) {
-        setShowDescriptionInput(true);
-        setError('Please describe what tasks you completed today below.');
-        return;
-      }
       if (!todayDescription.trim()) {
         setError('Please write a brief summary of completed tasks before clocking out.');
         return;
       }
     }
+
 
     setIsLoading(true);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Filter, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Search, Filter, ArrowUpRight, ArrowDownRight, Download } from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -35,31 +35,54 @@ export default function EmployeeTransactionsTable({
   filteredTransactions,
   transactionsCount
 }: EmployeeTransactionsTableProps) {
+  const handleExportCSV = () => {
+    if (filteredTransactions.length === 0) return;
+    const headers = ['Transaction', 'Reference', 'Date', 'Amount', 'Type', 'Status'];
+    const rows = filteredTransactions.map((tx) => [
+      `"${tx.title.replace(/"/g, '""')}"`,
+      `"${tx.reference || ''}"`,
+      `"${new Date(tx.date).toLocaleDateString()}"`,
+      `"${tx.amountRaw || tx.amount}"`,
+      `"${tx.type}"`,
+      `"${tx.status}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `statement_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="lg:col-span-3 bg-[#0c0c0c] border border-neutral-900 rounded-xl p-8 shadow-md animate-fadeIn">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-900">
         <h3 className="text-base font-bold tracking-wide select-none">Transactions</h3>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search.."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-56 bg-[#050505] border border-white/10 rounded-lg py-2.5 pl-9 pr-4 text-sm text-white placeholder-white/40 focus:outline-none focus:border-red-500/50 font-light"
+              className="w-full sm:w-56 bg-[#050505] border border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-sm text-white placeholder-white/40 focus:outline-none focus:border-red-500/50 font-light"
             />
           </div>
 
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="px-4 py-2.5 bg-[#be0919] hover:bg-[#a60715] text-white text-xs sm:text-sm font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-5 py-2.5 bg-[#be0919] hover:bg-[#a60715] text-white text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-md"
             >
               <Filter className="w-3.5 h-3.5" />
               <span>Filter</span>
             </button>
+
 
             {showFilterDropdown && (
               <div className="absolute right-0 mt-2.5 w-44 bg-[#0c0c0c] border border-neutral-800 rounded-lg shadow-xl py-2 z-20">
@@ -80,8 +103,19 @@ export default function EmployeeTransactionsTable({
               </div>
             )}
           </div>
+
+          <button
+            onClick={handleExportCSV}
+            disabled={filteredTransactions.length === 0}
+            title="Export transactions statement to CSV"
+            className="px-3.5 py-2.5 bg-[#050505] border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
+
 
       <div className="overflow-x-auto w-full custom-scrollbar pb-3">
         <table className="w-full text-left border-collapse">
@@ -136,15 +170,16 @@ export default function EmployeeTransactionsTable({
                       {isCredit ? '+' : '-'}${tx.amountRaw || tx.amount}
                     </td>
                     <td className="py-4.5 text-right">
-                      <span className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase border whitespace-nowrap ${
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap capitalize ${
                         tx.status.toLowerCase() === 'successful'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          ? 'bg-[#051c14] text-[#00e676] border-[#0d472b]'
                           : tx.status.toLowerCase() === 'pending'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                          : 'bg-red-500/10 text-red-400 border-red-500/20'
+                          ? 'bg-[#241a06] text-[#ffd54f] border-[#4d380e]'
+                          : 'bg-[#260a0d] text-[#ff5252] border-[#54161c]'
                       }`}>
-                        {tx.status}
+                        {tx.status.charAt(0).toUpperCase() + tx.status.slice(1).toLowerCase()}
                       </span>
+
                     </td>
                   </tr>
                 );

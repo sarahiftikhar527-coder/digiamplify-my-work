@@ -15,6 +15,8 @@ export default function EmployeeEarningsOverviewChart({
   currentMonthIndex,
   months
 }: EmployeeEarningsOverviewChartProps) {
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+
   const getEarningsOverviewPath = () => {
     const width = 600;
     const height = 180;
@@ -83,31 +85,44 @@ export default function EmployeeEarningsOverviewChart({
                 {earnings.map((val, idx) => {
                   const x = getX(idx);
                   const y = getY(val);
-                  const isCurrent = idx === currentMonthIndex;
+                  const isHovered = hoveredIndex === idx;
+                  const isCurrent = idx === currentMonthIndex && hoveredIndex === null;
 
                   return (
-                    <g key={idx}>
-                      {isCurrent && val > 0 && (
+                    <g
+                      key={idx}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredIndex(idx)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      {/* Transparent hit area */}
+                      <rect x={x - 16} y="10" width="32" height="160" fill="transparent" />
+
+                      {(isCurrent || isHovered) && (
                         <>
                           <line x1={x} y1="20" x2={x} y2="160" stroke="#be0919" strokeWidth="1" strokeDasharray="2 2" />
-                          <circle cx={x} cy={y} r="5" fill="#ffffff" stroke="#be0919" strokeWidth="2" />
-                          <rect x={x - 22} y={y - 24} width="44" height="16" rx="3" fill="#be0919" />
-                          <text x={x} y={y - 13} fill="#ffffff" fontSize="10.5" fontWeight="bold" textAnchor="middle">${Math.round(val)}</text>
+                          <circle cx={x} cy={y} r="5.5" fill="#ffffff" stroke="#be0919" strokeWidth="2.5" />
+                          <rect x={x - 24} y={y - 25} width="48" height="18" rx="4" fill="#be0919" />
+                          <text x={x} y={y - 12} fill="#ffffff" fontSize="10.5" fontWeight="bold" textAnchor="middle">${Math.round(val)}</text>
                         </>
                       )}
-                      <circle cx={x} cy={y} r="3" fill="#be0919" opacity={isCurrent && val > 0 ? 0 : 0.7} />
+
+                      {!isCurrent && !isHovered && (
+                        <circle cx={x} cy={y} r="3.5" fill="#be0919" opacity="0.8" />
+                      )}
                     </g>
                   );
                 })}
 
                 {months.map((m, idx) => (
-                  <text key={idx} x={getX(idx)} y="185" fill="#ffffff" fontSize="11" fontWeight="600" textAnchor="middle">{m}</text>
+                  <text key={idx} x={getX(idx)} y="185" fill={hoveredIndex === idx ? '#ff4d5a' : '#ffffff'} fontSize="11" fontWeight={hoveredIndex === idx ? 'bold' : '600'} textAnchor="middle">{m}</text>
                 ))}
               </svg>
             );
           })()
         )}
       </div>
+
     </div>
   );
 }

@@ -329,8 +329,9 @@ export default function Sidebar() {
     { name: isCustomAdmin ? 'Assign Tasks' : 'Tasks', path: `${pathPrefix}/task`, icon: ClipboardList },
     { name: isCustomAdmin ? 'Employees' : 'Profile', path: `${pathPrefix}/profile`, icon: User },
     { name: 'Finance', path: `${pathPrefix}/finance`, icon: Coins },
-    { name: 'Calendar', path: '#', icon: Calendar },
+    { name: 'Calendar', path: `${pathPrefix}/calendar`, icon: Calendar },
     { name: 'Chat', path: `${pathPrefix}/chat`, icon: MessageSquare },
+
     { name: isCustomAdmin ? 'Clocked In Users' : 'Clock In', path: `${pathPrefix}/clock-in`, icon: Clock },
     { name: 'Help & Support', path: `${pathPrefix}/support`, icon: HelpCircle },
   ];

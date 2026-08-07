@@ -92,8 +92,17 @@ const nextConfig: NextConfig = {
         source: '/admin/chat',
         destination: '/pages/portal/chat',
       },
+      {
+        source: '/portal/calendar',
+        destination: '/pages/portal/calendar',
+      },
+      {
+        source: '/admin/calendar',
+        destination: '/pages/portal/calendar',
+      },
     ];
   },
 };
+
 
 export default nextConfig;

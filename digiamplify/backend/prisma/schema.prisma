@@ -31,9 +31,41 @@ model User {
   chatParticipants  Participant[]
   chatMessages      Message[]
   groupRequestsCreated GroupRequest[] @relation("GroupRequestsCreated")
+  leaveRequests      LeaveRequest[]
+  calendarEvents     CalendarEvent[]
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 }
+
+model LeaveRequest {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveType   String   // "Annual Leave", "Sick Leave", "Casual Leave"
+  startDate   String   // YYYY-MM-DD
+  endDate     String   // YYYY-MM-DD
+  reason      String?  @db.LongText
+  status      String   @default("PENDING") // "APPROVED", "UNAPPROVED", "PENDING"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  date        String   // YYYY-MM-DD
+  startTime   String?  // e.g. "09:00 AM"
+  endTime     String?  // e.g. "09:30 AM"
+  eventType   String   // "TASK_VIEW", "ABSENT", "EVENT", "HOLIDAY"
+  location    String?  // e.g. "Meeting Room 1" or "Design Team"
+  attendeesCount Int?  @default(1)
+  description String?  @db.LongText
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 
 model Profile {
   id               String   @id @default(uuid())

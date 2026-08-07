@@ -135,11 +135,19 @@ export const clockIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const isPinValid = await bcrypt.compare(pin, user.pin);
+    let isPinValid = false;
+    if (user.pin) {
+      if (user.pin.startsWith('$2a$') || user.pin.startsWith('$2b$')) {
+        isPinValid = await bcrypt.compare(pin, user.pin);
+      } else {
+        isPinValid = pin === user.pin;
+      }
+    }
     if (!isPinValid) {
       res.status(400).json({ error: 'Invalid PIN code' });
       return;
     }
+
 
     const todayStr = getLocalDateString();
 
@@ -226,11 +234,19 @@ export const clockOut = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const isPinValid = await bcrypt.compare(pin, user.pin);
+    let isPinValid = false;
+    if (user.pin) {
+      if (user.pin.startsWith('$2a$') || user.pin.startsWith('$2b$')) {
+        isPinValid = await bcrypt.compare(pin, user.pin);
+      } else {
+        isPinValid = pin === user.pin;
+      }
+    }
     if (!isPinValid) {
       res.status(400).json({ error: 'Invalid PIN code' });
       return;
     }
+
 
     const todayStr = getLocalDateString();
 

@@ -35,6 +35,7 @@ interface AdminManageFinancesModalProps {
   empTransactions: Transaction[];
   handleAddTransaction: (txData: { title: string; amount: number; type: string; status: string; reference?: string }) => Promise<void>;
   handleDeleteTransaction: (id: string) => Promise<void>;
+  handleUpdateTransactionStatus?: (id: string, status: string) => Promise<void>;
   handleSavePaymentSettings: (settings: { bankName: string; accountNumber: string; accountHolderName: string; salary: string; bonus: string; currency: string }) => Promise<void>;
   onClose: () => void;
 }
@@ -48,9 +49,11 @@ export default function AdminManageFinancesModal({
   empTransactions,
   handleAddTransaction,
   handleDeleteTransaction,
+  handleUpdateTransactionStatus,
   handleSavePaymentSettings,
   onClose
 }: AdminManageFinancesModalProps) {
+
   
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -354,14 +357,31 @@ export default function AdminManageFinancesModal({
                             {tx.status}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-right pr-6">
+                        <td className="py-4 px-4 text-right pr-6 flex items-center justify-end gap-2">
+                          {tx.status.toUpperCase() === 'PENDING' && handleUpdateTransactionStatus && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateTransactionStatus(tx.id, 'SUCCESSFUL')}
+                                className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleUpdateTransactionStatus(tx.id, 'FAILED')}
+                                className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
                           <button
                             onClick={() => handleDeleteTransaction(tx.id)}
-                            className="text-red-500 hover:text-red-400 transition-colors text-sm cursor-pointer font-bold"
+                            className="text-red-500 hover:text-red-400 transition-colors text-xs sm:text-sm cursor-pointer font-bold ml-1"
                           >
                             Delete
                           </button>
                         </td>
+
                       </tr>
                     );
                   })

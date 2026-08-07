@@ -1,9 +1,8 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { Coins } from 'lucide-react';
 import AdminFinanceStats from './AdminFinanceStats';
-import AdminEmployeeTable from './AdminEmployeeTable';
+import AdminMonthlyPayrollChart from './AdminMonthlyPayrollChart';
+import AdminPerformanceAlerts from './AdminPerformanceAlerts';
+import AdminEmployeePerformanceTable from './AdminEmployeePerformanceTable';
 import AdminManageFinancesModal from './AdminManageFinancesModal';
 
 export default function AdminFinanceView() {
@@ -12,22 +11,15 @@ export default function AdminFinanceView() {
   const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Overview stats
-  const [stats, setStats] = useState({
-    totalPayrollBudget: '$0',
-    totalBonusesThisMonth: '$0',
-    totalDeductionsThisMonth: '$0',
-    totalEmployeesCount: 0
-  });
-
-
+  const [adminName, setAdminName] = useState('Fahad');
+  const [stats, setStats] = useState<any>({});
+  const [monthlyAnalytics, setMonthlyAnalytics] = useState<number[]>([]);
+  const [performanceAlerts, setPerformanceAlerts] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-
 
   const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
   const [empTransactions, setEmpTransactions] = useState<any[]>([]);
   const [isManagingTx, setIsManagingTx] = useState(false);
-
 
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   const [showAddTxForm, setShowAddTxForm] = useState(false);
@@ -50,8 +42,11 @@ export default function AdminFinanceView() {
         throw new Error(data.error || 'Failed to fetch finance overview');
       }
 
-      setStats(data.stats);
-      setEmployees(data.employees);
+      if (data.adminName) setAdminName(data.adminName);
+      setStats(data.stats || {});
+      setMonthlyAnalytics(data.monthlyAnalytics || []);
+      setPerformanceAlerts(data.performanceAlerts || []);
+      setEmployees(data.employees || []);
     } catch (e: any) {
       setError(e.message || 'Error loading finance overview');
     } finally {
@@ -143,6 +138,33 @@ export default function AdminFinanceView() {
     }
   };
 
+  const handleUpdateTransactionStatus = async (txId: string, status: string) => {
+    if (!selectedEmp) return;
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/finance/admin/transaction/${txId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        setSuccess(`Transaction status updated to ${status}!`);
+        await fetchEmployeeTransactions(selectedEmp.id);
+        await fetchOverview();
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Failed to update transaction status');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Error updating status');
+    }
+  };
+
   const handleSavePaymentSettings = async (settings: { bankName: string; accountNumber: string; accountHolderName: string; salary: string; bonus: string; currency: string }) => {
     if (!selectedEmp) return;
     setError('');
@@ -189,9 +211,15 @@ export default function AdminFinanceView() {
     );
   });
 
+  const currentDateObj = new Date();
+  const dayName = currentDateObj.toLocaleString('default', { weekday: 'long' });
+  const dayNum = currentDateObj.getDate();
+  const monthName = currentDateObj.toLocaleString('default', { month: 'long' });
+  const yearNum = currentDateObj.getFullYear();
+  const dateFormattedString = `It's ${dayName}, ${dayNum} ${monthName} ${yearNum}.`;
+
   return (
-    <div className="w-full flex flex-col justify-start">
-      { }
+    <div className="w-full flex flex-col justify-start select-none">
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           height: 4px;
@@ -209,26 +237,30 @@ export default function AdminFinanceView() {
         }
       `}</style>
 
-      { }
-      <div className="mb-10 select-none">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-white flex items-center gap-3">
-          <Coins className="w-7 h-7 text-[#be0919]" />
-          <span>Finance Management</span>
+      {/* Breadcrumb & Greeting Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 text-xs font-normal text-neutral-400 mb-4">
+          <span className="hover:text-white cursor-pointer transition-colors">Home</span>
+          <span>/</span>
+          <span className="text-[#be0919] font-medium">Dashboard</span>
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-white">
+          Good Morning, <span className="text-[#be0919]">{adminName}</span>
         </h1>
-        <p className="text-sm sm:text-base text-neutral-400 font-normal mt-3 leading-relaxed">
-          Monitor company payroll statistics, update employee bank credentials, and process salary transfers, bonuses, or deductions.
+        <p className="text-xs sm:text-sm text-neutral-400 font-light mt-1">
+          {dateFormattedString}
         </p>
       </div>
 
-      { }
       {error && (
-        <div className="bg-[#be0919]/10 border border-[#be0919]/30 text-[#ff4d5a] text-sm py-4 px-6 rounded-xl mb-6 text-center font-normal">
+        <div className="bg-[#be0919]/10 border border-[#be0919]/30 text-[#ff4d5a] text-sm py-3.5 px-6 rounded-xl mb-6 text-center font-normal">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm py-4 px-6 rounded-xl mb-6 text-center font-normal">
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm py-3.5 px-6 rounded-xl mb-6 text-center font-normal">
           {success}
         </div>
       )}
@@ -239,9 +271,21 @@ export default function AdminFinanceView() {
         </div>
       ) : (
         <>
+          {/* Top 4 Stat Cards */}
           <AdminFinanceStats stats={stats} />
 
-          <AdminEmployeeTable
+          {/* Analytics Line Chart & Performance Alerts */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8 items-stretch">
+            <div className="lg:col-span-3">
+              <AdminMonthlyPayrollChart monthlyData={monthlyAnalytics} />
+            </div>
+            <div className="lg:col-span-2">
+              <AdminPerformanceAlerts alerts={performanceAlerts} />
+            </div>
+          </div>
+
+          {/* Employee Performance Overview Table */}
+          <AdminEmployeePerformanceTable
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             filteredEmployees={filteredEmployees}
@@ -250,6 +294,7 @@ export default function AdminFinanceView() {
         </>
       )}
 
+      {/* Admin Manage Employee Modal */}
       {isManagingTx && selectedEmp && (
         <AdminManageFinancesModal
           selectedEmp={selectedEmp}
@@ -260,6 +305,7 @@ export default function AdminFinanceView() {
           empTransactions={empTransactions}
           handleAddTransaction={handleAddTransaction}
           handleDeleteTransaction={handleDeleteTransaction}
+          handleUpdateTransactionStatus={handleUpdateTransactionStatus}
           handleSavePaymentSettings={handleSavePaymentSettings}
           onClose={() => setIsManagingTx(false)}
         />
@@ -267,3 +313,5 @@ export default function AdminFinanceView() {
     </div>
   );
 }
+
+

@@ -108,33 +108,49 @@ export default function EmployeeClockInView({
           </div>
 
           {attendance && !attendance.clockOut && (
-            <div className="flex gap-4 w-full max-w-[280px] mb-8 animate-fadeIn">
+            <div className="flex gap-4 w-full max-w-[340px] mb-8 animate-fadeIn">
               {stats.status.toLowerCase() === 'on break' ? (
                 <button
                   onClick={() => onBreakAction('end')}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                 >
                   <Coffee className="w-4 h-4" />
                   <span>End Break</span>
                 </button>
-              ) : isWithinBreakTime() ? (
+              ) : (
                 <button
                   onClick={() => onBreakAction('start')}
-                  className="w-full py-3 bg-[#be0919] hover:bg-[#990714] text-white rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="w-full py-3 bg-[#be0919] hover:bg-[#990714] text-white rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                 >
                   <Coffee className="w-4 h-4" />
                   <span>Take Break</span>
                 </button>
-              ) : null}
+              )}
             </div>
           )}
 
           <div className="w-full max-w-[340px] bg-black border border-white/20 rounded-xl p-6 flex flex-col items-center">
 
+            {showDescriptionInput && (
+              <div className="w-full mb-6 bg-[#0c0c0c] border border-red-500/40 rounded-lg p-3.5 flex flex-col gap-2 animate-fadeIn">
+                <div className="flex items-center gap-2 select-none">
+                  <FileText className="w-4 h-4 text-red-500" />
+                  <h3 className="text-xs font-bold text-white tracking-wide">Daily Task Summary</h3>
+                </div>
+                <textarea
+                  disabled={!!attendance?.clockOut}
+                  value={todayDescription}
+                  onChange={(e) => setTodayDescription(e.target.value)}
+                  placeholder="Type a brief summary of tasks completed today..."
+                  className="w-full min-h-[80px] bg-[#16181C] border border-white/10 rounded-md p-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-red-500 resize-none leading-relaxed"
+                />
+              </div>
+            )}
+
             <div className="w-full flex justify-between items-start mb-5 select-none">
               <div>
                 <h3 className="text-sm font-bold text-white tracking-wide">Enter 4-Digit PIN</h3>
-                <p className="text-xs text-neutral-400 font-light mt-1">Use your PIN to clock in</p>
+                <p className="text-xs text-neutral-400 font-light mt-1">Use your PIN to clock in / out</p>
               </div>
               <button
                 onClick={onForgotPinClick}
@@ -143,6 +159,7 @@ export default function EmployeeClockInView({
                 Forgot PIN?
               </button>
             </div>
+
 
             <div className="flex gap-5 mb-6">
               {[0, 1, 2, 3].map((idx) => (
@@ -292,22 +309,7 @@ export default function EmployeeClockInView({
 
       </div>
 
-      {showDescriptionInput && (
-        <div className="w-full bg-[#0c0c0c] border border-white/8 rounded-xl p-6 mt-8 animate-fadeIn flex flex-col gap-4">
-          <div className="flex items-center gap-2 select-none">
-            <FileText className="w-5 h-5 text-white" />
-            <h3 className="text-base font-bold text-white tracking-wide">Description</h3>
-          </div>
-          <textarea
-            disabled={!!attendance?.clockOut}
-            value={todayDescription}
-            onChange={(e) => setTodayDescription(e.target.value)}
-            placeholder="Describe here what task you have completed today..."
-            className="w-full min-h-[120px] bg-transparent border-none text-sm text-white/75 placeholder-white/60 focus:outline-none resize-none font-light leading-relaxed"
-          />
-        </div>
-      )}
-
     </div>
   );
 }
+

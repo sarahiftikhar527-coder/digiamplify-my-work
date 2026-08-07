@@ -7,6 +7,9 @@ import EmployeeEarningsOverviewChart from './EmployeeEarningsOverviewChart';
 import EmployeeVisaCard from './EmployeeVisaCard';
 import EmployeeTransactionsTable from './EmployeeTransactionsTable';
 import EmployeeBonusOverviewChart from './EmployeeBonusOverviewChart';
+import AddCardModal from './AddCardModal';
+import WithdrawModal from './WithdrawModal';
+import RequestTransactionModal from './RequestTransactionModal';
 
 interface TransactionRecord {
   id: string;
@@ -56,7 +59,13 @@ export default function EmployeeFinanceView() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showCardNumber, setShowCardNumber] = useState(false);
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // Modal triggers
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+
+  const months = ['Jan 26', 'Feb 26', 'Mar 26', 'Apr 26', 'May 26', 'Jun 26', 'Jul 26', 'Aug 26', 'Sep 26', 'Oct 26', 'Nov 26', 'Dec 26'];
+
 
   const fetchData = async () => {
     try {
@@ -149,17 +158,18 @@ export default function EmployeeFinanceView() {
   });
 
   const formatCardNum = (num: string) => {
-    const clean = num.replace(/\s+/g, '');
-    if (clean.length < 4) return '**** ' + clean;
-    const last4 = clean.slice(-4);
-    return `**** **** **** ${last4}`;
+    const clean = (num || '').replace(/[^0-9]/g, '');
+    if (!clean) return '4532 8910 2345 9876';
+    const padded = clean.length >= 16 ? clean.slice(-16) : clean.padStart(16, '4');
+    return padded.replace(/(\d{4})/g, '$1 ').trim();
   };
 
   const formattedCardNumber = formatCardNum(bankInfo.accountNumber);
 
+
+
   return (
     <div className="w-full flex flex-col justify-start">
-      {}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           height: 4px;
@@ -177,7 +187,6 @@ export default function EmployeeFinanceView() {
         }
       `}</style>
 
-      {}
       <div className="mb-10 select-none">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-white flex items-center gap-3">
           <Coins className="w-7 h-7 text-[#be0919]" />
@@ -208,6 +217,9 @@ export default function EmployeeFinanceView() {
           showCardNumber={showCardNumber}
           setShowCardNumber={setShowCardNumber}
           formattedCardNumber={formattedCardNumber}
+          onOpenAddCardModal={() => setShowAddCardModal(true)}
+          onOpenWithdrawModal={() => setShowWithdrawModal(true)}
+          onOpenRequestModal={() => setShowRequestModal(true)}
         />
       </div>
 
@@ -229,6 +241,25 @@ export default function EmployeeFinanceView() {
           months={months}
         />
       </div>
+
+      {showAddCardModal && (
+        <AddCardModal
+          currentBankName={bankInfo.bankName}
+          currentHolderName={bankInfo.accountHolderName}
+          currentAccountNumber={bankInfo.accountNumber}
+          onClose={() => setShowAddCardModal(false)}
+          onSuccess={fetchData}
+        />
+      )}
+
+      {showRequestModal && (
+        <RequestTransactionModal
+          onClose={() => setShowRequestModal(false)}
+          onSuccess={fetchData}
+        />
+      )}
+
     </div>
   );
 }
+

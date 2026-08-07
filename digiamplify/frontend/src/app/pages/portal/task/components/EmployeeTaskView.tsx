@@ -5,7 +5,9 @@ import TaskTable from './employee/TaskTable';
 import TaskAnalytics from './employee/TaskAnalytics';
 import TaskActivityLog from './employee/TaskActivityLog';
 import PriorityBreakdown from './employee/PriorityBreakdown';
+import ShiftAssignedCard from './employee/ShiftAssignedCard';
 import UpdateTaskModal from './employee/UpdateTaskModal';
+
 import CreateTaskModal from './CreateTaskModal';
 interface TaskGroup {
   taskGroupId: string | null;
@@ -348,15 +350,17 @@ export default function EmployeeTaskView() {
             </div>
           </div>
 
-          {/* Secondary Grid: Recently Updated Tasks & Priority Breakdown */}
+          {/* Secondary Grid: Recently Updated Tasks, Priority Breakdown & Shift Assigned */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6">
               <TaskActivityLog activities={activities} />
-            </div>
-            <div className="lg:col-span-5">
               <PriorityBreakdown tasks={tasks.filter(t => t.assignedToId === currentUser?.id)} />
             </div>
+            <div className="lg:col-span-5">
+              <ShiftAssignedCard />
+            </div>
           </div>
+
         </>
       ) : activeTab === 'assigned' ? (
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 relative">
