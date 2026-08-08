@@ -97,7 +97,7 @@ export default function AboutPage() {
             
             <div className="absolute inset-0 w-full h-full rounded-sm overflow-hidden">
               <Image 
-                src="/assets/curled-black-chart.jpg" 
+                src="/assets/about/curled-black-chart.jpg" 
                 alt="Curled dark paper geometry" 
                 fill 
                 className="object-cover object-center" 
@@ -127,7 +127,7 @@ export default function AboutPage() {
             <div className="border border-[#222] bg-[#050505] rounded-2xl p-4 lg:p-6 flex-grow flex items-center justify-center">
               <div className="relative w-full h-full min-h-[350px] rounded-xl overflow-hidden">
                 <Image 
-                  src="/assets/team-collaboration.jpg" 
+                  src="/assets/about/team-collaboration.jpg" 
                   alt="Team collaborating" 
                   fill 
                   className="object-cover" 
@@ -137,10 +137,10 @@ export default function AboutPage() {
             
             <div className="border border-[#222] bg-[#050505] rounded-2xl p-5 flex items-center gap-4 shrink-0">
               <div className="flex -space-x-3 shrink-0">
-                 <div className="w-10 h-10 rounded-full bg-gray-600 border-1 border-white relative z-10 overflow-hidden"><Image src="/assets/person-1.jpg" alt="user1" fill className="object-cover"/></div>
-                 <div className="w-10 h-10 rounded-full bg-gray-500 border-2 border-white relative z-20 overflow-hidden"><Image src="/assets/person-2.jpg" alt="user2" fill className="object-cover"/></div>
-                 <div className="w-10 h-10 rounded-full bg-gray-400 border-2 border-white relative z-30 overflow-hidden"><Image src="/assets/person-3.jpg" alt="user3" fill className="object-cover"/></div>
-                 <div className="w-10 h-10 rounded-full bg-gray-300 border-2 border-white relative z-40 overflow-hidden"><Image src="/assets/person-4.jpg" alt="user4" fill className="object-cover"/></div>
+                 <div className="w-10 h-10 rounded-full bg-gray-600 border-1 border-white relative z-10 overflow-hidden"><Image src="/assets/about/person-1.jpg" alt="user1" fill className="object-cover"/></div>
+                 <div className="w-10 h-10 rounded-full bg-gray-500 border-2 border-white relative z-20 overflow-hidden"><Image src="/assets/about/person-2.jpg" alt="user2" fill className="object-cover"/></div>
+                 <div className="w-10 h-10 rounded-full bg-gray-400 border-2 border-white relative z-30 overflow-hidden"><Image src="/assets/about/person-3.jpg" alt="user3" fill className="object-cover"/></div>
+                 <div className="w-10 h-10 rounded-full bg-gray-300 border-2 border-white relative z-40 overflow-hidden"><Image src="/assets/about/person-4.jpg" alt="user4" fill className="object-cover"/></div>
               </div>
               <p className="text-[13px] text-[#FFFFFF] leading-relaxed pr-2">
                 Yours crafting premium digital system for ambitious founders and enterprise teams.
@@ -324,27 +324,27 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 auto-rows-[180px] lg:auto-rows-[160px]">
               
               <div className="md:col-span-2 md:row-span-2 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-1.jpg" alt="Red keyboard" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
+                <Image src="/assets/about/collage-1.jpg" alt="Red keyboard" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-2.jpg" alt="Code screen" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
+                <Image src="/assets/about/collage-2.jpg" alt="Code screen" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-3.jpg" alt="Abstract red room" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
+                <Image src="/assets/about/collage-3.jpg" alt="Abstract red room" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-4.jpg" alt="3D shapes" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
+                <Image src="/assets/about/collage-4.jpg" alt="3D shapes" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-5.jpg" alt="Red light grid" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
+                <Image src="/assets/about/collage-5.jpg" alt="Red light grid" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
               <div className="md:col-span-1 md:row-span-1 relative rounded-2xl overflow-hidden border border-[#222]">
-                <Image src="/assets/collage-6.jpg" alt="AI Brain" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
+                <Image src="/assets/about/collage-6.jpg" alt="AI Brain" fill className="object-cover transition-transform duration-500 ease-out hover:scale-110" />
               </div>
               
             </div>
@@ -356,10 +356,10 @@ export default function AboutPage() {
         <section className="mb-32 relative flex flex-col items-center">
           
           <div className="absolute left-[-160px] lg:left-[-150px] bottom-[-120px] hidden lg:block opacity-90 z-0 pointer-events-none">
-            <Image src="/assets/photoroom.png" alt="3D dark crystal left" width={380} height={380} className="object-contain" />
+            <Image src="/assets/about/photoroom.png" alt="3D dark crystal left" width={380} height={380} className="object-contain" />
           </div>
           <div className="absolute right-[-100px] lg:right-[-140px] top-[-120px] hidden lg:block opacity-90 z-0 pointer-events-none">
-            <Image src="/assets/photoroom.png" alt="3D dark crystal right" width={380} height={380} className="object-contain" />
+            <Image src="/assets/about/photoroom.png" alt="3D dark crystal right" width={380} height={380} className="object-contain" />
           </div>
 
           <div className="relative z-10 flex flex-col items-center w-full">

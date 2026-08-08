@@ -22,7 +22,7 @@ export default function ContactPage() {
             <div className="flex flex-col sm:flex-row gap-8 items-center sm:items-start">
               <div className="shrink-0">
                 <Image 
-                  src="/assets/cube.png" 
+                  src="/assets/contact/cube.png" 
                   alt="3D Glowing Cube" 
                   width={200} 
                   height={200}
@@ -39,7 +39,7 @@ export default function ContactPage() {
             <div className="relative w-full max-w-[420px] aspect-[4/5]">
               <div className="absolute bottom-0 right-0 w-[82%] h-[82%] border-[4px] border-white bg-[#181818] z-0 shadow-2xl">
                 <Image 
-                  src="/assets/office-meeting.jpg" 
+                  src="/assets/contact/office-meeting.jpg" 
                   alt="Team meeting" 
                   fill 
                   className="object-cover object-center transition-transform duration-500 ease-out hover:scale-110" 
@@ -47,7 +47,7 @@ export default function ContactPage() {
               </div>
               <div className="absolute -top-12 left-0 w-[42%] h-[38%] border-[4px] border-white z-10 bg-[#222] shadow-2xl">
                 <Image 
-                  src="/assets/agent-photo.jpg" 
+                  src="/assets/contact/agent-photo.jpg" 
                   alt="Support agent" 
                   fill 
                   className="object-cover object-center transition-transform duration-500 ease-out hover:scale-110" 
@@ -59,7 +59,7 @@ export default function ContactPage() {
 
         {}
         <div className="w-full">
-          <ContactForm />
+          <ContactForm imageSrc="/assets/contact/silver-sphere.png" />
         </div>
 
         {}

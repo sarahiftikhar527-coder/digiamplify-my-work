@@ -91,7 +91,7 @@ export default function LoginPage() {
 
         <div className="relative z-20 flex flex-col items-center mt-6">
           <Image
-            src="/assets/logo.png"
+            src="/assets/home/logo.png"
             alt="DigiAmplify Logo"
             width={240}
             height={54}

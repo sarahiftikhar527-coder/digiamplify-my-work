@@ -81,7 +81,7 @@ const caseStudies = [
       { value: "6.2%", label: "Reduction" },
       { value: "8 mo", label: "Time to Result" }
     ],
-    image: "/assets/services-case-1.jpg"
+    image: "/assets/services/services-case-1.jpg"
   },
   {
     title: "Nexus Cloud ERP",
@@ -93,7 +93,7 @@ const caseStudies = [
       { value: "3.5x", label: "Engagement" },
       { value: "6 mo", label: "Time to Launch" }
     ],
-    image: "/assets/services-case-2.jpg"
+    image: "/assets/services/services-case-2.jpg"
   }
 ];
 
@@ -145,7 +145,7 @@ export default function ServicesPage() {
             }}
           >
             <Image
-              src="/assets/services-hero.jpg"
+              src="/assets/services/services-hero.jpg"
               alt="Team joining hands"
               fill
               className="object-cover grayscale"
@@ -233,7 +233,7 @@ export default function ServicesPage() {
             <div className="w-full lg:w-[40%] flex justify-center lg:justify-end">
               <div className="relative w-[100px] h-[100px] sm:w-[250px] sm:h-[250px]">
                 <Image
-                  src="/assets/abstract-sphere.png"
+                  src="/assets/services/abstract-sphere.png"
                   alt="Abstract 3D Shape"
                   fill
                   className="object-contain transition-transform duration-500 ease-out hover:scale-140"

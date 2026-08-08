@@ -22,13 +22,22 @@ export default function Navbar() {
     setIsMenuOpen(false);
   };
 
+  let pageFolder = 'home';
+  if (pathname?.includes('/about')) pageFolder = 'about';
+  else if (pathname?.includes('/services')) pageFolder = 'services';
+  else if (pathname?.includes('/projects')) pageFolder = 'projects';
+  else if (pathname?.includes('/blog')) pageFolder = 'blog';
+  else if (pathname?.includes('/contact')) pageFolder = 'contact';
+
+  const logoSrc = `/assets/${pageFolder}/logo.png`;
+
   return (
     <div className="w-full flex justify-center pt-8 px-8 max-[480px]:pt-6 max-[480px]:px-4 z-[9999] relative">
       <nav className="flex justify-between items-center w-full max-w-[1200px] bg-[#383838] py-2 pr-2 pl-8 max-[968px]:py-[0.8rem] max-[968px]:px-6 rounded-[50px] shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
 
         <Link href="/" className="flex items-center">
           <Image
-            src="/assets/logo.png"
+            src={logoSrc}
             alt="DigiAmplify Logo"
             width={160}
             height={36}

@@ -8,19 +8,19 @@ import ContactForm from '@/components/ContactForm/ContactForm';
 import { ArrowRight, Check, Share2, RotateCw, Settings, Rocket, Star, CheckCircle, Play, ArrowLeft, Plus, Minus } from 'lucide-react';
 
 const heroStats = [
-    { label: "Reach", value: "10K+", image: "/assets/reach-chart.png" },
-    { label: "Projects", value: "500+", image: "/assets/projects-chart.png" },
-    { label: "Clients", value: "120+", image: "/assets/clients-chart.png" },
-    { label: "Satisfaction", value: "99%", image: "/assets/satisfaction-chart.png" },
+    { label: "Reach", value: "10K+", image: "/assets/home/reach-chart.png" },
+    { label: "Projects", value: "500+", image: "/assets/home/projects-chart.png" },
+    { label: "Clients", value: "120+", image: "/assets/home/clients-chart.png" },
+    { label: "Satisfaction", value: "99%", image: "/assets/home/satisfaction-chart.png" },
 ];
 
 const galleryImages = [
-    { src: "/assets/home-gallery-pc.jpg", alt: "PC Hardware", span: "md:col-span-5" },
-    { src: "/assets/home-gallery-abstract.jpg", alt: "Red Abstract Light", span: "md:col-span-4" },
-    { src: "/assets/home-gallery-code.jpg", alt: "Code Editor", span: "md:col-span-3" },
-    { src: "/assets/home-gallery-maze.jpg", alt: "Red Maze Pattern", span: "md:col-span-3" },
-    { src: "/assets/home-gallery-keyboard.jpg", alt: "Custom Keyboard", span: "md:col-span-4" },
-    { src: "/assets/home-gallery-dark.jpg", alt: "Dark Aesthetic", span: "md:col-span-5" },
+    { src: "/assets/home/home-gallery-pc.jpg", alt: "PC Hardware", span: "md:col-span-5" },
+    { src: "/assets/home/home-gallery-abstract.jpg", alt: "Red Abstract Light", span: "md:col-span-4" },
+    { src: "/assets/home/home-gallery-code.jpg", alt: "Code Editor", span: "md:col-span-3" },
+    { src: "/assets/home/home-gallery-maze.jpg", alt: "Red Maze Pattern", span: "md:col-span-3" },
+    { src: "/assets/home/home-gallery-keyboard.jpg", alt: "Custom Keyboard", span: "md:col-span-4" },
+    { src: "/assets/home/home-gallery-dark.jpg", alt: "Dark Aesthetic", span: "md:col-span-5" },
 ];
 
 const expertiseList = [
@@ -239,13 +239,13 @@ export default function HomePage() {
 
                         <div className="lg:col-span-5 relative h-[500px] lg:h-[650px] flex items-center justify-center">
                             <div className="relative w-[450px] h-[450px] lg:w-[550px] lg:h-[550px] z-10">
-                                <Image src="/assets/home-hero-red-gear.png" alt="3D Red Gear" fill className="object-contain" priority />
+                                <Image src="/assets/home/home-hero-red-gear.png" alt="3D Red Gear" fill className="object-contain" priority />
                             </div>
                             <div className="absolute top-[10%] left-0 w-[150px] h-[150px] z-20 animate-[bounce_4s_infinite_ease-in-out]">
-                                <Image src="/assets/home-hero-silver-c.png" alt="Silver Shape" fill className="object-contain" />
+                                <Image src="/assets/home/home-hero-silver-c.png" alt="Silver Shape" fill className="object-contain" />
                             </div>
                             <div className="absolute bottom-[5%] right-[-5%] w-[120px] h-[120px] z-20 animate-[bounce_5s_infinite_ease-in-out_reverse]">
-                                <Image src="/assets/home-hero-cube.png" alt="Silver Cube" fill className="object-contain" />
+                                <Image src="/assets/home/home-hero-cube.png" alt="Silver Cube" fill className="object-contain" />
                             </div>
                         </div>
                     </div>
@@ -291,7 +291,7 @@ export default function HomePage() {
 
                         <div className="lg:col-span-3 relative min-h-[300px] lg:min-h-full rounded-3xl overflow-hidden border border-white/20">
                             <Image
-                                src="/assets/home-pc-setup.jpg"
+                                src="/assets/home/home-pc-setup.jpg"
                                 alt="Workspace Setup"
                                 fill
                                 className="object-cover opacity-80"
@@ -412,7 +412,7 @@ export default function HomePage() {
                         <div className="w-full lg:w-1/3 flex justify-center lg:justify-end">
                             <div className="relative w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] lg:w-[250px] lg:h-[250px]">
                                 <Image
-                                    src="/assets/silver-ring.png"
+                                    src="/assets/home/silver-ring.png"
                                     alt="3D Silver Ring"
                                     fill
                                     className="object-contain hover:scale-105 transition-transform duration-700 animate-[spin_30s_linear_infinite] -rotate-[25deg]"
@@ -674,7 +674,7 @@ export default function HomePage() {
                         <div className="lg:col-span-4 flex justify-center lg:justify-start lg:pl-10">
                             <div className="relative w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] lg:w-[280px] lg:h-[280px]">
                                 <Image
-                                    src="/assets/home-silver-fan.png"
+                                    src="/assets/home/home-silver-fan.png"
                                     alt="3D Silver Fan"
                                     fill
                                     className="object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.05)] transition-transform duration-500 ease-out hover:scale-110"
@@ -688,7 +688,7 @@ export default function HomePage() {
 
                         <div className="lg:col-span-7 relative w-full min-h-[400px] lg:min-h-[400px] rounded-[32px] overflow-hidden border border-[#ffffff]/30">
                             <Image
-                                src="/assets/home-red-setup.png"
+                                src="/assets/home/home-red-setup.png"
                                 alt="Flagship Project Showcase"
                                 fill
                                 className="object-cover"
@@ -869,7 +869,7 @@ export default function HomePage() {
                         <div className="relative w-full max-w-[600px] min-h-[400px] aspect-video rounded-none overflow-hidden border border-[#1f1f1f] shadow-2xl">
 
                             <img
-                                src="/assets/home-young-man.jpg"
+                                src="/assets/home/home-young-man.jpg"
                                 alt="Client Testimonial"
                                 className="w-full h-full object-cover"
                             />
@@ -913,7 +913,7 @@ export default function HomePage() {
                         <div>
                             <div className="flex items-center gap-3 mb-8">
                                 <img
-                                    src="/assets/home-faq.png"
+                                    src="/assets/home/home-faq.png"
                                     alt="FAQ Icon"
                                     className="w-12 h-12 object-contain"
                                 />
@@ -1000,7 +1000,7 @@ export default function HomePage() {
 
 
             {}
-            <ContactForm />
+            <ContactForm imageSrc="/assets/home/silver-sphere.png" />
 
             {}
             <div className="max-w-[1350px] mx-auto px-6 lg:px-12 w-full pt-12 pb-8 border-t border-[#1a1a1a]">

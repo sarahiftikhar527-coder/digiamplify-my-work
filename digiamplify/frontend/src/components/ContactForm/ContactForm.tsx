@@ -4,7 +4,11 @@ import Image from 'next/image';
 import Title from '@/components/ui/Title';
 import Button from '@/components/ui/Button';
 
-export default function ContactForm() {
+interface ContactFormProps {
+  imageSrc?: string;
+}
+
+export default function ContactForm({ imageSrc = "/assets/contact/silver-sphere.png" }: ContactFormProps) {
   return (
     <div className="bg-[#0d0d0d] border border-[#1f1f1f] rounded-[24px] p-4 lg:p-8 flex flex-col lg:flex-row gap-8 w-full mt-10">
       
@@ -37,7 +41,7 @@ export default function ContactForm() {
           </div>
           <div className="shrink-0 hidden sm:block">
             <Image 
-              src="/assets/silver-sphere.png" 
+              src={imageSrc} 
               alt="3D Silver Sphere" 
               width={140} 
               height={140} 

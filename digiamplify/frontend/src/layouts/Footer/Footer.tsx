@@ -10,6 +10,15 @@ export default function Footer() {
   if (pathname === '/login' || pathname === '/pages/login' || pathname === '/signup' || pathname === '/pages/signup' || pathname?.includes('/portal') || pathname?.includes('/admin')) {
     return null;
   }
+  let pageFolder = 'home';
+  if (pathname?.includes('/about')) pageFolder = 'about';
+  else if (pathname?.includes('/services')) pageFolder = 'services';
+  else if (pathname?.includes('/projects')) pageFolder = 'projects';
+  else if (pathname?.includes('/blog')) pageFolder = 'blog';
+  else if (pathname?.includes('/contact')) pageFolder = 'contact';
+
+  const logoSrc = `/assets/${pageFolder}/logo.png`;
+
   return (
     <footer className="bg-black border-t border-[#1f1f1f] pt-20 pb-24 px-8 relative overflow-hidden after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-[100%] lg:after:w-[80%] after:h-[150px] after:bg-[radial-gradient(ellipse_at_bottom,rgba(190,9,25,0.18)_0%,rgba(0,0,0,0)_70%)] after:pointer-events-none after:z-0">
       <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_2.5fr] gap-14 lg:gap-8 relative z-10">
@@ -17,7 +26,7 @@ export default function Footer() {
         <div className="flex flex-col gap-4 items-start max-lg:items-center max-lg:text-center">
           <Link href="/" className="flex items-center mb-2">
             <Image 
-              src="/assets/logo.png" 
+              src={logoSrc} 
               alt="DigiAmplify Logo" 
               width={160} 
               height={36} 

@@ -364,7 +364,7 @@ export default function Sidebar() {
         <div className="flex flex-col flex-1 relative z-10 items-center">
           <Link href="/" className="mb-10 block transition-transform hover:scale-102">
             <Image
-              src="/assets/logo.png"
+              src="/assets/home/logo.png"
               alt="DigiAmplify Logo"
               width={160}
               height={36}
