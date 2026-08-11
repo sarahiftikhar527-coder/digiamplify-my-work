@@ -251,6 +251,18 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
+    const isAlreadyFinished = task.status.toUpperCase() === 'COMPLETED' || task.status.toUpperCase() === 'FINISHED';
+    if (isAlreadyFinished) {
+      if (status !== undefined && status.toUpperCase() !== 'COMPLETED' && status.toUpperCase() !== 'FINISHED') {
+        res.status(400).json({ error: 'A completed/finished task status cannot be changed to any other status.' });
+        return;
+      }
+      if (progress !== undefined && parseInt(progress, 10) !== 100) {
+        res.status(400).json({ error: 'Progress of a completed/finished task cannot be changed.' });
+        return;
+      }
+    }
+
     const updateData: any = {};
     let logDescription = '';
 
@@ -333,7 +345,11 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
     });
   } catch (error: any) {
     console.error('Update task status error:', error);
-    res.status(500).json({ error: 'Internal server error updating task status' });
+    res.status(500).json({ 
+      error: 'Internal server error updating task status',
+      details: error.message,
+      stack: error.stack 
+    });
   }
 };
 

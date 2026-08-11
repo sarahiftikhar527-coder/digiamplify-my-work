@@ -63,6 +63,28 @@ export default function EmployeeClockInView({
     }
   };
 
+  const checkIsShiftEnded = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+    if (isNightShift) {
+      // Night shift: 06:00 PM (18:00 = 1080 mins) to 12:00 AM (24:00 = 1440 mins).
+      // Shift ends at 12:00 AM (1440).
+      // So if time is between 12:00 AM (0 mins) and 06:00 PM (1080 mins), the shift has ended.
+      return currentTimeInMinutes < 1080;
+    } else {
+      // Day shift: 09:00 AM (09:00 = 540 mins) to 03:00 PM (15:00 = 900 mins).
+      // Shift ends at 03:00 PM (900).
+      // So if time is >= 03:00 PM (900 mins) or < 09:00 AM (540 mins), the shift has ended.
+      return currentTimeInMinutes >= 900 || currentTimeInMinutes < 540;
+    }
+  };
+
+  const isShiftEnded = checkIsShiftEnded();
+  const isClockInBlocked = isShiftEnded && (!attendance || !attendance.clockIn);
+
   return (
     <div className="w-full flex flex-col justify-start">
 
@@ -154,7 +176,8 @@ export default function EmployeeClockInView({
               </div>
               <button
                 onClick={onForgotPinClick}
-                className="text-xs text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer"
+                disabled={isClockInBlocked}
+                className="text-xs text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
               >
                 Forgot PIN?
               </button>
@@ -168,7 +191,7 @@ export default function EmployeeClockInView({
                   className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-lg font-bold transition-all bg-[#050505] ${pin.length > idx
                       ? 'border-red-500 text-white'
                       : 'border-neutral-800 text-transparent'
-                    }`}
+                    } ${isClockInBlocked ? 'opacity-50' : ''}`}
                 >
                   {pin.length > idx ? '●' : ''}
                 </div>
@@ -179,45 +202,45 @@ export default function EmployeeClockInView({
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((val) => (
                 <button
                   key={val}
-                  disabled={!!isFormDisabled}
+                  disabled={!!isFormDisabled || isClockInBlocked}
                   onClick={() => onKeypadPress(val)}
-                  className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50"
+                  className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {val}
                 </button>
               ))}
 
               <button
-                disabled={!!isFormDisabled}
+                disabled={!!isFormDisabled || isClockInBlocked}
                 onClick={onBackspace}
-                className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
+                className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Delete className="w-5 h-5" />
               </button>
 
               <button
-                disabled={!!isFormDisabled}
+                disabled={!!isFormDisabled || isClockInBlocked}
                 onClick={() => onKeypadPress('0')}
-                className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50"
+                className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 0
               </button>
 
               <button
-                disabled={!!isFormDisabled}
+                disabled={!!isFormDisabled || isClockInBlocked}
                 onClick={onClear}
-                className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50"
+                className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 #
               </button>
             </div>
 
             <button
-              disabled={!!isFormDisabled || isLoading}
+              disabled={!!isFormDisabled || isLoading || isClockInBlocked}
               onClick={onClockInAction}
               className="w-full py-3.5 bg-[#be0919] hover:bg-[#990714] disabled:bg-neutral-900 disabled:text-neutral-500 disabled:border-neutral-800 disabled:cursor-not-allowed text-white font-bold rounded-lg text-sm tracking-wide shadow-md transition-all cursor-pointer"
             >
-              {isLoading ? 'Verifying PIN...' : getActionButtonText()}
+              {isLoading ? 'Verifying PIN...' : (isClockInBlocked ? 'Shift Ended' : getActionButtonText())}
             </button>
           </div>
 

@@ -7,12 +7,13 @@ interface TaskStatsCardsProps {
     completed: number;
     ongoing: number;
     overdue: number;
+    todayProgress?: number;
   };
   layout?: 'cards-only' | 'circle-only';
 }
 
 export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
-  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+  const completionRate = stats.todayProgress !== undefined ? stats.todayProgress : (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
 
   // Circle / Gauge geometry
   const radius = 45;
@@ -34,9 +35,9 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
 
   if (layout === 'circle-only') {
     return (
-      <div className="bg-transparent flex flex-col items-center justify-center relative w-44 h-44 shrink-0">
+      <div className="bg-transparent flex flex-col items-center justify-center relative w-48 h-48 shrink-0">
         {/* Dynamic gauge circle */}
-        <div className="relative w-36 h-36 flex items-center justify-center">
+        <div className="relative w-40 h-40 flex items-center justify-center">
           <svg className="w-full h-full" viewBox="0 0 110 110">
             {/* Background Track */}
             <circle
@@ -72,9 +73,9 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
 
           {/* Text inside the ring (adjusted layout to avoid congestion) */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center space-y-1.5">
-            <span className="text-[9px] text-neutral-400 tracking-wider block">Today's Progress</span>
-            <span className="text-[22px] font-normal text-white block leading-none">{completionRate}%</span>
-            <span className="text-[9px] text-neutral-500 font-light block">Task completed</span>
+            <span className="text-[10px] text-neutral-400 tracking-wider block">Today's Progress</span>
+            <span className="text-[26px] font-normal text-white block leading-none">{completionRate}%</span>
+            <span className="text-[10px] text-neutral-500 font-light block">Task completed</span>
           </div>
         </div>
       </div>
@@ -91,7 +92,7 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
         </div>
         <div className="min-w-0 flex-1">
           <span className="text-lg sm:text-xl font-bold text-white tracking-wide block leading-none">{stats.total}</span>
-          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight truncate">Task Assign</span>
+          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight">Task Assign</span>
         </div>
       </div>
 
@@ -102,7 +103,7 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
         </div>
         <div className="min-w-0 flex-1">
           <span className="text-lg sm:text-xl font-bold text-white tracking-wide block leading-none">{stats.completed}</span>
-          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight truncate">Tasks Completed</span>
+          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight">Tasks Completed</span>
         </div>
       </div>
 
@@ -113,7 +114,7 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
         </div>
         <div className="min-w-0 flex-1">
           <span className="text-lg sm:text-xl font-bold text-white tracking-wide block leading-none">{stats.ongoing}</span>
-          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight truncate">In Progress</span>
+          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight">In Progress</span>
         </div>
       </div>
 
@@ -124,7 +125,7 @@ export default function TaskStatsCards({ stats, layout }: TaskStatsCardsProps) {
         </div>
         <div className="min-w-0 flex-1">
           <span className="text-lg sm:text-xl font-bold text-white tracking-wide block leading-none">{stats.overdue}</span>
-          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight truncate">Overdue Tasks</span>
+          <span className="text-[11px] sm:text-xs text-neutral-400 font-light mt-1.5 block leading-tight">Overdue Tasks</span>
         </div>
       </div>
     </div>

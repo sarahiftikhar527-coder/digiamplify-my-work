@@ -248,6 +248,14 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
         )}
 
         <form onSubmit={handleSubmit} className="border-t border-neutral-900 pt-6 space-y-5">
+          {/* Status Lock Notice */}
+          {(task.status.toUpperCase() === 'COMPLETED' || task.status.toUpperCase() === 'FINISHED') && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-light flex items-center gap-2 animate-fadeIn mb-2 select-none">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>This task has been completed/finished and its status is locked.</span>
+            </div>
+          )}
+
           {/* Status selector */}
           <div>
             <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider block mb-2">Update Status</label>
@@ -257,25 +265,29 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
                 { key: 'DELAYED', label: 'Delayed' },
                 { key: 'COMPLETED', label: 'Finished' },
                 { key: 'CANCELLED', label: 'Cancelled' }
-              ].map(opt => (
-                <button
-                  type="button"
-                  key={opt.key}
-                  onClick={() => {
-                    setStatus(opt.key);
-                    if (opt.key === 'COMPLETED') {
-                      setProgress(100);
-                    }
-                  }}
-                  className={`py-2 px-1 text-center text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                    status === opt.key
-                      ? 'bg-[#be0919]/15 border-[#be0919] text-[#ff4d5a]'
-                      : 'bg-[#050505] border-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              ].map(opt => {
+                const isCompletedTask = task.status.toUpperCase() === 'COMPLETED' || task.status.toUpperCase() === 'FINISHED';
+                return (
+                  <button
+                    type="button"
+                    key={opt.key}
+                    onClick={() => {
+                      setStatus(opt.key);
+                      if (opt.key === 'COMPLETED') {
+                        setProgress(100);
+                      }
+                    }}
+                    disabled={isCompletedTask}
+                    className={`py-2 px-1 text-center text-xs font-semibold rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                      status === opt.key
+                        ? 'bg-[#be0919]/15 border-[#be0919] text-[#ff4d5a] disabled:opacity-100 disabled:bg-[#be0919]/15 disabled:border-[#be0919] disabled:text-[#ff4d5a]'
+                        : 'bg-[#050505] border-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -292,7 +304,8 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
                 max="100"
                 value={progress}
                 onChange={(e) => setProgress(Number(e.target.value))}
-                className="w-full h-1.5 bg-neutral-900 rounded-lg appearance-none cursor-pointer accent-[#be0919]"
+                disabled={task.status.toUpperCase() === 'COMPLETED' || task.status.toUpperCase() === 'FINISHED'}
+                className="w-full h-1.5 bg-neutral-900 rounded-lg appearance-none cursor-pointer accent-[#be0919] disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>

@@ -12,7 +12,7 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
   const [activeTab, setActiveTab] = useState<'All' | 'Ongoing' | 'Completed' | 'Overdue'>('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const itemsPerPage = 5;
+  const itemsPerPage = 8;
 
   // Helper: calculate days remaining dynamically
   const getDaysLeft = (dueDateStr: string, status: string) => {
@@ -281,15 +281,24 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
                     {/* Status Select Dropdown */}
                     <td className="py-4 pr-4 w-32" onClick={e => e.stopPropagation()}>
                       <div className="relative inline-block">
-                        <button
-                          onClick={e => toggleDropdown(e, task.id)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-normal transition-all cursor-pointer ${getStatusStyles(
-                            task.status
-                          )}`}
-                        >
-                          <span>{getStatusLabel(task.status)}</span>
-                          <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-                        </button>
+                        {(() => {
+                          const isCompleted = task.status.toUpperCase() === 'COMPLETED' || task.status.toUpperCase() === 'FINISHED';
+                          return (
+                            <button
+                              onClick={e => {
+                                if (isCompleted) return;
+                                toggleDropdown(e, task.id);
+                              }}
+                              disabled={isCompleted}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-normal transition-all ${
+                                isCompleted ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                              } ${getStatusStyles(task.status)}`}
+                            >
+                              <span>{getStatusLabel(task.status)}</span>
+                              {!isCompleted && <ChevronDown className="w-3.5 h-3.5 opacity-80" />}
+                            </button>
+                          );
+                        })()}
 
                         {openDropdownId === task.id && (
                           <div className={`absolute right-0 w-32 bg-[#0c0c0c] border border-neutral-900 rounded-lg shadow-xl z-50 overflow-hidden py-1 animate-fadeIn ${index >= 3 ? 'bottom-full mb-1.5' : 'top-full mt-1.5'

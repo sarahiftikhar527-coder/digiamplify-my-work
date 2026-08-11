@@ -42,13 +42,15 @@ export default function TaskAnalytics({ tasks }: TaskAnalyticsProps) {
   const cancelledPct = getPct(cancelled);
 
   // Today's Stats calculations (specifically for tasks due today)
+  const todayObj = new Date();
+  const yyyy = todayObj.getFullYear();
+  const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(todayObj.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
   const todayTasks = tasks.filter(t => {
     if (!t.dueDate) return false;
-    const d = new Date(t.dueDate);
-    const today = new Date();
-    return d.getFullYear() === today.getFullYear() &&
-      d.getMonth() === today.getMonth() &&
-      d.getDate() === today.getDate();
+    return t.dueDate.substring(0, 10) === todayStr;
   });
   const todayTotal = todayTasks.length;
   const todayCompleted = todayTasks.filter(t => t.status.toUpperCase() === 'COMPLETED' || t.status.toUpperCase() === 'FINISHED').length;
@@ -65,8 +67,8 @@ export default function TaskAnalytics({ tasks }: TaskAnalyticsProps) {
   const delayedOffset = -(((completedPct + ongoingPct) / 100) * circumference);
   const cancelledOffset = -(((completedPct + ongoingPct + delayedPct) / 100) * circumference);
 
-  const overallCompletionRate = tasks.length > 0
-    ? Math.round((tasks.filter(t => t.status.toUpperCase() === 'COMPLETED' || t.status.toUpperCase() === 'FINISHED').length / tasks.length) * 100)
+  const overallCompletionRate = currentTasks.length > 0
+    ? Math.round((currentTasks.filter(t => t.status.toUpperCase() === 'COMPLETED' || t.status.toUpperCase() === 'FINISHED').length / currentTasks.length) * 100)
     : 0;
 
   return (

@@ -78,7 +78,7 @@ export default function ShiftAssignedCard() {
   return (
     <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 shadow-md flex flex-col justify-between select-none">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-base font-semibold text-white tracking-wide">Shift Assigned</h3>
+        <h3 className="text-base font-normal text-white tracking-wide">Shift Assigned</h3>
       </div>
 
       <div className="overflow-x-auto custom-red-scrollbar-h">

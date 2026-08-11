@@ -58,7 +58,8 @@ export default function EmployeeTaskView() {
     total: 0,
     completed: 0,
     ongoing: 0,
-    overdue: 0
+    overdue: 0,
+    todayProgress: 0
   });
 
   const [currentPageRequests, setCurrentPageRequests] = useState(1);
@@ -219,7 +220,23 @@ export default function EmployeeTaskView() {
       return !isFinished && t.dueDate && new Date(t.dueDate) < today;
     }).length;
 
-    setStats({ total, completed, ongoing, overdue });
+    const todayObj = new Date();
+    const yyyy = todayObj.getFullYear();
+    const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(todayObj.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    const todayTasks = myTasks.filter(t => {
+      const isDueToday = t.dueDate && t.dueDate.substring(0, 10) === todayStr;
+      const isCompletedToday = (t.status.toUpperCase() === 'COMPLETED' || t.status.toUpperCase() === 'FINISHED') &&
+                               t.updatedAt && t.updatedAt.substring(0, 10) === todayStr;
+      return isDueToday || isCompletedToday;
+    });
+    const todayTotal = todayTasks.length;
+    const todayCompleted = todayTasks.filter(t => t.status.toUpperCase() === 'COMPLETED' || t.status.toUpperCase() === 'FINISHED').length;
+    const todayProgress = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
+
+    setStats({ total, completed, ongoing, overdue, todayProgress });
   };
 
   const handleUpdateStatus = async (taskId: string, newStatus: string) => {
@@ -284,7 +301,7 @@ export default function EmployeeTaskView() {
         }
       `}</style>
       {/* Title, Stats Cards & Today's Progress in one integrated line */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end mb-10">
         {/* Left Side: Title and the 4 Stats Cards */}
         <div className="lg:col-span-9 flex flex-col justify-between h-full">
           <div className="mb-4">
@@ -335,8 +352,8 @@ export default function EmployeeTaskView() {
 
       {activeTab === 'tasks' ? (
         <>
-          {/* Main Grid: Table & Task Analytics */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Top Row: Task Table (col-span-7) and stacked Right Column (col-span-5) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6">
             <div className="lg:col-span-7">
               <TaskTable
                 tasks={tasks.filter(t => t.assignedToId === currentUser?.id)}
@@ -345,22 +362,22 @@ export default function EmployeeTaskView() {
                 onAddTaskClick={() => setIsCreateModalOpen(true)}
               />
             </div>
-            <div className="lg:col-span-5">
+            {/* Right Column: Task Analytics & Shift Assigned stacked */}
+            <div className="lg:col-span-5 space-y-6">
               <TaskAnalytics tasks={tasks.filter(t => t.assignedToId === currentUser?.id)} />
-            </div>
-          </div>
-
-          {/* Secondary Grid: Recently Updated Tasks, Priority Breakdown & Shift Assigned */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <TaskActivityLog activities={activities} />
-              <PriorityBreakdown tasks={tasks.filter(t => t.assignedToId === currentUser?.id)} />
-            </div>
-            <div className="lg:col-span-5">
               <ShiftAssignedCard />
             </div>
           </div>
 
+          {/* Bottom Row: Activity Log (col-span-7) & Priority Breakdown (col-span-5) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+            <div className="lg:col-span-7">
+              <TaskActivityLog activities={activities} />
+            </div>
+            <div className="lg:col-span-5">
+              <PriorityBreakdown tasks={tasks.filter(t => t.assignedToId === currentUser?.id)} />
+            </div>
+          </div>
         </>
       ) : activeTab === 'assigned' ? (
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 relative">
