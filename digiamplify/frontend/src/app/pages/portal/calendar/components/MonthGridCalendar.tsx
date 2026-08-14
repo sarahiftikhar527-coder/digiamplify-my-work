@@ -139,7 +139,7 @@ export default function MonthGridCalendar({
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#525252]" />
-          <span>Weekend (Sat-Sun)</span>
+          <span>Weekly Off (Sat-Sun)</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
@@ -157,31 +157,39 @@ export default function MonthGridCalendar({
           
           {/* Table Day Headers */}
           <div className="grid grid-cols-7 border-b border-neutral-900 text-center font-bold text-xs uppercase tracking-wider">
-            {daysOfWeek.map((day, idx) => {
-              const isThu = day === 'Thu';
-              const isWeekend = day === 'Sat' || day === 'Sun';
-              return (
-                <div
-                  key={day}
-                  className={`py-3.5 border-r border-neutral-900 last:border-r-0 ${
-                    isThu
-                      ? 'bg-[#be0919] text-white font-extrabold'
-                      : isWeekend
-                      ? 'bg-[#181818] text-neutral-400 font-bold'
-                      : 'text-neutral-300 bg-[#050505]/60'
-                  }`}
-                >
-                  {day}
-                </div>
-              );
-            })}
+            {(() => {
+              const today = new Date();
+              const todayYear = today.getFullYear();
+              const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+              const isCurrentSystemMonth = selectedMonth === `${todayYear}-${todayMonth}`;
+              let todayColIdx = today.getDay() - 1;
+              if (todayColIdx === -1) todayColIdx = 6;
+
+              return daysOfWeek.map((day, idx) => {
+                const isTodayHeader = isCurrentSystemMonth && idx === todayColIdx;
+                const isWeekend = day === 'Sat' || day === 'Sun';
+                return (
+                  <div
+                    key={day}
+                    className={`py-3.5 border-r border-neutral-900 last:border-r-0 ${
+                      isTodayHeader
+                        ? 'bg-[#be0919] text-white font-extrabold shadow-sm'
+                        : isWeekend
+                        ? 'bg-[#181818] text-neutral-400 font-bold'
+                        : 'text-neutral-300 bg-[#050505]/60'
+                    }`}
+                  >
+                    {day}
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           {/* Month Days Cells Grid */}
           <div className="grid grid-cols-7 auto-rows-fr divide-y divide-neutral-900">
             {gridCells.map((cell, idx) => {
               const cellEvents = cell.dateStr && eventsMap[cell.dateStr] ? eventsMap[cell.dateStr] : [];
-              const isThuColumn = cell.colIndex === 3;
               const isWeekendColumn = cell.colIndex === 5 || cell.colIndex === 6;
               const isHovered = cell.dateStr && hoveredDate === cell.dateStr;
               const isSelected = Boolean(cell.isCurrentMonth && cell.dateStr && cell.dateStr === selectedDate);
@@ -201,8 +209,6 @@ export default function MonthGridCalendar({
                       ? 'bg-[#2b080c] border-[#be0919] z-20 ring-1 ring-[#be0919]' // Red active cell highlight
                       : isHovered && cell.isCurrentMonth
                       ? 'bg-[#220a0f] border-red-500/50 shadow-2xl z-30 ring-1 ring-red-500/40'
-                      : isThuColumn && cell.isCurrentMonth
-                      ? 'bg-[#180709]/80 text-white'
                       : isWeekendColumn && cell.isCurrentMonth
                       ? 'bg-[#141414]/90 text-neutral-300' // Weekend column grey tint
                       : !cell.isCurrentMonth
@@ -210,28 +216,39 @@ export default function MonthGridCalendar({
                       : 'bg-[#0c0c0c] text-white'
                   }`}
                 >
-                  <span
-                    className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold transition-all shrink-0 ${
-                      isSelected
-                        ? 'bg-[#be0919] text-white shadow-md'
-                        : !cell.isCurrentMonth
-                        ? 'text-neutral-600'
-                        : 'text-white'
-                    }`}
-                  >
-                    {cell.dayNum}
-                  </span>
+                  <div className="flex items-center justify-between w-full">
+                    <span
+                      className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold transition-all shrink-0 ${
+                        isSelected
+                          ? 'bg-[#be0919] text-white shadow-md'
+                          : !cell.isCurrentMonth
+                          ? 'text-neutral-600'
+                          : 'text-white'
+                      }`}
+                    >
+                      {cell.dayNum}
+                    </span>
+                    {cell.isCurrentMonth && isWeekendColumn && (
+                      <span className="text-[9px] font-semibold text-neutral-500 uppercase tracking-tighter bg-neutral-900/90 px-1.5 py-0.5 rounded border border-neutral-800/80">
+                        {cell.colIndex === 6 ? 'Sun Off' : 'Off'}
+                      </span>
+                    )}
+                  </div>
 
                   {cell.isCurrentMonth && cellEvents.length > 0 && (
                     <div className="flex flex-col gap-1 w-full overflow-hidden">
                       {cellEvents.slice(0, 2).map((evt, eIdx) => {
+                        const isCompleted = Boolean(evt.isCompleted || evt.status?.toUpperCase() === 'COMPLETED' || evt.color === 'emerald');
                         const isAbsent = evt.color === 'orange' || evt.type === 'Absent';
                         const isHoliday = evt.color === 'blue' || evt.type === 'Holiday';
 
                         let badgeBg = 'bg-[#2a080c] border-[#be0919]/60 text-white';
                         let dotBg = 'bg-[#be0919]';
 
-                        if (isAbsent) {
+                        if (isCompleted) {
+                          badgeBg = 'bg-[#052417] border-emerald-500/50 text-emerald-200';
+                          dotBg = 'bg-emerald-400';
+                        } else if (isAbsent) {
                           badgeBg = 'bg-[#2d1a08] border-amber-600/60 text-white';
                           dotBg = 'bg-amber-500';
                         } else if (isHoliday) {
@@ -244,8 +261,12 @@ export default function MonthGridCalendar({
                             key={eIdx}
                             className={`px-1.5 py-1 rounded-lg border text-[10px] font-semibold flex items-center gap-1.5 leading-tight w-full overflow-hidden shrink-0 ${badgeBg}`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotBg}`} />
-                            <span className="truncate w-full">{evt.title}</span>
+                            {isCompleted ? (
+                              <span className="text-emerald-400 font-extrabold text-[10px] shrink-0">✓</span>
+                            ) : (
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotBg}`} />
+                            )}
+                            <span className={`truncate w-full ${isCompleted ? 'line-through opacity-80' : ''}`}>{evt.title}</span>
                           </div>
                         );
                       })}

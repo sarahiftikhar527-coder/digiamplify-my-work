@@ -87,6 +87,28 @@ export default function PaymentTab({ data, onChange }: PaymentDetailsProps) {
               className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
             />
           </div>
+
+          <div>
+            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Tax Rate (%)</label>
+            <input
+              type="number"
+              value={data.taxRate || ''}
+              onChange={(e) => onChange('taxRate', e.target.value)}
+              placeholder="e.g. 10"
+              className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Tax ID / NTN</label>
+            <input
+              type="text"
+              value={data.taxId || ''}
+              onChange={(e) => onChange('taxId', e.target.value)}
+              placeholder="e.g. TAX-98402"
+              className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
+            />
+          </div>
         </div>
       </div>
 
@@ -98,24 +120,12 @@ export default function PaymentTab({ data, onChange }: PaymentDetailsProps) {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Annual Salary</label>
-            <input
-              type="text"
-              value={data.annualSalary || ''}
-              onChange={(e) => onChange('annualSalary', e.target.value)}
-              placeholder="e.g. $1,23,445"
-              className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
-            />
-          </div>
-
-          <div>
             <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Salary Type</label>
             <select
-              value={data.salaryType || ''}
+              value={data.salaryType || 'Monthly'}
               onChange={(e) => onChange('salaryType', e.target.value)}
               className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
             >
-              <option value="">Select Salary Type</option>
               <option value="Monthly">Monthly</option>
               <option value="Hourly">Hourly</option>
               <option value="Project Based">Project Based</option>
@@ -123,12 +133,52 @@ export default function PaymentTab({ data, onChange }: PaymentDetailsProps) {
           </div>
 
           <div>
-            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Salary</label>
+            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Monthly Base Salary</label>
             <input
               type="text"
               value={data.salary || ''}
-              onChange={(e) => onChange('salary', e.target.value)}
-              placeholder="e.g. $1,234"
+              onChange={(e) => {
+                const val = e.target.value;
+                onChange('salary', val);
+                const numeric = parseFloat(val.replace(/[^0-9.]/g, ''));
+                if (!isNaN(numeric)) {
+                  onChange('annualSalary', `$${(numeric * 12).toLocaleString()}`);
+                }
+              }}
+              placeholder="e.g. $5,000"
+              className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Contracted Monthly Hours</label>
+            <input
+              type="number"
+              value={data.contractedHours || ''}
+              onChange={(e) => onChange('contractedHours', e.target.value)}
+              placeholder="e.g. 160"
+              className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Overtime Hourly Rate ($/hr)</label>
+            <input
+              type="text"
+              value={data.overtimeRate || ''}
+              onChange={(e) => onChange('overtimeRate', e.target.value)}
+              placeholder="e.g. 25.00"
+              className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[12px] text-white/60 mb-1.5 font-normal poppins">Undertime Shortfall Rate ($/hr)</label>
+            <input
+              type="text"
+              value={data.shortfallRate || ''}
+              onChange={(e) => onChange('shortfallRate', e.target.value)}
+              placeholder="e.g. 20.00"
               className="w-full bg-[#141414] border border-neutral-800 rounded-lg py-2.5 px-3.5 text-[14px] text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50 font-normal poppins"
             />
           </div>

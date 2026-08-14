@@ -208,12 +208,8 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
   }
 
   const filteredEmployees = employees.filter(emp => {
-    // Only show approved employees
+    // Only show approved users
     if (emp.status !== 'APPROVED') return false;
-    // Exclude admins
-    if (emp.role?.toLowerCase() === 'admin') return false;
-    // Exclude self (current user)
-    if (currentUserId && emp.id === currentUserId) return false;
 
     const name = emp.profile?.fullName || '';
     const email = emp.email || '';
@@ -249,7 +245,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
               <Edit className="w-5.5 h-5.5 text-[#be0919]" />
               <span>Create New Task</span>
             </h2>
-            <p className="text-xs text-neutral-500 font-light mt-3.5">Add task details and assign to team member.</p>
+            <p className="text-xs text-neutral-500 font-light mt-3.5">Add task details and assign to team members or yourself.</p>
           </div>
           <button
             type="button"
@@ -300,7 +296,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
             <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-3 focus-within:border-[#be0919]/50 transition-all">
               <input
                 type="text"
-                placeholder="Search and select employee(s)..."
+                placeholder="Search and select team member(s) or yourself..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);

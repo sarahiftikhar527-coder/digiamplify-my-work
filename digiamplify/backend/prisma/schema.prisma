@@ -32,7 +32,9 @@ model User {
   chatMessages      Message[]
   groupRequestsCreated GroupRequest[] @relation("GroupRequestsCreated")
   leaveRequests      LeaveRequest[]
+  shiftRequests      ShiftRequest[]
   calendarEvents     CalendarEvent[]
+  notifications      Notification[]
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 }
@@ -51,19 +53,33 @@ model LeaveRequest {
 }
 
 model CalendarEvent {
-  id          String   @id @default(uuid())
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  date        String   // YYYY-MM-DD
-  startTime   String?  // e.g. "09:00 AM"
-  endTime     String?  // e.g. "09:30 AM"
-  eventType   String   // "TASK_VIEW", "ABSENT", "EVENT", "HOLIDAY"
-  location    String?  // e.g. "Meeting Room 1" or "Design Team"
-  attendeesCount Int?  @default(1)
-  description String?  @db.LongText
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(uuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  date           String   // YYYY-MM-DD
+  startTime      String?  // e.g. "09:00 AM"
+  endTime        String?  // e.g. "09:30 AM"
+  eventType      String   // "TASK_VIEW", "ABSENT", "EVENT", "HOLIDAY", "MEETING"
+  meetingLink    String?  // e.g. "https://meet.google.com/abc-defg-hij"
+  location       String?  // Backup location string
+  attendeesCount Int?     @default(1)
+  invitedUsers   String?  @db.LongText // JSON array of invited user IDs or emails
+  description    String?  @db.LongText
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String   @db.LongText
+  type      String   @default("MEETING") // MEETING, TASK, SYSTEM
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 
@@ -119,6 +135,11 @@ model Profile {
   annualSalary     String?
   salaryType       String?
   salary           String?
+  contractedHours  String? // e.g. "160"
+  overtimeRate     String? // e.g. "25.00"
+  shortfallRate    String? // e.g. "20.00"
+  taxRate          String? // e.g. "10" for 10%
+  taxId            String? // e.g. "TAX-98402"
   deductionPerAbsence String?
   paymentDate      String?
 
@@ -221,7 +242,18 @@ model Task {
   completionUrl  String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  subtasks       Subtask[]
   activities     TaskActivity[]
+}
+
+model Subtask {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title       String
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model TaskActivity {
@@ -302,5 +334,19 @@ model GroupRequest {
   status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model ShiftRequest {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetDate     String   // YYYY-MM-DD e.g. "2026-08-18"
+  requestType    String   // TIMING_CHANGE, WEEKDAY_OFF_SUNDAY_WORK
+  requestedShift String   // e.g. "09:00 AM - 05:00 PM" or "Swap Tuesday for Sunday"
+  reason         String   @db.LongText
+  status         String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminNotes     String?  @db.LongText
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 

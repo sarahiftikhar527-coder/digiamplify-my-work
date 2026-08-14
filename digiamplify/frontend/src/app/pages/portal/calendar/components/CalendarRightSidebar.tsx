@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { formatDateStandard } from '@/utils/dateUtils';
 
 interface CalendarRightSidebarProps {
   currentMonthYearStr: string;
@@ -16,6 +17,8 @@ interface CalendarRightSidebarProps {
   leaveRequests: any[];
   onRequestLeaveClick: () => void;
   onViewAbsenteeismClick?: () => void;
+  onAnnounceHolidayClick?: () => void;
+  userRole?: string;
 }
 
 export default function CalendarRightSidebar({
@@ -30,7 +33,9 @@ export default function CalendarRightSidebar({
   absenteeism,
   leaveRequests,
   onRequestLeaveClick,
-  onViewAbsenteeismClick
+  onViewAbsenteeismClick,
+  onAnnounceHolidayClick,
+  userRole
 }: CalendarRightSidebarProps) {
 
   const miniDaysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -145,83 +150,123 @@ export default function CalendarRightSidebar({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#be0919] shrink-0" />
                 <span className="text-neutral-200 font-medium truncate">{t.title}</span>
               </div>
-              <span className="text-[10px] text-neutral-500 font-mono shrink-0">{t.dueDate}</span>
+              <span className="text-[10px] text-neutral-500 font-mono shrink-0">{formatDateStandard(t.dueDate)}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Employee Absenteeism Widget */}
-      <div className="bg-[#0a0a0a] border border-neutral-900 rounded-2xl p-5 shadow-md">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-amber-950/60 border border-amber-800/40 flex items-center justify-center text-amber-500 shrink-0">
-            <span className="w-3 h-3 rounded-full bg-amber-500" />
+      {/* Attendance & Leave Widget (Role-Tailored) */}
+      {userRole === 'Admin' ? (
+        <div className="bg-[#0a0a0a] border border-neutral-900 rounded-2xl p-5 shadow-md">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400 shrink-0 font-extrabold text-xs">
+              96%
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Team Attendance Score</h4>
+              <span className="text-[10px] text-neutral-400 font-light block mt-0.5">
+                {absenteeism.absentCount} total recorded absences / leaves this month across team
+              </span>
+            </div>
           </div>
-          <div>
-            <h4 className="text-xs font-bold text-white">Employee Absenteeism</h4>
-            <span className="text-[10px] text-neutral-400 font-light block mt-0.5">
-              {absenteeism.absentCount} employee absent this month
-            </span>
+
+          <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden mb-2.5">
+            <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.max(70, absenteeism.percentage)}%` }} />
+          </div>
+
+          <div className="flex justify-between items-center text-[10px]">
+            <span className="text-neutral-500 font-medium">Monthly Presence Goal: 95%+</span>
+            <button
+              onClick={onViewAbsenteeismClick}
+              className="text-red-500 font-bold hover:underline bg-transparent cursor-pointer"
+            >
+              View Audit Log →
+            </button>
           </div>
         </div>
+      ) : (
+        <div className="bg-[#0a0a0a] border border-neutral-900 rounded-2xl p-5 shadow-md">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400 shrink-0 font-extrabold text-xs">
+              100%
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">My Attendance & Leave Summary</h4>
+              <span className="text-[10px] text-neutral-400 font-light block mt-0.5">
+                0 unexcused absences recorded this month
+              </span>
+            </div>
+          </div>
 
-        <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden mb-2">
-          <div className="bg-amber-500 h-full rounded-full" style={{ width: `${absenteeism.percentage}%` }} />
+          <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden mb-2.5">
+            <div className="bg-emerald-500 h-full rounded-full w-full" />
+          </div>
+
+          <div className="flex justify-between items-center text-[10px]">
+            <span className="text-neutral-500 font-medium">Remaining Annual Leaves: 14 Days</span>
+            <button
+              onClick={onRequestLeaveClick}
+              className="text-red-500 font-bold hover:underline bg-transparent cursor-pointer"
+            >
+              Apply Leave →
+            </button>
+          </div>
         </div>
+      )}
 
-        <div className="flex justify-end">
-          <button
-            onClick={onViewAbsenteeismClick}
-            className="text-[10px] text-red-500 font-bold hover:underline bg-transparent cursor-pointer"
-          >
-            View Detail
-          </button>
-        </div>
-
-      </div>
-
-      {/* Leave Requests Widget */}
+      {/* Leave Requests & Holiday Widget */}
       <div className="bg-[#0a0a0a] border border-neutral-900 rounded-2xl p-5 shadow-md flex flex-col gap-4">
         <div className="pb-3 border-b border-neutral-900">
-          <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide">Leave Requests</h3>
+          <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide">
+            {userRole === 'Admin' ? 'Company Leaves & Holidays' : 'Leave Requests & Status'}
+          </h3>
         </div>
 
         <div className="flex flex-col gap-3">
-          {leaveRequests.map((l, idx) => {
-            const isApproved = l.status === 'APPROVED';
-            const isUnapproved = l.status === 'UNAPPROVED' || l.status === 'REJECTED';
-            const isPending = l.status === 'PENDING';
+          {leaveRequests.length > 0 ? (
+            leaveRequests.map((l, idx) => {
+              const isApproved = l.status === 'APPROVED';
+              const isUnapproved = l.status === 'UNAPPROVED' || l.status === 'REJECTED';
 
-            let badgeStyle = 'bg-amber-950/60 text-amber-400 border-amber-800/40';
-            if (isApproved) badgeStyle = 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40';
-            if (isUnapproved) badgeStyle = 'bg-red-950/60 text-red-400 border-red-800/40';
+              let badgeStyle = 'bg-amber-950/60 text-amber-400 border-amber-800/40';
+              if (isApproved) badgeStyle = 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40';
+              if (isUnapproved) badgeStyle = 'bg-red-950/60 text-red-400 border-red-800/40';
 
-            return (
-              <div key={idx} className="bg-[#050505] border border-neutral-900 rounded-xl p-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 text-emerald-400 shrink-0">
-                    <CalendarIcon className="w-4 h-4" />
+              return (
+                <div key={idx} className="bg-[#050505] border border-neutral-900 rounded-xl p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 text-emerald-400 shrink-0">
+                      <CalendarIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">{l.type}</span>
+                      <span className="text-[10px] text-neutral-500 font-mono mt-0.5 block">{l.dates}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block">{l.type}</span>
-                    <span className="text-[10px] text-neutral-500 font-mono mt-0.5 block">{l.dates}</span>
-                  </div>
+
+                  <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase tracking-wider ${badgeStyle}`}>
+                    {l.status}
+                  </span>
                 </div>
-
-                <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase tracking-wider ${badgeStyle}`}>
-                  {l.status}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="text-center py-4 text-neutral-500 text-xs font-light">
+              No leave records registered for this period.
+            </div>
+          )}
         </div>
 
-        <button
-          onClick={onRequestLeaveClick}
-          className="w-full py-3 bg-[#be0919] hover:bg-[#990714] text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md mt-2"
-        >
-          Request Leave
-        </button>
+        {userRole !== 'Admin' && (
+          <button
+            onClick={onRequestLeaveClick}
+            className="w-full py-3 bg-[#be0919] hover:bg-[#990714] text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md mt-2 flex items-center justify-center gap-2"
+          >
+            <CalendarIcon className="w-4 h-4" />
+            <span>Request Leave</span>
+          </button>
+        )}
       </div>
 
     </div>

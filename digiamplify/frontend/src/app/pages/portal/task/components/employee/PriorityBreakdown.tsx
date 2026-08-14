@@ -5,15 +5,25 @@ interface PriorityBreakdownProps {
 }
 
 export default function PriorityBreakdown({ tasks }: PriorityBreakdownProps) {
-  const [timeframe, setTimeframe] = useState<'Week' | 'Month' | 'Year'>('Week');
+  const [timeframe, setTimeframe] = useState<'Today' | 'Week' | 'Month' | 'Year'>('Today');
 
   // Filter tasks based on timeframe
   const getFilteredTasks = () => {
     const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return tasks.filter(task => {
-      const taskDate = new Date(task.updatedAt || task.createdAt);
-      const diffTime = now.getTime() - taskDate.getTime();
-      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      const rawDate = task.dueDate || task.updatedAt || task.createdAt;
+      if (!rawDate) return true;
+      const taskDate = new Date(rawDate);
+      if (isNaN(taskDate.getTime())) return true;
+
+      if (timeframe === 'Today') {
+        const taskDateStr = rawDate.substring(0, 10);
+        return taskDateStr === todayStr;
+      }
+
+      const diffMs = Math.abs(now.getTime() - taskDate.getTime());
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
       if (timeframe === 'Week') return diffDays <= 7;
       if (timeframe === 'Month') return diffDays <= 30;
@@ -48,6 +58,7 @@ export default function PriorityBreakdown({ tasks }: PriorityBreakdownProps) {
             onChange={(e) => setTimeframe(e.target.value as any)}
             className="bg-[#050505] border border-neutral-900 text-neutral-300 text-xs font-normal rounded-lg px-2.5 py-1.5 outline-none cursor-pointer hover:border-neutral-700 transition-all"
           >
+            <option value="Today">Today</option>
             <option value="Week">Week</option>
             <option value="Month">Month</option>
             <option value="Year">Year</option>

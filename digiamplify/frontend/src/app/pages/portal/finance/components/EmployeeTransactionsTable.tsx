@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Search, Filter, ArrowUpRight, ArrowDownRight, Download } from 'lucide-react';
+import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, FileText } from 'lucide-react';
+import { formatDateStandard } from '@/utils/dateUtils';
 
 interface Transaction {
   id: string;
@@ -23,6 +24,7 @@ interface EmployeeTransactionsTableProps {
   setShowFilterDropdown: (val: boolean) => void;
   filteredTransactions: Transaction[];
   transactionsCount: number;
+  onViewPayslip?: (tx: Transaction) => void;
 }
 
 export default function EmployeeTransactionsTable({
@@ -33,7 +35,8 @@ export default function EmployeeTransactionsTable({
   showFilterDropdown,
   setShowFilterDropdown,
   filteredTransactions,
-  transactionsCount
+  transactionsCount,
+  onViewPayslip
 }: EmployeeTransactionsTableProps) {
   const handleExportCSV = () => {
     if (filteredTransactions.length === 0) return;
@@ -125,7 +128,7 @@ export default function EmployeeTransactionsTable({
               <th className="pb-4">Date</th>
               <th className="pb-4">Time</th>
               <th className="pb-4">Amount</th>
-              <th className="pb-4 text-right">Status</th>
+              <th className="pb-4 text-right">Receipt / Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-955 text-sm">
@@ -138,11 +141,7 @@ export default function EmployeeTransactionsTable({
             ) : filteredTransactions.length > 0 ? (
               filteredTransactions.map((tx) => {
                 const dateObj = new Date(tx.date);
-                const formattedDate = dateObj.toLocaleDateString(undefined, {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                });
+                const formattedDate = formatDateStandard(tx.date);
                 const formattedTime = dateObj.toLocaleTimeString(undefined, {
                   hour: 'numeric',
                   minute: '2-digit',
@@ -169,8 +168,16 @@ export default function EmployeeTransactionsTable({
                     <td className={`py-4.5 font-semibold text-sm sm:text-[15px] ${isCredit ? 'text-emerald-400' : 'text-red-400'}`}>
                       {isCredit ? '+' : '-'}${tx.amountRaw || tx.amount}
                     </td>
-                    <td className="py-4.5 text-right">
-                      <span className={`px-4 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap capitalize ${
+                    <td className="py-4.5 text-right flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => onViewPayslip && onViewPayslip(tx)}
+                        title="View Printable Payslip Receipt"
+                        className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer border border-neutral-800"
+                      >
+                        <FileText className="w-4 h-4 text-[#be0919]" />
+                      </button>
+
+                      <span className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap capitalize ${
                         tx.status.toLowerCase() === 'successful'
                           ? 'bg-[#051c14] text-[#00e676] border-[#0d472b]'
                           : tx.status.toLowerCase() === 'pending'
@@ -179,7 +186,6 @@ export default function EmployeeTransactionsTable({
                       }`}>
                         {tx.status.charAt(0).toUpperCase() + tx.status.slice(1).toLowerCase()}
                       </span>
-
                     </td>
                   </tr>
                 );

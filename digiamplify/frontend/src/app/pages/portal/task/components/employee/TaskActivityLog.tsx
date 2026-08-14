@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare } from 'lucide-react';
+import { formatRelativeActivityTime } from '@/utils/dateUtils';
 
 interface TaskActivityLogProps {
   activities: any[];
@@ -19,34 +20,7 @@ export default function TaskActivityLog({ activities }: TaskActivityLogProps) {
 
   // Helper: Format dynamic timestamps
   const formatActivityTime = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const activityDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-    const timeStr = date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-
-    if (activityDate.getTime() === today.getTime()) {
-      return `Today, ${timeStr}`;
-    } else if (activityDate.getTime() === yesterday.getTime()) {
-      return `Yesterday, ${timeStr}`;
-    } else {
-      const monthDayStr = date.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'short'
-      });
-      return `${monthDayStr}, ${timeStr}`;
-    }
+    return formatRelativeActivityTime(dateStr);
   };
 
   // Dynamically count how many new activities were added today

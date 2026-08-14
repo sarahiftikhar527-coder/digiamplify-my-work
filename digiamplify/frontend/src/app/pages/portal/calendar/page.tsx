@@ -9,9 +9,23 @@ import RequestLeaveModal from './components/RequestLeaveModal';
 import SetAvailabilityModal from './components/SetAvailabilityModal';
 import AbsenteeismDetailModal from './components/AbsenteeismDetailModal';
 import AllEventsModal from './components/AllEventsModal';
+import AddEventModal from './components/AddEventModal';
+import { formatDateWithDay } from '@/utils/dateUtils';
+import { Plus, Calendar as CalendarIcon, Video } from 'lucide-react';
 
 export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<'Month' | 'Day'>('Month');
+  const [userRole, setUserRole] = useState<string>('');
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+      try {
+        const u = JSON.parse(userJson);
+        setUserRole(u.role || 'Employee');
+      } catch (e) {}
+    }
+  }, []);
 
   // Derive initial month and date dynamically from real system date
   const now = new Date();
@@ -32,6 +46,7 @@ export default function CalendarPage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showAbsenteeismModal, setShowAbsenteeismModal] = useState(false);
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [allEventsModalData, setAllEventsModalData] = useState<{ dateStr: string; events: any[] } | null>(null);
 
 
@@ -140,12 +155,7 @@ export default function CalendarPage() {
   };
 
   const formatFullDateHeader = (dateIso: string) => {
-    const dateObj = new Date(dateIso);
-    const day = dateObj.getDate();
-    const monthName = monthsList[dateObj.getMonth()];
-    const year = dateObj.getFullYear();
-    const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-    return `${day} ${monthName} ${year}, ${weekday}`;
+    return formatDateWithDay(dateIso);
   };
 
   return (
@@ -159,11 +169,42 @@ export default function CalendarPage() {
           <span className="text-xs font-semibold text-[#be0919]">Calendar</span>
         </div>
 
-        <div className="mb-10 select-none">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-white">Calendar</h1>
-          <p className="text-sm text-neutral-400 font-normal mt-2 leading-relaxed">
-            View schedules, tasks and imporatant dates.
-          </p>
+        <div className="mb-8 select-none flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-white">Calendar</h1>
+            <p className="text-sm text-neutral-400 font-normal mt-1 leading-relaxed">
+              View schedules, tasks, and important dates.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            {userRole === 'Admin' ? (
+              <button
+                onClick={() => setShowAddEventModal(true)}
+                className="px-5 py-2.5 bg-[#be0919] hover:bg-[#990714] text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Event / Meeting</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowAddEventModal(true)}
+                  className="px-5 py-2.5 bg-[#be0919] hover:bg-[#990714] text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-2"
+                >
+                  <Video className="w-4 h-4" />
+                  <span>Schedule Meeting</span>
+                </button>
+
+                <button
+                  onClick={() => setShowLeaveModal(true)}
+                  className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer border border-neutral-800 flex items-center gap-2"
+                >
+                  <CalendarIcon className="w-4 h-4 text-[#be0919]" />
+                  <span>Request Leave</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
@@ -217,6 +258,8 @@ export default function CalendarPage() {
                 leaveRequests={monthData?.leaveRequests || []}
                 onRequestLeaveClick={() => setShowLeaveModal(true)}
                 onViewAbsenteeismClick={() => setShowAbsenteeismModal(true)}
+                onAnnounceHolidayClick={() => setShowAddEventModal(true)}
+                userRole={userRole}
               />
             </div>
 
@@ -242,8 +285,9 @@ export default function CalendarPage() {
       {showAbsenteeismModal && (
         <AbsenteeismDetailModal
           onClose={() => setShowAbsenteeismModal(false)}
-          absentCount={monthData?.absenteeism?.absentCount || 3}
+          absentCount={monthData?.absenteeism?.absentCount || 0}
           currentMonthYearStr={currentMonthYearStr}
+          records={monthData?.absenteeism?.records || []}
         />
       )}
 
@@ -262,6 +306,13 @@ export default function CalendarPage() {
       )}
 
 
+
+      {showAddEventModal && (
+        <AddEventModal
+          onClose={() => setShowAddEventModal(false)}
+          onEventCreated={fetchMonthCalendarData}
+        />
+      )}
 
     </div>
   );

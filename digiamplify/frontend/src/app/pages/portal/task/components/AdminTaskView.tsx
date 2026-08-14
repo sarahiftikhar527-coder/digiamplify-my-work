@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle, ChevronLeft, ChevronRight, LinkIcon } from 'lucide-react';
+import { Plus, Search, Trash2, Download, AlertCircle, FileText, ClipboardList, Clock, CheckCircle, ChevronLeft, ChevronRight, LinkIcon, LayoutList, Kanban } from 'lucide-react';
 import CreateTaskModal from './CreateTaskModal';
+import UpdateTaskModal from './employee/UpdateTaskModal';
+import KanbanBoardView from './KanbanBoardView';
+import DocumentPreviewModal from '../../profile/components/DocumentPreviewModal';
 import { downloadCSV } from '@/utils/csvHelper';
+import { formatDateStandard } from '@/utils/dateUtils';
 interface TaskGroup {
   taskGroupId: string | null;
   tasks: any[];
@@ -40,6 +44,20 @@ export default function AdminTaskView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Ongoing' | 'Delayed' | 'Completed' | 'Cancelled' | 'Overdue'>('All');
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    docTitle: string;
+    fileName: string;
+    fileContent: string;
+  }>({
+    isOpen: false,
+    docTitle: '',
+    fileName: '',
+    fileContent: ''
+  });
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'requests'>('tasks');
   const [requests, setRequests] = useState<any[]>([]);
@@ -427,15 +445,44 @@ export default function AdminTaskView() {
       {activeTab === 'tasks' ? (
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6">
           <div className="flex flex-col gap-4 mb-6">
-            <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-3 max-w-md w-full focus-within:border-neutral-700 transition-all shrink-0">
-              <Search className="w-4 h-4 text-neutral-500 mr-2 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search by subject or assignee name"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none outline-none text-white text-xs w-full font-light"
-              />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center bg-[#050505] border border-neutral-900 rounded-lg px-4 py-3 max-w-md w-full focus-within:border-neutral-700 transition-all shrink-0">
+                <Search className="w-4 h-4 text-neutral-500 mr-2 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search by subject or assignee name"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none outline-none text-white text-xs w-full font-light"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 bg-[#050505] p-1 rounded-xl border border-neutral-900 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                    viewMode === 'list'
+                      ? 'bg-[#be0919] text-white shadow-md'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <LayoutList className="w-3.5 h-3.5" />
+                  <span>List View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('kanban')}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                    viewMode === 'kanban'
+                      ? 'bg-[#be0919] text-white shadow-md'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <Kanban className="w-3.5 h-3.5" />
+                  <span>Kanban Board</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center bg-[#050505] p-1 rounded-lg border border-neutral-900 overflow-x-auto custom-red-scrollbar-h w-fit max-w-full">
@@ -455,7 +502,42 @@ export default function AdminTaskView() {
             </div>
           </div>
 
-          {loading ? (
+          {viewMode === 'kanban' ? (
+            <KanbanBoardView
+              tasks={filteredTasks}
+              onSelectTask={(t) => {
+                setSelectedTask(t);
+                setIsUpdateModalOpen(true);
+              }}
+              onAddTaskClick={() => setIsModalOpen(true)}
+              onUpdateTaskStatus={async (taskId, newStatus) => {
+                try {
+                  const token = localStorage.getItem('token');
+                  await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                  });
+                  fetchTasks(true);
+                } catch (err) {
+                  console.error(err);
+                }
+              }}
+              onPreviewAttachment={(fileName, fileContent) => {
+                setPreviewModal({
+                  isOpen: true,
+                  docTitle: 'Task Attachment',
+                  fileName,
+                  fileContent
+                });
+              }}
+            />
+          ) : (
+            <>
+              {loading ? (
             <div className="py-12 flex justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#be0919]" />
             </div>
@@ -520,7 +602,7 @@ export default function AdminTaskView() {
                               </td>
                               <td rowSpan={spanCount} className="py-4 pr-8 w-40 align-middle">
                                 <div>
-                                  <p className="text-white text-sm font-normal">{task.dueDate}</p>
+                                  <p className="text-white text-sm font-normal">{formatDateStandard(task.dueDate)}</p>
                                   {task.dueTime && <p className="text-xs text-neutral-500 mt-0.5">{task.dueTime}</p>}
                                 </div>
                               </td>
@@ -647,6 +729,8 @@ export default function AdminTaskView() {
               </div>
             </div>
           )}
+            </>
+          )}
 
           {/* Download CSV Section */}
           {filteredTasks.length > 0 && (
@@ -734,7 +818,7 @@ export default function AdminTaskView() {
                       </td>
                       <td className="py-4 pr-6">
                         <div>
-                          <p className="text-white text-sm font-normal">{req.dueDate}</p>
+                          <p className="text-white text-sm font-normal">{formatDateStandard(req.dueDate)}</p>
                           {req.dueTime && <p className="text-xs text-neutral-500 font-normal mt-0.5">{req.dueTime}</p>}
                         </div>
                       </td>
@@ -839,6 +923,21 @@ export default function AdminTaskView() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onTaskCreated={fetchTasks}
+      />
+
+      <UpdateTaskModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        task={selectedTask}
+        onTaskUpdated={fetchTasks}
+      />
+
+      <DocumentPreviewModal
+        isOpen={previewModal.isOpen}
+        onClose={() => setPreviewModal(prev => ({ ...prev, isOpen: false }))}
+        docTitle={previewModal.docTitle}
+        fileName={previewModal.fileName}
+        fileContent={previewModal.fileContent}
       />
     </div>
   );

@@ -22,14 +22,14 @@ interface AdminFinanceStatsProps {
 }
 
 export default function AdminFinanceStats({ stats }: AdminFinanceStatsProps) {
-  const totalPayroll = stats.totalPayroll || stats.totalPayrollBudget || 'PKR 1,23456';
+  const totalPayroll = stats.totalPayroll || stats.totalPayrollBudget || '$12,500';
   const employeesCount = stats.employeesCount !== undefined ? stats.employeesCount : (stats.totalEmployeesCount || 32);
-  const paidAmount = stats.paidAmount || 'PKR 1,23456';
-  const paidPercent = stats.paidPercent || '17% of total payroll';
-  const pendingAmount = stats.pendingAmount || 'PKR 1,23456';
-  const pendingPercent = stats.pendingPercent || '27% of total payroll';
-  const overdueAmount = stats.overdueAmount || 'PKR 1,23456';
-  const overdueEmployees = stats.overdueEmployees || '5 Employees';
+  const paidAmount = stats.paidAmount || '$0';
+  const paidPercent = stats.paidPercent || '0% of total payroll';
+  const pendingAmount = stats.pendingAmount || '$0';
+  const pendingPercent = stats.pendingPercent || '0% of total payroll';
+  const overdueAmount = stats.overdueAmount || '$0';
+  const overdueEmployees = stats.overdueEmployees || '0 Employees';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 select-none animate-fadeIn">

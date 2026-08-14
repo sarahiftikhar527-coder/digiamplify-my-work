@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, DollarSign, Plus, Minus, CreditCard, ShieldAlert, Check, TrendingUp, TrendingDown, Layers, FileText, Sparkles, CheckCircle2, Printer } from 'lucide-react';
+import { formatDateStandard } from '@/utils/dateUtils';
+import EmployeePayslipModal from './EmployeePayslipModal';
 
 interface Employee {
   id: string;
@@ -13,6 +15,8 @@ interface Employee {
   accountNumber: string;
   salary: string;
   bonus: string;
+  taxRate?: string;
+  taxId?: string;
 }
 
 interface Transaction {
@@ -36,7 +40,7 @@ interface AdminManageFinancesModalProps {
   handleAddTransaction: (txData: { title: string; amount: number; type: string; status: string; reference?: string }) => Promise<void>;
   handleDeleteTransaction: (id: string) => Promise<void>;
   handleUpdateTransactionStatus?: (id: string, status: string) => Promise<void>;
-  handleSavePaymentSettings: (settings: { bankName: string; accountNumber: string; accountHolderName: string; salary: string; bonus: string; currency: string }) => Promise<void>;
+  handleSavePaymentSettings: (settings: { bankName: string; accountNumber: string; accountHolderName: string; salary: string; bonus: string; currency: string; taxRate?: string; taxId?: string }) => Promise<void>;
   onClose: () => void;
 }
 
@@ -54,20 +58,23 @@ export default function AdminManageFinancesModal({
   onClose
 }: AdminManageFinancesModalProps) {
 
-  
+  // Form state for profile payment editing
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [salary, setSalary] = useState('');
   const [bonus, setBonus] = useState('');
   const [currency, setCurrency] = useState('USD');
+  const [taxRate, setTaxRate] = useState('');
+  const [taxId, setTaxId] = useState('');
 
-  
+  // Form state for adding transaction
   const [txTitle, setTxTitle] = useState('');
   const [txAmount, setTxAmount] = useState('');
   const [txType, setTxType] = useState('SALARY'); 
   const [txStatus, setTxStatus] = useState('SUCCESSFUL'); 
   const [txRef, setTxRef] = useState('');
+  const [selectedPayslipTx, setSelectedPayslipTx] = useState<Transaction | null>(null);
 
   // Initialize/reset form states when selected employee changes or isEditingPayment opens
   useEffect(() => {
@@ -78,6 +85,8 @@ export default function AdminManageFinancesModal({
       setSalary(selectedEmp.salary ? selectedEmp.salary.replace(/[^0-9.]/g, '') : '');
       setBonus(selectedEmp.bonus ? selectedEmp.bonus.replace(/[^0-9.]/g, '') : '');
       setCurrency('USD');
+      setTaxRate(selectedEmp.taxRate || '10');
+      setTaxId(selectedEmp.taxId || '');
     }
   }, [selectedEmp, isEditingPayment]);
 
@@ -102,7 +111,9 @@ export default function AdminManageFinancesModal({
       accountHolderName,
       salary,
       bonus,
-      currency
+      currency,
+      taxRate,
+      taxId
     });
   };
 
@@ -203,6 +214,26 @@ export default function AdminManageFinancesModal({
                   <option value="PKR">PKR (Rs)</option>
                   <option value="EUR">EUR (€)</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-300 mb-2 uppercase tracking-wide">Tax Deduction Rate (%)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 10"
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(e.target.value)}
+                  className="w-full bg-[#0c0c0c] border border-neutral-900 rounded-lg p-3.5 text-white text-sm focus:outline-none focus:border-red-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-300 mb-2 uppercase tracking-wide">Tax Registration ID / NTN</label>
+                <input
+                  type="text"
+                  placeholder="e.g. TAX-98402"
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                  className="w-full bg-[#0c0c0c] border border-neutral-900 rounded-lg p-3.5 text-white text-sm focus:outline-none focus:border-red-500/50"
+                />
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-8">
@@ -311,18 +342,14 @@ export default function AdminManageFinancesModal({
                   <th className="pb-4 px-4">Date</th>
                   <th className="pb-4 px-4">Amount</th>
                   <th className="pb-4 px-4">Status</th>
-                  <th className="pb-4 px-4 text-right pr-6">Action</th>
+                  <th className="pb-4 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-900 text-sm">
                 {empTransactions.length > 0 ? (
                   empTransactions.map((tx) => {
                     const isCredit = tx.type === 'SALARY' || tx.type === 'BONUS';
-                    const txDate = new Date(tx.date).toLocaleDateString(undefined, {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    });
+                    const txDate = formatDateStandard(tx.date);
                     return (
                       <tr key={tx.id} className="hover:bg-white/2 transition-colors">
                         <td className="py-4 px-4">
@@ -357,29 +384,39 @@ export default function AdminManageFinancesModal({
                             {tx.status}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-right pr-6 flex items-center justify-end gap-2">
-                          {tx.status.toUpperCase() === 'PENDING' && handleUpdateTransactionStatus && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateTransactionStatus(tx.id, 'SUCCESSFUL')}
-                                className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold transition-colors cursor-pointer"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleUpdateTransactionStatus(tx.id, 'FAILED')}
-                                className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded text-xs font-bold transition-colors cursor-pointer"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          <button
-                            onClick={() => handleDeleteTransaction(tx.id)}
-                            className="text-red-500 hover:text-red-400 transition-colors text-xs sm:text-sm cursor-pointer font-bold ml-1"
-                          >
-                            Delete
-                          </button>
+                        <td className="py-4.5 px-4 text-right whitespace-nowrap">
+                          <div className="inline-flex items-center justify-end gap-2.5">
+                            {tx.status.toUpperCase() === 'PENDING' && handleUpdateTransactionStatus && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateTransactionStatus(tx.id, 'SUCCESSFUL')}
+                                  className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateTransactionStatus(tx.id, 'FAILED')}
+                                  className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={() => setSelectedPayslipTx(tx)}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-300 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                              title="View Employee Payslip"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[#be0919]" />
+                              <span>Payslip</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTransaction(tx.id)}
+                              className="text-red-500 hover:text-red-400 transition-colors text-xs font-bold px-2 py-1.5 cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
 
                       </tr>
@@ -396,6 +433,30 @@ export default function AdminManageFinancesModal({
             </table>
           </div>
         </div>
+
+        {/* Employee Payslip Modal for Admin */}
+        {selectedPayslipTx && (
+          <EmployeePayslipModal
+            transaction={{
+              id: selectedPayslipTx.id,
+              title: selectedPayslipTx.title,
+              reference: selectedPayslipTx.reference,
+              amount: `$${(selectedPayslipTx.amountRaw || selectedPayslipTx.amount || 0).toLocaleString()}`,
+              amountRaw: typeof selectedPayslipTx.amountRaw === 'number' ? selectedPayslipTx.amountRaw : parseFloat(String(selectedPayslipTx.amount || '0').replace(/[^0-9.]/g, '')),
+              type: selectedPayslipTx.type,
+              date: selectedPayslipTx.date,
+              status: selectedPayslipTx.status
+            }}
+            bankInfo={{
+              bankName: selectedEmp.bankName,
+              accountNumber: selectedEmp.accountNumber,
+              accountHolderName: selectedEmp.fullName,
+              taxId: selectedEmp.taxId
+            }}
+            userEmail={selectedEmp.email}
+            onClose={() => setSelectedPayslipTx(null)}
+          />
+        )}
       </div>
     </div>
   );

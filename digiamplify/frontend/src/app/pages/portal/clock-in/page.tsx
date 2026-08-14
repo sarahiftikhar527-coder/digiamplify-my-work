@@ -8,9 +8,20 @@ import EmployeeClockInView from './components/EmployeeClockInView';
 import AdminClockInView from './components/AdminClockInView';
 import ResetPinModal from './components/ResetPinModal';
 import TaskNoteModal from './components/TaskNoteModal';
+import RequestShiftSwapModal from './components/RequestShiftSwapModal';
 
 export default function ClockInPage() {
-  const [userRole, setUserRole] = useState<string>('Employee');
+  const [userRole, setUserRole] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        try {
+          return JSON.parse(stored)?.role || 'Employee';
+        } catch (e) {}
+      }
+    }
+    return 'Employee';
+  });
   const [userProfile, setUserProfile] = useState<any>(null);
   const [attendance, setAttendance] = useState<any>(null);
   const [stats, setStats] = useState<any>({
@@ -49,15 +60,28 @@ export default function ClockInPage() {
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [showNoteModal, setShowNoteModal] = useState(false);
 
-  useEffect(() => {
+  const [showShiftSwapModal, setShowShiftSwapModal] = useState(false);
+  const [shiftRequests, setShiftRequests] = useState<any[]>([]);
 
+  useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.href = '/login';
       return;
     }
 
+    const storedUserStr = localStorage.getItem('user');
+    if (storedUserStr) {
+      try {
+        const u = JSON.parse(storedUserStr);
+        if (u?.role) {
+          setUserRole(u.role);
+        }
+      } catch (e) {}
+    }
+
     fetchTodayStatus();
+    fetchShiftRequests();
 
     const updateTime = () => {
       const now = new Date();
@@ -88,8 +112,44 @@ export default function ClockInPage() {
   useEffect(() => {
     if (userRole === 'Admin') {
       fetchAdminAttendanceLogs();
+      fetchShiftRequests();
     }
   }, [userRole]);
+
+  const fetchShiftRequests = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/attendance/shift-requests', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setShiftRequests(data.requests || []);
+      }
+    } catch (err) {
+      console.error('Error fetching shift requests:', err);
+    }
+  };
+
+  const handleUpdateShiftRequestStatus = async (id: string, status: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/attendance/shift-requests/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (response.ok) {
+        setSuccess(`Shift adjustment request ${status.toLowerCase()} successfully.`);
+        fetchShiftRequests();
+      }
+    } catch (err) {
+      console.error('Error updating shift request status:', err);
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -435,6 +495,9 @@ export default function ClockInPage() {
               setSelectedRecord(rec);
               setShowNoteModal(true);
             }}
+            shiftRequests={shiftRequests}
+            onApproveShiftRequest={(id) => handleUpdateShiftRequestStatus(id, 'APPROVED')}
+            onRejectShiftRequest={(id) => handleUpdateShiftRequestStatus(id, 'REJECTED')}
           />
         ) : (
           <EmployeeClockInView
@@ -458,6 +521,7 @@ export default function ClockInPage() {
             getStatusPill={getStatusPill}
             getActionButtonText={getActionButtonText}
             isFormDisabled={isFormDisabled}
+            onRequestShiftSwapClick={() => setShowShiftSwapModal(true)}
           />
         )}
 
@@ -489,6 +553,15 @@ export default function ClockInPage() {
           setSelectedRecord(null);
         }}
         selectedRecord={selectedRecord}
+      />
+
+      <RequestShiftSwapModal
+        isOpen={showShiftSwapModal}
+        onClose={() => setShowShiftSwapModal(false)}
+        onRequestSubmitted={() => {
+          fetchShiftRequests();
+          setSuccess('Shift adjustment request submitted successfully.');
+        }}
       />
 
     </div>

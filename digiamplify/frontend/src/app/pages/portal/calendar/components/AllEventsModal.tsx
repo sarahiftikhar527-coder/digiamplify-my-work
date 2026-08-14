@@ -49,14 +49,17 @@ export default function AllEventsModal({
         <div className="p-6 overflow-y-auto space-y-3 flex-1">
           {events.length > 0 ? (
             events.map((evt, idx) => {
+              const isCompleted = Boolean(evt.isCompleted || evt.status?.toUpperCase() === 'COMPLETED' || evt.color === 'emerald');
               const isAbsent = evt.color === 'orange' || evt.type === 'Absent';
               const isHoliday = evt.color === 'blue' || evt.type === 'Holiday';
-              const isTask = evt.color === 'red' || evt.type === 'Task View';
 
               let badgeStyle = 'bg-red-950/60 text-red-400 border-red-800/40';
               let dotBg = 'bg-[#be0919]';
 
-              if (isAbsent) {
+              if (isCompleted) {
+                badgeStyle = 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40';
+                dotBg = 'bg-emerald-400';
+              } else if (isAbsent) {
                 badgeStyle = 'bg-amber-950/60 text-amber-400 border-amber-800/40';
                 dotBg = 'bg-amber-500';
               } else if (isHoliday) {
@@ -70,17 +73,21 @@ export default function AllEventsModal({
                   className="bg-[#050505] border border-neutral-900 hover:border-neutral-800 rounded-2xl p-4 flex items-center justify-between gap-3 transition-all"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className={`w-3 h-3 rounded-full shrink-0 ${dotBg}`} />
+                    {isCompleted ? (
+                      <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
+                    ) : (
+                      <span className={`w-3 h-3 rounded-full shrink-0 ${dotBg}`} />
+                    )}
                     <div className="min-w-0">
-                      <h4 className="text-xs sm:text-sm font-bold text-white truncate">{evt.title}</h4>
+                      <h4 className={`text-xs sm:text-sm font-bold text-white truncate ${isCompleted ? 'line-through text-neutral-400' : ''}`}>{evt.title}</h4>
                       <span className="text-[10px] text-neutral-500 block mt-0.5">
-                        {evt.type || 'Scheduled Event'}
+                        {isCompleted ? 'Completed' : evt.type || 'Scheduled Event'}
                       </span>
                     </div>
                   </div>
 
                   <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase tracking-wider ${badgeStyle}`}>
-                    {evt.type || 'TASK'}
+                    {isCompleted ? 'COMPLETED' : evt.type || 'TASK'}
                   </span>
                 </div>
               );

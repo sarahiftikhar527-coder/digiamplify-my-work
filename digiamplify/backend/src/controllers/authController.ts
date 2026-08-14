@@ -167,6 +167,12 @@ export const heartbeat = async (req: AuthRequest, res: Response): Promise<void> 
   }
 
   try {
+    const existing = await prisma.user.findUnique({ where: { id: userId } });
+    if (!existing) {
+      res.status(401).json({ error: 'User not found' });
+      return;
+    }
+
     await prisma.user.update({
       where: { id: userId },
       data: { isOnline: true, lastSeen: Math.floor(Date.now() / 1000) },

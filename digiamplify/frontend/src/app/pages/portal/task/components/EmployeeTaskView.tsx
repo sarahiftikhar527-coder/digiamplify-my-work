@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, ChevronLeft, ChevronRight, Download, Link as LinkIcon } from 'lucide-react';
+import { ClipboardList, ChevronLeft, ChevronRight, Download, Link as LinkIcon, LayoutList, Kanban } from 'lucide-react';
 import TaskStatsCards from './employee/TaskStatsCards';
 import TaskTable from './employee/TaskTable';
 import TaskAnalytics from './employee/TaskAnalytics';
@@ -7,6 +7,9 @@ import TaskActivityLog from './employee/TaskActivityLog';
 import PriorityBreakdown from './employee/PriorityBreakdown';
 import ShiftAssignedCard from './employee/ShiftAssignedCard';
 import UpdateTaskModal from './employee/UpdateTaskModal';
+import KanbanBoardView from './KanbanBoardView';
+import DocumentPreviewModal from '../../profile/components/DocumentPreviewModal';
+import { formatDateStandard } from '@/utils/dateUtils';
 
 import CreateTaskModal from './CreateTaskModal';
 interface TaskGroup {
@@ -49,6 +52,18 @@ export default function EmployeeTaskView() {
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    docTitle: string;
+    fileName: string;
+    fileContent: string;
+  }>({
+    isOpen: false,
+    docTitle: '',
+    fileName: '',
+    fileContent: ''
+  });
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'requests' | 'assigned'>('tasks');
   const [requests, setRequests] = useState<any[]>([]);
@@ -210,8 +225,14 @@ export default function EmployeeTaskView() {
 
     const myTasks = myId ? taskList.filter(t => t.assignedToId === myId) : taskList;
     const total = myTasks.length;
-    const completed = myTasks.filter(t => t.status.toUpperCase() === 'COMPLETED' || t.status.toUpperCase() === 'FINISHED').length;
-    const ongoing = myTasks.filter(t => t.status.toUpperCase() === 'ONGOING' || t.status.toUpperCase() === 'PENDING').length;
+    const completed = myTasks.filter(t => {
+      const s = (t.status || '').toUpperCase();
+      return s === 'COMPLETED' || s === 'FINISHED';
+    }).length;
+    const ongoing = myTasks.filter(t => {
+      const s = (t.status || '').toUpperCase();
+      return s === 'ONGOING' || s === 'PENDING' || s === 'IN_PROGRESS';
+    }).length;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -319,38 +340,85 @@ export default function EmployeeTaskView() {
         </div>
       </div>
 
-      {/* Switcher Tab */}
-      <div className="flex items-center bg-[#050505] p-1 rounded-lg border border-neutral-900 w-fit">
-        <button
-          onClick={() => setActiveTab('tasks')}
-          className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'tasks'
-            ? 'bg-[#be0919] text-white shadow-sm'
-            : 'text-neutral-400 hover:text-white'
-            }`}
-        >
-          My Tasks
-        </button>
-        <button
-          onClick={() => { setActiveTab('assigned'); setCurrentPageAssigned(1); }}
-          className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'assigned'
-            ? 'bg-[#be0919] text-white shadow-sm'
-            : 'text-neutral-400 hover:text-white'
-            }`}
-        >
-          Assigned Tasks
-        </button>
-        <button
-          onClick={() => { setActiveTab('requests'); setCurrentPageRequests(1); }}
-          className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'requests'
-            ? 'bg-[#be0919] text-white shadow-sm'
-            : 'text-neutral-400 hover:text-white'
-            }`}
-        >
-          My Requests
-        </button>
+      {/* Switcher Tab & View Mode Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center bg-[#050505] p-1 rounded-lg border border-neutral-900 w-fit">
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'tasks'
+              ? 'bg-[#be0919] text-white shadow-sm'
+              : 'text-neutral-400 hover:text-white'
+              }`}
+          >
+            My Tasks
+          </button>
+          <button
+            onClick={() => { setActiveTab('assigned'); setCurrentPageAssigned(1); }}
+            className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'assigned'
+              ? 'bg-[#be0919] text-white shadow-sm'
+              : 'text-neutral-400 hover:text-white'
+              }`}
+          >
+            Assigned Tasks
+          </button>
+          <button
+            onClick={() => { setActiveTab('requests'); setCurrentPageRequests(1); }}
+            className={`px-5 py-2.5 rounded-md text-xs font-semibold transition-all duration-200 cursor-pointer ${activeTab === 'requests'
+              ? 'bg-[#be0919] text-white shadow-sm'
+              : 'text-neutral-400 hover:text-white'
+              }`}
+          >
+            My Requests
+          </button>
+        </div>
+
+        {activeTab === 'tasks' && (
+          <div className="flex items-center gap-1 bg-[#050505] p-1 rounded-xl border border-neutral-900">
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                viewMode === 'list'
+                  ? 'bg-[#be0919] text-white shadow-md'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+              <span>List View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('kanban')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                viewMode === 'kanban'
+                  ? 'bg-[#be0919] text-white shadow-md'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <Kanban className="w-3.5 h-3.5" />
+              <span>Kanban Board</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {activeTab === 'tasks' ? (
+        viewMode === 'kanban' ? (
+          <KanbanBoardView
+            tasks={tasks.filter(t => t.assignedToId === currentUser?.id)}
+            onSelectTask={handleOpenUpdateModal}
+            onUpdateTaskStatus={handleUpdateStatus}
+            onAddTaskClick={() => setIsCreateModalOpen(true)}
+            onPreviewAttachment={(fileName, fileContent) => {
+              setPreviewModal({
+                isOpen: true,
+                docTitle: 'Task Attachment',
+                fileName,
+                fileContent
+              });
+            }}
+          />
+        ) : (
         <>
           {/* Top Row: Task Table (col-span-7) and stacked Right Column (col-span-5) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6">
@@ -379,6 +447,7 @@ export default function EmployeeTaskView() {
             </div>
           </div>
         </>
+        )
       ) : activeTab === 'assigned' ? (
         <div className="bg-[#0c0c0c] border border-neutral-900 rounded-xl p-6 relative">
           <div className="flex items-center justify-between border-b border-neutral-900 pb-5 mb-6">
@@ -480,7 +549,7 @@ export default function EmployeeTaskView() {
                                 </div>
                               </td>
                               <td rowSpan={spanCount} className="py-4 pr-6 w-44 align-middle">
-                                <span className="text-sm text-neutral-300 font-normal">{task.dueDate}</span>
+                                <span className="text-sm text-neutral-300 font-normal">{formatDateStandard(task.dueDate)}</span>
                                 {task.dueTime && <span className="block text-xs text-neutral-500 font-normal mt-0.5">{task.dueTime}</span>}
                               </td>
                               <td rowSpan={spanCount} className="py-4 pr-6 w-36 align-middle">
@@ -655,7 +724,7 @@ export default function EmployeeTaskView() {
                             </div>
                           </td>
                           <td className="py-4 pr-3 w-36">
-                            <span className="text-xs text-neutral-300 font-normal">{req.dueDate}</span>
+                            <span className="text-xs text-neutral-300 font-normal">{formatDateStandard(req.dueDate)}</span>
                           </td>
                           <td className="py-4 pr-4 w-36">
                             <div>
@@ -752,6 +821,14 @@ export default function EmployeeTaskView() {
           fetchActivities();
           fetchRequests();
         }}
+      />
+
+      <DocumentPreviewModal
+        isOpen={previewModal.isOpen}
+        onClose={() => setPreviewModal(prev => ({ ...prev, isOpen: false }))}
+        docTitle={previewModal.docTitle}
+        fileName={previewModal.fileName}
+        fileContent={previewModal.fileContent}
       />
     </div>
   );

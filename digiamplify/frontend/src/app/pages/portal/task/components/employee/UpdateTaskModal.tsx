@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Clock, Download, FileText, AlertCircle, RefreshCw, UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { formatDateStandard } from '@/utils/dateUtils';
+import SubtaskChecklist from '../SubtaskChecklist';
 
 interface UpdateTaskModalProps {
   isOpen: boolean;
@@ -191,7 +193,7 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
             <Calendar className="w-4.5 h-4.5 text-[#be0919]" />
             <div>
               <span className="text-[9px] text-neutral-500 font-medium block">DUE DATE</span>
-              <span className="text-xs text-white font-semibold">{task.dueDate}</span>
+              <span className="text-xs text-white font-semibold">{formatDateStandard(task.dueDate)}</span>
             </div>
           </div>
           {task.dueTime && (
@@ -246,6 +248,15 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
             })()}
           </div>
         )}
+
+        {/* Subtasks Checklist Section */}
+        <div className="mb-6">
+          <SubtaskChecklist
+            taskId={task.id}
+            subtasks={task.subtasks || []}
+            onSubtasksUpdated={onTaskUpdated}
+          />
+        </div>
 
         <form onSubmit={handleSubmit} className="border-t border-neutral-900 pt-6 space-y-5">
           {/* Status Lock Notice */}

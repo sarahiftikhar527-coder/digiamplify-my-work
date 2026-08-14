@@ -1,27 +1,25 @@
 import React, { useState } from 'react';
-import { Upload, FileText, ChevronDown, Trash2, MoreVertical, ExternalLink, Download } from 'lucide-react';
+import { Upload, FileText, ChevronDown, Trash2, MoreVertical, ExternalLink, Download, Eye } from 'lucide-react';
+import { formatDateStandard } from '@/utils/dateUtils';
 
 interface DocumentsProps {
   data: any;
   onChange: (field: string, value: any) => void;
   isAdmin?: boolean;
+  onGenerateContractClick?: () => void;
+  onPreviewDoc?: (title: string, fileName: string, fileContent: string) => void;
 }
 
 const formatDocDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return { date: '—', time: '' };
   try {
     const d = new Date(dateStr);
-    const standardMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const date = `${d.getDate()} ${standardMonths[d.getMonth()]}, ${d.getFullYear()}`;
-    let hours = d.getHours();
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const time = `${hours}:${minutes} ${ampm}`;
+    if (isNaN(d.getTime())) return { date: '—', time: '' };
+    const date = formatDateStandard(d);
+    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     return { date, time };
   } catch {
-    return { date: '13 July, 2026', time: '10:30 AM' };
+    return { date: '—', time: '' };
   }
 };
 
@@ -46,7 +44,7 @@ const getFormattedUrl = (url: string | null | undefined) => {
   return `https://${url}`;
 };
 
-export default function DocumentsTab({ data, onChange, isAdmin = false }: DocumentsProps) {
+export default function DocumentsTab({ data, onChange, isAdmin = false, onGenerateContractClick, onPreviewDoc }: DocumentsProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [statusDropdown, setStatusDropdown] = useState<string | null>(null);
 
@@ -219,7 +217,18 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               </td>
               <td className="py-4">
                 <div>
-                  <div className="text-sm text-white max-w-[220px] truncate">{data.cnicFileName || '—'}</div>
+                  {data.cnicFileName ? (
+                    <button
+                      type="button"
+                      onClick={() => onPreviewDoc?.('CNIC - Identity Proof', data.cnicFileName, data.cnicContent)}
+                      className="text-sm font-semibold text-white hover:text-red-400 transition-colors cursor-pointer text-left block truncate max-w-[220px]"
+                      title="Preview CNIC"
+                    >
+                      {data.cnicFileName}
+                    </button>
+                  ) : (
+                    <span className="text-sm text-neutral-500">—</span>
+                  )}
                   {data.cnicFileName && <div className="text-[11px] text-neutral-500 mt-0.5">{getBase64Size(data.cnicContent)}</div>}
                 </div>
               </td>
@@ -241,14 +250,24 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
                   {data.cnicFileName ? (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadFile(data.cnicFileName, data.cnicContent)}
-                      className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onPreviewDoc?.('CNIC - Identity Proof', data.cnicFileName, data.cnicContent)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Preview Document"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadFile(data.cnicFileName, data.cnicContent)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Download"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </>
                   ) : (
                     <label className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer flex items-center justify-center w-[36px] h-[36px] focus-within:ring-1 focus-within:ring-red-500 shrink-0">
                       <Upload className="w-4 h-4" />
@@ -309,7 +328,18 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               </td>
               <td className="py-4">
                 <div>
-                  <div className="text-sm text-white max-w-[220px] truncate">{data.cvFileName || '—'}</div>
+                  {data.cvFileName ? (
+                    <button
+                      type="button"
+                      onClick={() => onPreviewDoc?.('CV - Resume', data.cvFileName, data.cvContent)}
+                      className="text-sm font-semibold text-white hover:text-red-400 transition-colors cursor-pointer text-left block truncate max-w-[220px]"
+                      title="Preview Resume"
+                    >
+                      {data.cvFileName}
+                    </button>
+                  ) : (
+                    <span className="text-sm text-neutral-500">—</span>
+                  )}
                   {data.cvFileName && <div className="text-[11px] text-neutral-500 mt-0.5">{getBase64Size(data.cvContent)}</div>}
                 </div>
               </td>
@@ -331,14 +361,24 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
                   {data.cvFileName ? (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadFile(data.cvFileName, data.cvContent)}
-                      className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onPreviewDoc?.('CV - Resume', data.cvFileName, data.cvContent)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Preview Document"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadFile(data.cvFileName, data.cvContent)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Download"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </>
                   ) : (
                     <label className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer flex items-center justify-center w-[36px] h-[36px] focus-within:ring-1 focus-within:ring-red-500 shrink-0">
                       <Upload className="w-4 h-4" />
@@ -399,7 +439,18 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               </td>
               <td className="py-4">
                 <div>
-                  <div className="text-sm text-white max-w-[220px] truncate">{data.contractFileName || '—'}</div>
+                  {data.contractFileName ? (
+                    <button
+                      type="button"
+                      onClick={() => onPreviewDoc?.('Employment Contract', data.contractFileName, data.contractContent)}
+                      className="text-sm font-semibold text-white hover:text-red-400 transition-colors cursor-pointer text-left block truncate max-w-[220px]"
+                      title="Preview Contract"
+                    >
+                      {data.contractFileName}
+                    </button>
+                  ) : (
+                    <span className="text-sm text-neutral-500">—</span>
+                  )}
                   {data.contractFileName && <div className="text-[11px] text-neutral-500 mt-0.5">{getBase64Size(data.contractContent)}</div>}
                 </div>
               </td>
@@ -421,14 +472,24 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
                   {data.contractFileName ? (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadFile(data.contractFileName, data.contractContent)}
-                      className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onPreviewDoc?.('Employment Contract', data.contractFileName, data.contractContent)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Preview Document"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadFile(data.contractFileName, data.contractContent)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Download"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </>
                   ) : (
                     <label className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer flex items-center justify-center w-[36px] h-[36px] focus-within:ring-1 focus-within:ring-red-500 shrink-0">
                       <Upload className="w-4 h-4" />
@@ -493,10 +554,17 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
                     <div className="w-7 h-7 rounded-full overflow-hidden border border-neutral-700 bg-neutral-900 shrink-0">
                       <img src={data.pictureUrl} alt="Avatar" className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-sm text-white max-w-[150px] truncate">Profile_Picture.png</span>
+                    <button
+                      type="button"
+                      onClick={() => onPreviewDoc?.('Passport / Profile Photo', 'Profile_Picture.png', data.pictureUrl)}
+                      className="text-sm font-semibold text-white hover:text-red-400 transition-colors cursor-pointer text-left block truncate max-w-[150px]"
+                      title="Preview Photo"
+                    >
+                      Profile_Picture.png
+                    </button>
                   </div>
                 ) : (
-                  <span className="text-sm text-white">—</span>
+                  <span className="text-sm text-neutral-500">—</span>
                 )}
               </td>
               <td className="py-4">
@@ -517,14 +585,24 @@ export default function DocumentsTab({ data, onChange, isAdmin = false }: Docume
               <td className="py-4">
                 <div className="flex items-center justify-end gap-2 pr-4">
                   {data.pictureUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadFile('Profile_Picture.png', data.pictureUrl)}
-                      className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onPreviewDoc?.('Passport / Profile Photo', 'Profile_Picture.png', data.pictureUrl)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Preview Photo"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadFile('Profile_Picture.png', data.pictureUrl)}
+                        className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer focus:outline-none shrink-0"
+                        title="Download"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </>
                   ) : (
                     <label className="p-2 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white bg-[#0f0f0f] hover:bg-[#1a1a1a] transition-all cursor-pointer flex items-center justify-center w-[36px] h-[36px] focus-within:ring-1 focus-within:ring-red-500 shrink-0">
                       <Upload className="w-4 h-4" />

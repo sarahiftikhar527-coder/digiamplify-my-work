@@ -27,26 +27,76 @@ export const getEmployeeFinanceData = async (req: Request, res: Response): Promi
       monthlySalaryAmount = parseFloat(profile.salary.replace(/[^0-9.]/g, '')) || 0;
     }
 
-    let thisMonthBonus = 0;
+    // Parse contract parameters from employee profile
+    const profAny = profile as any;
+    const contractedHoursNum = profAny?.contractedHours ? parseFloat(profAny.contractedHours) : 160;
+    const hourlyBaseRate = monthlySalaryAmount > 0 ? (monthlySalaryAmount / contractedHoursNum) : 0;
+    
+    const otRateVal = profAny?.overtimeRate ? parseFloat(profAny.overtimeRate) : (hourlyBaseRate * 1.5);
+    const shortfallRateVal = profAny?.shortfallRate ? parseFloat(profAny.shortfallRate) : hourlyBaseRate;
+    const taxRateVal = profAny?.taxRate ? parseFloat(profAny.taxRate) : 0;
+
+    // Calculate monthly worked hours from Attendance records
+    const currentMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const monthlyAttendances = await prisma.attendance.findMany({
+      where: {
+        userId,
+        date: { startsWith: currentMonthStr }
+      },
+      include: { breaks: true }
+    });
+
+    let monthlyWorkedMins = 0;
+    monthlyAttendances.forEach((att) => {
+      if (att.clockIn) {
+        const cIn = new Date(att.clockIn);
+        const cOut = att.clockOut ? new Date(att.clockOut) : now;
+        let bMins = 0;
+        if (att.breaks) {
+          att.breaks.forEach((b) => {
+            const s = new Date(b.startTime);
+            const e = b.endTime ? new Date(b.endTime) : now;
+            bMins += Math.floor((e.getTime() - s.getTime()) / 60000);
+          });
+        }
+        const elapsed = Math.floor((cOut.getTime() - cIn.getTime()) / 60000);
+        monthlyWorkedMins += Math.max(0, elapsed - bMins);
+      }
+    });
+
+    const totalWorkedHours = monthlyWorkedMins / 60;
+    const diffHours = totalWorkedHours - contractedHoursNum;
+
+    let approvedOTHours = 0;
+    let otBonusAmount = 0;
+    let approvedShortfallHours = 0;
+    let shortfallDeductionAmount = 0;
+
+    if (diffHours > 0) {
+      approvedOTHours = parseFloat(diffHours.toFixed(1));
+      otBonusAmount = approvedOTHours * otRateVal;
+    } else if (diffHours < 0) {
+      approvedShortfallHours = parseFloat(Math.abs(diffHours).toFixed(1));
+      shortfallDeductionAmount = approvedShortfallHours * shortfallRateVal;
+    }
+
+    let thisMonthBonus = otBonusAmount;
     if (profile && profile.bonus && profile.bonus.trim().length > 0) {
       const parsedBonus = parseFloat(profile.bonus.replace(/[^0-9.]/g, ''));
       if (!isNaN(parsedBonus)) {
-        thisMonthBonus = parsedBonus;
+        thisMonthBonus += parsedBonus;
       }
     }
 
-    // If profile bonus is not set, fallback to transaction bonuses for the current month
-    if (thisMonthBonus === 0) {
-      transactions.forEach((tx) => {
-        const txDate = new Date(tx.date);
-        const isCurrentMonth = txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
-        if (tx.status.toUpperCase() === 'SUCCESSFUL' && tx.type === 'BONUS' && isCurrentMonth) {
-          thisMonthBonus += tx.amount;
-        }
-      });
-    }
+    transactions.forEach((tx) => {
+      const txDate = new Date(tx.date);
+      const isCurrentMonth = txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+      if (tx.status.toUpperCase() === 'SUCCESSFUL' && tx.type === 'BONUS' && isCurrentMonth) {
+        thisMonthBonus += tx.amount;
+      }
+    });
 
-    let thisMonthDeduction = 0;
+    let thisMonthDeduction = shortfallDeductionAmount;
     transactions.forEach((tx) => {
       const txDate = new Date(tx.date);
       const isCurrentMonth = txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
@@ -55,7 +105,9 @@ export const getEmployeeFinanceData = async (req: Request, res: Response): Promi
       }
     });
 
-    const netSalaryAmount = monthlySalaryAmount + thisMonthBonus - thisMonthDeduction;
+    const grossSalary = monthlySalaryAmount + thisMonthBonus - thisMonthDeduction;
+    const taxDeductionAmount = grossSalary > 0 ? (grossSalary * (taxRateVal / 100)) : 0;
+    const netSalaryAmount = Math.max(0, grossSalary - taxDeductionAmount);
 
     const monthlyEarnings = Array(12).fill(0);
     const monthlyBonuses = Array(12).fill(0);
@@ -74,24 +126,39 @@ export const getEmployeeFinanceData = async (req: Request, res: Response): Promi
     });
 
     const formatCurrency = (val: number) => {
-      return `$${val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+      return `$${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     res.status(200).json({
       bankInfo: {
         bankName: profile?.bankName || 'Faysal Bank',
         accountNumber: profile?.accountNumber || '1234567890',
-        accountHolderName: profile?.accountHolderName || profile?.fullName || 'Test User'
+        accountHolderName: profile?.accountHolderName || profile?.fullName || 'Test User',
+        taxId: profAny?.taxId || 'NTN-98402'
+      },
+      contract: {
+        contractedHours: contractedHoursNum,
+        hourlyRate: formatCurrency(hourlyBaseRate),
+        overtimeRate: formatCurrency(otRateVal),
+        shortfallRate: formatCurrency(shortfallRateVal),
+        taxRate: `${taxRateVal}%`,
+        totalWorkedHours: parseFloat(totalWorkedHours.toFixed(1)),
+        approvedOTHours,
+        approvedShortfallHours
       },
       summary: {
         netSalary: formatCurrency(netSalaryAmount),
         monthlySalary: formatCurrency(monthlySalaryAmount),
         bonus: formatCurrency(thisMonthBonus),
         deduction: formatCurrency(thisMonthDeduction),
+        tax: formatCurrency(taxDeductionAmount),
+        otBonus: formatCurrency(otBonusAmount),
+        shortfallDeduction: formatCurrency(shortfallDeductionAmount),
         netSalaryRaw: netSalaryAmount,
         monthlySalaryRaw: monthlySalaryAmount,
         bonusRaw: thisMonthBonus,
         deductionRaw: thisMonthDeduction,
+        taxRaw: taxDeductionAmount
       },
       charts: {
         earnings: monthlyEarnings,
@@ -455,14 +522,14 @@ export const getAdminFinanceOverview = async (req: Request, res: Response): Prom
     res.status(200).json({
       adminName: requester.profile?.fullName || requester.email.split('@')[0],
       stats: {
-        totalPayroll: `PKR ${totalPayrollBudget.toLocaleString()}`,
+        totalPayroll: `$${totalPayrollBudget.toLocaleString()}`,
         totalPayrollRaw: totalPayrollBudget,
         employeesCount: employeeList.length,
-        paidAmount: `PKR ${totalPaidAmount.toLocaleString()}`,
+        paidAmount: `$${totalPaidAmount.toLocaleString()}`,
         paidPercent: `${paidPercent}% of total payroll`,
-        pendingAmount: `PKR ${totalPendingAmount.toLocaleString()}`,
+        pendingAmount: `$${totalPendingAmount.toLocaleString()}`,
         pendingPercent: `${pendingPercent}% of total payroll`,
-        overdueAmount: `PKR ${overdueAmount.toLocaleString()}`,
+        overdueAmount: `$${overdueAmount.toLocaleString()}`,
         overdueEmployees: `${overdueEmployeesCount} Employees`
       },
       monthlyAnalytics,
@@ -550,15 +617,15 @@ export const employeeWithdraw = async (req: Request, res: Response): Promise<voi
     const transaction = await prisma.transaction.create({
       data: {
         userId,
-        title: description ? `Withdrawal: ${description}` : 'Account Withdrawal',
+        title: description ? `Withdrawal Request: ${description}` : 'Account Withdrawal Request',
         amount: withdrawAmount,
         type: 'DEDUCTION',
         reference: `#WD-${Math.floor(10000 + Math.random() * 90000)}`,
-        status: 'SUCCESSFUL'
+        status: 'PENDING'
       }
     });
 
-    res.status(201).json({ message: 'Withdrawal processed successfully', transaction });
+    res.status(201).json({ message: 'Withdrawal request submitted for approval', transaction });
   } catch (error) {
     console.error('Employee withdraw error:', error);
     res.status(500).json({ error: 'Internal server error processing withdrawal' });
@@ -634,6 +701,174 @@ export const adminUpdateTransactionStatus = async (req: Request, res: Response):
   } catch (error) {
     console.error('Admin update transaction status error:', error);
     res.status(500).json({ error: 'Internal server error updating status' });
+  }
+};
+
+export const getPendingFinancialRequests = async (req: Request, res: Response): Promise<void> => {
+  const adminId = (req as any).userId;
+  if (!adminId) {
+    res.status(401).json({ error: 'Unauthorized user context' });
+    return;
+  }
+
+  try {
+    const requester = await prisma.user.findUnique({ where: { id: adminId } });
+    if (!requester || requester.role.toLowerCase() !== 'admin') {
+      res.status(403).json({ error: 'Access denied: Admin only' });
+      return;
+    }
+
+    const pendingTransactions = await prisma.transaction.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { date: 'desc' },
+      include: {
+        user: {
+          include: { profile: true }
+        }
+      }
+    });
+
+    const formattedRequests = pendingTransactions.map((tx) => {
+      const u = tx.user;
+      const empName = u.profile?.fullName || u.email.split('@')[0];
+      const timeStr = new Date(tx.date).toLocaleDateString('default', { day: 'numeric', month: 'short', year: 'numeric' }) +
+        ', ' +
+        new Date(tx.date).toLocaleTimeString('default', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+      return {
+        id: tx.id,
+        userId: u.id,
+        employeeName: empName,
+        email: u.email,
+        department: u.profile?.department || 'General',
+        jobTitle: u.profile?.jobTitle || 'Team Member',
+        title: tx.title,
+        reference: tx.reference,
+        amount: `$${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`,
+        amountRaw: tx.amount,
+        type: tx.type,
+        dateFormatted: timeStr,
+        status: tx.status
+      };
+    });
+
+    res.status(200).json({ pendingRequests: formattedRequests });
+  } catch (error) {
+    console.error('Get pending requests error:', error);
+    res.status(500).json({ error: 'Internal server error fetching pending requests' });
+  }
+};
+
+export const handlePendingRequestAction = async (req: Request, res: Response): Promise<void> => {
+  const adminId = (req as any).userId;
+  if (!adminId) {
+    res.status(401).json({ error: 'Unauthorized user context' });
+    return;
+  }
+
+  try {
+    const requester = await prisma.user.findUnique({ where: { id: adminId } });
+    if (!requester || requester.role.toLowerCase() !== 'admin') {
+      res.status(403).json({ error: 'Access denied: Admin only' });
+      return;
+    }
+
+    const { id } = req.params;
+    const { action } = req.body;
+
+    if (!id || !action) {
+      res.status(400).json({ error: 'Request ID and action (APPROVE/REJECT) are required' });
+      return;
+    }
+
+    const targetStatus = action.toUpperCase() === 'APPROVE' ? 'SUCCESSFUL' : 'FAILED';
+
+    const transaction = await prisma.transaction.update({
+      where: { id },
+      data: { status: targetStatus }
+    });
+
+    res.status(200).json({
+      message: `Request ${action.toLowerCase()}d successfully`,
+      transaction
+    });
+  } catch (error) {
+    console.error('Pending request action error:', error);
+    res.status(500).json({ error: 'Internal server error processing request action' });
+  }
+};
+
+export const disburseMonthlyPayroll = async (req: Request, res: Response): Promise<void> => {
+  const adminId = (req as any).userId;
+  if (!adminId) {
+    res.status(401).json({ error: 'Unauthorized user context' });
+    return;
+  }
+
+  try {
+    const requester = await prisma.user.findUnique({ where: { id: adminId } });
+    if (!requester || requester.role.toLowerCase() !== 'admin') {
+      res.status(403).json({ error: 'Access denied: Admin only' });
+      return;
+    }
+
+    const employees = await prisma.user.findMany({
+      where: { role: 'Employee', status: 'APPROVED' },
+      include: {
+        profile: true,
+        transactions: true
+      }
+    });
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let createdCount = 0;
+    let totalDisbursed = 0;
+
+    for (const emp of employees) {
+      let salaryVal = 0;
+      if (emp.profile && emp.profile.salary) {
+        salaryVal = parseFloat(emp.profile.salary.replace(/[^0-9.]/g, '')) || 0;
+      }
+
+      if (salaryVal <= 0) continue;
+
+      const alreadyPaid = emp.transactions.some((tx) => {
+        const txDate = new Date(tx.date);
+        return (
+          tx.type === 'SALARY' &&
+          tx.status.toUpperCase() === 'SUCCESSFUL' &&
+          txDate.getMonth() === currentMonth &&
+          txDate.getFullYear() === currentYear
+        );
+      });
+
+      if (!alreadyPaid) {
+        await prisma.transaction.create({
+          data: {
+            userId: emp.id,
+            title: `${emp.profile?.bankName || 'Bank'} Monthly Salary Disbursal`,
+            amount: salaryVal,
+            type: 'SALARY',
+            reference: `#PAY-${Math.floor(10000 + Math.random() * 90000)}`,
+            status: 'SUCCESSFUL'
+          }
+        });
+        createdCount++;
+        totalDisbursed += salaryVal;
+      }
+    }
+
+    res.status(200).json({
+      message: `Monthly payroll disbursed successfully for ${createdCount} employees. Total: $${totalDisbursed.toLocaleString()}`,
+      createdCount,
+      totalDisbursed
+    });
+  } catch (error) {
+    console.error('Disburse monthly payroll error:', error);
+    res.status(500).json({ error: 'Internal server error disbursing monthly payroll' });
   }
 };
 

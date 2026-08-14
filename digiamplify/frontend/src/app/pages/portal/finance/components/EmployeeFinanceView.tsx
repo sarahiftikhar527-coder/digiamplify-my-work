@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Coins } from 'lucide-react';
+import { formatDateStandard } from '@/utils/dateUtils';
 import EmployeeFinanceStats from './EmployeeFinanceStats';
 import EmployeeEarningsOverviewChart from './EmployeeEarningsOverviewChart';
 import EmployeeVisaCard from './EmployeeVisaCard';
@@ -10,6 +11,7 @@ import EmployeeBonusOverviewChart from './EmployeeBonusOverviewChart';
 import AddCardModal from './AddCardModal';
 import WithdrawModal from './WithdrawModal';
 import RequestTransactionModal from './RequestTransactionModal';
+import EmployeePayslipModal from './EmployeePayslipModal';
 
 interface TransactionRecord {
   id: string;
@@ -63,6 +65,7 @@ export default function EmployeeFinanceView() {
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [selectedPayslipTx, setSelectedPayslipTx] = useState<TransactionRecord | null>(null);
 
   const months = ['Jan 26', 'Feb 26', 'Mar 26', 'Apr 26', 'May 26', 'Jun 26', 'Jul 26', 'Aug 26', 'Sep 26', 'Oct 26', 'Nov 26', 'Dec 26'];
 
@@ -137,11 +140,7 @@ export default function EmployeeFinanceView() {
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   const latestSalaryDateString = sortedSalaryTransactions.length > 0
-    ? new Date(sortedSalaryTransactions[0].date).toLocaleDateString('default', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      })
+    ? formatDateStandard(sortedSalaryTransactions[0].date)
     : null;
 
   const filteredTransactions = transactions.filter((tx) => {
@@ -233,6 +232,7 @@ export default function EmployeeFinanceView() {
           setShowFilterDropdown={setShowFilterDropdown}
           filteredTransactions={filteredTransactions}
           transactionsCount={transactions.length}
+          onViewPayslip={(tx) => setSelectedPayslipTx(tx as TransactionRecord)}
         />
 
         <EmployeeBonusOverviewChart
@@ -256,6 +256,24 @@ export default function EmployeeFinanceView() {
         <RequestTransactionModal
           onClose={() => setShowRequestModal(false)}
           onSuccess={fetchData}
+        />
+      )}
+
+      {showWithdrawModal && (
+        <WithdrawModal
+          netSalary={summary.netSalary}
+          bankName={bankInfo.bankName}
+          accountNumber={bankInfo.accountNumber}
+          onClose={() => setShowWithdrawModal(false)}
+          onSuccess={fetchData}
+        />
+      )}
+
+      {selectedPayslipTx && (
+        <EmployeePayslipModal
+          transaction={selectedPayslipTx}
+          bankInfo={bankInfo}
+          onClose={() => setSelectedPayslipTx(null)}
         />
       )}
 

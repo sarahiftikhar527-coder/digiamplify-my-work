@@ -8,7 +8,10 @@ import {
   updateEmployeeCardInfo,
   employeeWithdraw,
   employeeRequestTransaction,
-  adminUpdateTransactionStatus
+  adminUpdateTransactionStatus,
+  getPendingFinancialRequests,
+  handlePendingRequestAction,
+  disburseMonthlyPayroll
 } from '../controllers/financeController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
@@ -20,6 +23,9 @@ router.post('/employee/withdraw', authenticateToken as any, employeeWithdraw as 
 router.post('/employee/request', authenticateToken as any, employeeRequestTransaction as any);
 
 router.get('/admin/overview', authenticateToken as any, getAdminFinanceOverview as any);
+router.get('/admin/pending-requests', authenticateToken as any, getPendingFinancialRequests as any);
+router.patch('/admin/request/:id/action', authenticateToken as any, handlePendingRequestAction as any);
+router.post('/admin/disburse-payroll', authenticateToken as any, disburseMonthlyPayroll as any);
 router.get('/admin/employee/:userId', authenticateToken as any, getEmployeeFinanceDataForAdmin as any);
 router.post('/admin/transaction', authenticateToken as any, addTransactionForAdmin as any);
 router.delete('/admin/transaction/:id', authenticateToken as any, deleteTransactionForAdmin as any);

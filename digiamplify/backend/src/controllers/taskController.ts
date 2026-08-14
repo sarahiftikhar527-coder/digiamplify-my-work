@@ -139,6 +139,9 @@ export const getTasks = async (req: AuthRequest, res: Response): Promise<void> =
     if (user.role.toLowerCase() === 'admin') {
       tasks = await prisma.task.findMany({
         include: {
+          subtasks: {
+            orderBy: { createdAt: 'asc' }
+          },
           assignedTo: {
             select: {
               email: true,
@@ -176,6 +179,9 @@ export const getTasks = async (req: AuthRequest, res: Response): Promise<void> =
           ]
         },
         include: {
+          subtasks: {
+            orderBy: { createdAt: 'asc' }
+          },
           assignedTo: {
             select: {
               email: true,
@@ -697,5 +703,90 @@ export const rejectTaskRequest = async (req: AuthRequest, res: Response): Promis
   } catch (error: any) {
     console.error('Reject task request error:', error);
     res.status(500).json({ error: 'Internal server error rejecting task request' });
+  }
+};
+
+const recalculateTaskProgress = async (taskId: string) => {
+  const subtasks = await prisma.subtask.findMany({ where: { taskId } });
+  if (subtasks.length === 0) return;
+  const completedCount = subtasks.filter(s => s.completed).length;
+  const progress = Math.round((completedCount / subtasks.length) * 100);
+  const status = progress === 100 ? 'COMPLETED' : (progress > 0 ? 'IN_PROGRESS' : 'PENDING');
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { progress, status }
+  });
+};
+
+export const addSubtask = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { taskId } = req.params;
+    const { title } = req.body;
+    if (!title || !title.trim()) {
+      res.status(400).json({ error: 'Subtask title is required' });
+      return;
+    }
+
+    const subtask = await prisma.subtask.create({
+      data: {
+        taskId,
+        title: title.trim(),
+        completed: false
+      }
+    });
+
+    await recalculateTaskProgress(taskId);
+
+    res.status(201).json({ message: 'Subtask created successfully', subtask });
+  } catch (error: any) {
+    console.error('Add subtask error:', error);
+    res.status(500).json({ error: 'Failed to create subtask' });
+  }
+};
+
+export const toggleSubtask = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { subtaskId } = req.params;
+    const { completed, title } = req.body;
+
+    const existing = await prisma.subtask.findUnique({ where: { id: subtaskId } });
+    if (!existing) {
+      res.status(404).json({ error: 'Subtask not found' });
+      return;
+    }
+
+    const subtask = await prisma.subtask.update({
+      where: { id: subtaskId },
+      data: {
+        completed: typeof completed === 'boolean' ? completed : existing.completed,
+        title: title !== undefined ? title : existing.title
+      }
+    });
+
+    await recalculateTaskProgress(existing.taskId);
+
+    res.status(200).json({ message: 'Subtask updated', subtask });
+  } catch (error: any) {
+    console.error('Toggle subtask error:', error);
+    res.status(500).json({ error: 'Failed to update subtask' });
+  }
+};
+
+export const deleteSubtask = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { subtaskId } = req.params;
+    const existing = await prisma.subtask.findUnique({ where: { id: subtaskId } });
+    if (!existing) {
+      res.status(404).json({ error: 'Subtask not found' });
+      return;
+    }
+
+    await prisma.subtask.delete({ where: { id: subtaskId } });
+    await recalculateTaskProgress(existing.taskId);
+
+    res.status(200).json({ message: 'Subtask deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete subtask error:', error);
+    res.status(500).json({ error: 'Failed to delete subtask' });
   }
 };

@@ -22,6 +22,7 @@ interface EmployeeClockInViewProps {
   getStatusPill: () => React.ReactNode;
   getActionButtonText: () => string;
   isFormDisabled: boolean;
+  onRequestShiftSwapClick?: () => void;
 }
 
 export default function EmployeeClockInView({
@@ -44,46 +45,14 @@ export default function EmployeeClockInView({
   formatTimeHM,
   getStatusPill,
   getActionButtonText,
-  isFormDisabled
+  isFormDisabled,
+  onRequestShiftSwapClick
 }: EmployeeClockInViewProps) {
 
-  const isNightShift = userProfile?.shift?.toLowerCase() === 'night';
-  const shiftTimeStr = isNightShift ? '06:00 PM - 12:00 AM' : '09:00 AM - 03:00 PM';
-  const breakTimeStr = isNightShift ? '08:00 PM - 09:00 PM' : '12:00 PM - 01:00 PM';
-
-  const isWithinBreakTime = () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    if (isNightShift) {
-      // 08:00 PM to 09:00 PM (Hour 20)
-      return currentHour === 20;
-    } else {
-      // 12:00 PM to 01:00 PM (Hour 12)
-      return currentHour === 12;
-    }
-  };
-
-  const checkIsShiftEnded = () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTimeInMinutes = currentHour * 60 + currentMinute;
-
-    if (isNightShift) {
-      // Night shift: 06:00 PM (18:00 = 1080 mins) to 12:00 AM (24:00 = 1440 mins).
-      // Shift ends at 12:00 AM (1440).
-      // So if time is between 12:00 AM (0 mins) and 06:00 PM (1080 mins), the shift has ended.
-      return currentTimeInMinutes < 1080;
-    } else {
-      // Day shift: 09:00 AM (09:00 = 540 mins) to 03:00 PM (15:00 = 900 mins).
-      // Shift ends at 03:00 PM (900).
-      // So if time is >= 03:00 PM (900 mins) or < 09:00 AM (540 mins), the shift has ended.
-      return currentTimeInMinutes >= 900 || currentTimeInMinutes < 540;
-    }
-  };
-
-  const isShiftEnded = checkIsShiftEnded();
-  const isClockInBlocked = isShiftEnded && (!attendance || !attendance.clockIn);
+  const shiftName = userProfile?.shift || 'Morning';
+  const isNightShift = shiftName.toLowerCase() === 'night';
+  const shiftTimeStr = isNightShift ? '06:00 PM - 02:00 AM' : '09:00 AM - 05:00 PM';
+  const breakTimeStr = isNightShift ? '09:00 PM - 10:00 PM' : '01:00 PM - 02:00 PM';
 
   return (
     <div className="w-full flex flex-col justify-start">
@@ -176,8 +145,7 @@ export default function EmployeeClockInView({
               </div>
               <button
                 onClick={onForgotPinClick}
-                disabled={isClockInBlocked}
-                className="text-xs text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                className="text-xs text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer"
               >
                 Forgot PIN?
               </button>
@@ -191,7 +159,7 @@ export default function EmployeeClockInView({
                   className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-lg font-bold transition-all bg-[#050505] ${pin.length > idx
                       ? 'border-red-500 text-white'
                       : 'border-neutral-800 text-transparent'
-                    } ${isClockInBlocked ? 'opacity-50' : ''}`}
+                    }`}
                 >
                   {pin.length > idx ? '●' : ''}
                 </div>
@@ -202,7 +170,7 @@ export default function EmployeeClockInView({
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((val) => (
                 <button
                   key={val}
-                  disabled={!!isFormDisabled || isClockInBlocked}
+                  disabled={!!isFormDisabled}
                   onClick={() => onKeypadPress(val)}
                   className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -211,7 +179,7 @@ export default function EmployeeClockInView({
               ))}
 
               <button
-                disabled={!!isFormDisabled || isClockInBlocked}
+                disabled={!!isFormDisabled}
                 onClick={onBackspace}
                 className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -219,7 +187,7 @@ export default function EmployeeClockInView({
               </button>
 
               <button
-                disabled={!!isFormDisabled || isClockInBlocked}
+                disabled={!!isFormDisabled}
                 onClick={() => onKeypadPress('0')}
                 className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -227,7 +195,7 @@ export default function EmployeeClockInView({
               </button>
 
               <button
-                disabled={!!isFormDisabled || isClockInBlocked}
+                disabled={!!isFormDisabled}
                 onClick={onClear}
                 className="py-4 bg-[#16181C] border-[1.5px] border-white/10 hover:border-white/20 text-white rounded-lg font-medium text-base hover:bg-neutral-800 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -236,11 +204,11 @@ export default function EmployeeClockInView({
             </div>
 
             <button
-              disabled={!!isFormDisabled || isLoading || isClockInBlocked}
+              disabled={!!isFormDisabled || isLoading}
               onClick={onClockInAction}
               className="w-full py-3.5 bg-[#be0919] hover:bg-[#990714] disabled:bg-neutral-900 disabled:text-neutral-500 disabled:border-neutral-800 disabled:cursor-not-allowed text-white font-bold rounded-lg text-sm tracking-wide shadow-md transition-all cursor-pointer"
             >
-              {isLoading ? 'Verifying PIN...' : (isClockInBlocked ? 'Shift Ended' : getActionButtonText())}
+              {isLoading ? 'Verifying PIN...' : getActionButtonText()}
             </button>
           </div>
 
@@ -278,6 +246,18 @@ export default function EmployeeClockInView({
                   <span className="text-white text-sm font-semibold">5h 0m (1h break)</span>
                 </div>
               </div>
+
+              {onRequestShiftSwapClick && (
+                <div className="pt-3 border-t border-neutral-900">
+                  <button
+                    onClick={onRequestShiftSwapClick}
+                    className="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 font-bold text-xs rounded-xl border border-neutral-800 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-[#be0919]" />
+                    <span>Request Shift Swap / Custom Timing</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -324,6 +304,28 @@ export default function EmployeeClockInView({
               <div className="flex items-center justify-between py-4">
                 <span className="text-neutral-500">Break Hours</span>
                 <span className="text-white font-semibold">{stats.breakHours}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-4 border-t border-neutral-900 pt-4">
+                <span className="text-neutral-500">Monthly Worked Hours</span>
+                <span className="text-emerald-400 font-bold">{stats.monthlyWorkedHours || '0h 0m'} / {stats.monthlyTargetHours || '160h 0m'}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-4">
+                <span className="text-neutral-500">Monthly OT / Shortfall</span>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded border ${
+                  stats.monthlyOTPending && stats.monthlyOTPending !== '0h 0m'
+                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40'
+                    : stats.monthlyUndertimePending && stats.monthlyUndertimePending !== '0h 0m'
+                    ? 'bg-amber-950/60 text-amber-400 border-amber-800/40'
+                    : 'bg-neutral-900 text-neutral-400 border-neutral-800'
+                }`}>
+                  {stats.monthlyOTPending && stats.monthlyOTPending !== '0h 0m'
+                    ? `+${stats.monthlyOTPending} OT (Pending Approval)`
+                    : stats.monthlyUndertimePending && stats.monthlyUndertimePending !== '0h 0m'
+                    ? `-${stats.monthlyUndertimePending} Shortfall (Pending Approval)`
+                    : 'On Track'}
+                </span>
               </div>
             </div>
           </div>

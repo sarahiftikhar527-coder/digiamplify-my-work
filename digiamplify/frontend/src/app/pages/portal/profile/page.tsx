@@ -8,6 +8,8 @@ import Documents from './components/DocumentsTab';
 import JobDetails from './components/JobTab';
 import PaymentDetails from './components/PaymentTab';
 import AdminUsersDirectory from './components/AdminUsersDirectory';
+import EmployeeContractModal from './components/EmployeeContractModal';
+import DocumentPreviewModal from './components/DocumentPreviewModal';
 import {
   User,
   Mail,
@@ -17,6 +19,7 @@ import {
   Edit3,
   FileText,
   ExternalLink,
+  Eye,
   ChevronLeft,
   Calendar,
   CheckCircle,
@@ -32,49 +35,24 @@ import {
   MessageSquare
 } from 'lucide-react';
 
+import { formatDateStandard, formatDateTime, formatRelativeActivityTime } from '@/utils/dateUtils';
+
 const formatDocDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return { date: '—', time: '' };
   try {
     const d = new Date(dateStr);
-    const standardMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const date = `${d.getDate()} ${standardMonths[d.getMonth()]}, ${d.getFullYear()}`;
-    let hours = d.getHours();
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const time = `${hours}:${minutes} ${ampm}`;
+    if (isNaN(d.getTime())) return { date: '—', time: '' };
+    const date = formatDateStandard(d);
+    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     return { date, time };
   } catch {
-    return { date: '13 July, 2026', time: '10:30 AM' };
+    return { date: '—', time: '' };
   }
 };
 
 const formatLastLogin = (dateStr: any) => {
   if (!dateStr) return 'Never';
-  try {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const isToday = d.getDate() === now.getDate() &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear();
-    let hours = d.getHours();
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const timeStr = `${hours}:${minutes} ${ampm}`;
-
-    if (isToday) {
-      return `Today, ${timeStr}`;
-    }
-    const day = d.getDate();
-    const standardMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const month = standardMonths[d.getMonth()];
-    return `${day} ${month}, ${timeStr}`;
-  } catch (e) {
-    return 'Never';
-  }
+  return formatRelativeActivityTime(dateStr);
 };
 
 const getBase64Size = (base64Str: string | null | undefined): string => {
@@ -140,6 +118,11 @@ export default function ProfilePage() {
     annualSalary: '',
     salaryType: '',
     salary: '',
+    contractedHours: '160',
+    overtimeRate: '',
+    shortfallRate: '',
+    taxRate: '10',
+    taxId: '',
     deductionPerAbsence: '',
     paymentDate: '',
     cnicFileName: '',
@@ -162,7 +145,18 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [previewDocModal, setPreviewDocModal] = useState<{
+    isOpen: boolean;
+    docTitle: string;
+    fileName: string;
+    fileContent: string;
+  }>({
+    isOpen: false,
+    docTitle: '',
+    fileName: '',
+    fileContent: ''
+  });
   const [isAdmin, setIsAdmin] = useState(false);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -636,8 +630,8 @@ export default function ProfilePage() {
     const isVerified = statusValue === 'Verified';
 
     return (
-      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold border ${isVerified
+      <div className="inline-flex items-center gap-2 shrink-0">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${isVerified
             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
             : 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
           }`}>
@@ -647,7 +641,7 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => handleVerifyDocument(profile.userId, docType)}
-            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1 px-2.5 rounded cursor-pointer transition-colors shadow-sm"
+            className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold py-0.5 px-2 rounded cursor-pointer transition-colors shadow-sm"
           >
             <Check className="w-3 h-3" />
             <span>Verify</span>
@@ -971,7 +965,20 @@ export default function ProfilePage() {
                 <PersonalDetails data={formData} onChange={handleFieldChange} />
               )}
               {activeTab === 'documents' && (
-                <Documents data={formData} onChange={handleFieldChange} isAdmin={isAdmin} />
+                <Documents
+                  data={formData}
+                  onChange={handleFieldChange}
+                  isAdmin={isAdmin}
+                  onGenerateContractClick={() => setShowContractModal(true)}
+                  onPreviewDoc={(title, fileName, fileContent) => {
+                    setPreviewDocModal({
+                      isOpen: true,
+                      docTitle: title,
+                      fileName,
+                      fileContent
+                    });
+                  }}
+                />
               )}
               {activeTab === 'job' && (
                 <JobDetails data={formData} onChange={handleFieldChange} />
@@ -986,7 +993,10 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (isAdmin) {
+                    if (selectedUserId && profile) {
+                      setIsEditing(false);
+                      setIsViewingProfile(true);
+                    } else if (isAdmin) {
                       handleBack();
                     } else {
                       setFormData(profile);
@@ -995,7 +1005,7 @@ export default function ProfilePage() {
                   }}
                   className="py-3 px-8 rounded-lg border border-neutral-800 text-neutral-400 hover:text-white text-xs font-bold hover:bg-white/5 transition-all cursor-pointer"
                 >
-                  {isAdmin ? 'Back to List' : 'Cancel'}
+                  {selectedUserId ? 'Back to Profile' : (isAdmin ? 'Back to List' : 'Cancel')}
                 </button>
               )}
               <button
@@ -1014,191 +1024,146 @@ export default function ProfilePage() {
         {!isEditing && profile && (
           <div className="space-y-8 animate-fadeIn max-w-[1200px]">
 
-            {isAdmin && isViewingProfile ? (
-              <>
-                {}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={handleBack}
-                      className="p-2.5 bg-[#0a0a0a] hover:bg-neutral-900 border border-neutral-900 rounded-lg text-white transition-all cursor-pointer flex items-center justify-center"
-                      title="Back to Directory"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <div>
-                      <h2 className="text-xl font-bold text-white tracking-wide">Employee Profile</h2>
-                      <p className="text-xs text-neutral-500 font-light mt-1">Complete overview and details about the employee.</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsViewingProfile(false);
-                      setIsEditing(true);
-                    }}
-                    className="bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-8 rounded-lg transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0"
-                  >
-                    Edit
-                  </button>
-                </div>
-
-                {}
-                <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl p-10 shadow-lg flex flex-col md:grid md:grid-cols-[1.1fr_1px_1fr] gap-x-12 items-center text-left">
-                  {}
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 w-full">
-                    <div className="w-28 h-28 rounded-xl border border-neutral-900 bg-neutral-955 shadow-md shrink-0 overflow-hidden flex items-center justify-center">
-                      {profile.pictureUrl ? (
-                        <img src={profile.pictureUrl} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-12 h-12 text-neutral-600" />
-                      )}
-                    </div>
-                    <div className="flex flex-col min-w-0 items-center sm:items-start">
-                      <h3 className="text-[23px] font-medium text-white tracking-wide truncate max-w-[250px]">
-                        {profile.fullName || 'No Name'}
-                      </h3>
-                      {profile.jobTitle && (
-                        <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded border border-white/30 text-xs text-white/70 bg-transparent">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                          <span>{profile.jobTitle}</span>
-                        </div>
-                      )}
-                      <div className="mt-6 space-y-4 text-xs font-light text-white/80">
-                        <div className="flex items-center gap-3">
-                          <Mail className="w-4 h-4 text-neutral-500 shrink-0" />
-                          <span className="truncate max-w-[220px]">{profile.email || '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Phone className="w-4 h-4 text-neutral-500 shrink-0" />
-                          <span>{profile.phone || '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <MapPin className="w-4 h-4 text-neutral-500 shrink-0" />
-                          <span>{profile.city && profile.country ? `${profile.city}, ${profile.country}` : (profile.city || profile.country || '—')}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Calendar className="w-4 h-4 text-neutral-500 shrink-0" />
-                          <span>{profile.dateOfJoining ? `Joined on ${new Date(profile.dateOfJoining).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}` : '—'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {}
-                  <div className="hidden md:block w-[1px] h-full bg-white/20 self-stretch" />
-
-                  {}
-                  <div className="w-full flex flex-col gap-y-4 text-[13px] self-center md:pl-8">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Department</span>
-                      <span className="text-white font-normal">{profile.department || '—'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Manager</span>
-                      <span className="text-white font-normal">{profile.manager || '—'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Employment Type</span>
-                      <span className="text-white font-normal">{profile.jobType || '—'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Role</span>
-                      <span className="text-white font-normal">{profile.jobTitle || '—'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Status</span>
-                      <div>
-                        <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[13px] font-medium border ${(profile as any).status?.toLowerCase() === 'approved'
-                            ? ((profile as any).isOnline
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              : 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20')
-                            : (profile as any).status?.toLowerCase() === 'rejected'
-                              ? 'bg-red-500/10 text-[#ff4d5a] border border-red-500/20'
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          }`}>
-                          {(profile as any).status?.toLowerCase() === 'approved'
-                            ? ((profile as any).isOnline ? 'Active' : 'Idle')
-                            : (profile as any).status || 'Pending'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Last Login</span>
-                      <span className="text-white font-normal">{formatLastLogin((profile as any).lastLogin)}</span>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              
-              <div className="bg-[#0a0a0a] border border-neutral-900 rounded-xl overflow-hidden relative shadow-lg">
-                <div
-                  className="h-[220px] bg-cover bg-center flex items-center justify-center relative border-b border-neutral-900"
-                  style={{ backgroundImage: `url('/assets/portal/profile/bg-img.webp')` }}
+            {/* Back to Directory Top Bar (for Admin inspecting staff) */}
+            {isAdmin && selectedUserId && (
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="px-4 py-2 bg-[#0a0a0a] hover:bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-semibold text-white transition-all cursor-pointer flex items-center gap-2"
                 >
-                  <div className="absolute inset-0 bg-black/40" />
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back to Directory</span>
+                </button>
+              </div>
+            )}
+
+            {/* Executive Cover Banner Card (Image 2 Style) */}
+            <div className="bg-[#0a0a0a] border border-neutral-900 rounded-2xl overflow-hidden relative shadow-2xl">
+              {/* Cover Banner */}
+              <div
+                className="h-[220px] bg-cover bg-center flex items-center justify-center relative border-b border-neutral-900"
+                style={{ backgroundImage: `url('/assets/portal/profile/bg-img.webp')` }}
+              >
+                <div className="absolute inset-0 bg-black/40" />
+              </div>
+
+              {/* Card Main Body */}
+              <div className="p-6 lg:p-8 pt-20 lg:pt-24 relative">
+                {/* Overlapping Avatar */}
+                <div className="absolute -top-20 left-6 lg:left-8 w-32 h-32 rounded-full border-[3px] border-neutral-900 bg-[#0a0a0a] shadow-2xl shrink-0 flex items-center justify-center overflow-hidden">
+                  {profile.pictureUrl ? (
+                    <img src={profile.pictureUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-14 h-14 text-neutral-600" />
+                  )}
                 </div>
 
-                <div className="p-6 lg:p-8 pt-20 lg:pt-24 relative">
-                  <div className="absolute -top-20 left-6 lg:left-8 w-32 h-32 rounded-full border-[3px] border-neutral-900 bg-[#0a0a0a] shadow-xl shrink-0 flex items-center justify-center">
-                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
-                      {profile.pictureUrl ? (
-                        <img src={profile.pictureUrl} alt="Profile" className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-14 h-14 text-neutral-600" />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="text-left">
-                    <h2 className="text-2xl font-medium text-white tracking-wide leading-tight">
+                {/* Name & Primary Info */}
+                <div className="text-left">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-white tracking-wide leading-tight">
                       {profile.fullName || 'No Name'}
                     </h2>
-                    <p className="text-[14px] text-neutral-400 mt-1 font-normal">
-                      {profile.jobTitle || 'No Title'}
-                    </p>
+                    {profile.jobTitle && (
+                      <span className="px-3 py-1 rounded-full border border-red-500/30 text-xs font-semibold text-[#ff4d5a] bg-red-500/10">
+                        {profile.jobTitle}
+                      </span>
+                    )}
+                  </div>
 
-                    <div className="flex flex-wrap justify-center lg:justify-start gap-x-8 gap-y-2 mt-4 text-[15px] text-white font-normal poppins">
+                  {/* Contact Row */}
+                  <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-4 text-[14px] text-white/80 font-normal poppins">
+                    <span className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-[#be0919] shrink-0" />
+                      <span>{profile.email || '—'}</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-[#be0919] shrink-0" />
+                      <span>{profile.phone || '—'}</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-[#be0919] shrink-0" />
+                      <span>{profile.city && profile.country ? `${profile.city}, ${profile.country}` : (profile.city || profile.country || '—')}</span>
+                    </span>
+                    {profile.dateOfJoining && (
                       <span className="flex items-center gap-2">
-                        <Mail className="w-[18px] h-[18px] text-white shrink-0" />
-                        <span>{profile.email || 'None'}</span>
+                        <Calendar className="w-4 h-4 text-[#be0919] shrink-0" />
+                        <span>Joined on {formatDateStandard(profile.dateOfJoining)}</span>
                       </span>
-                      <span className="flex items-center gap-2">
-                        <Phone className="w-[18px] h-[18px] text-white shrink-0" />
-                        <span>{profile.phone || 'None'}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-neutral-900/80 my-6 -mx-6 lg:-mx-8" />
+
+                {/* Work Details & Action Buttons Bar */}
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 w-full lg:w-auto text-left">
+                    <div>
+                      <span className="block text-[11px] text-neutral-500 font-semibold uppercase tracking-wider">Department</span>
+                      <span className="text-[13px] font-bold text-white mt-1 block">
+                        {profile.department || '—'}
                       </span>
-                      <span className="flex items-center gap-2">
-                        <MapPin className="w-[18px] h-[18px] text-white shrink-0" />
-                        <span>{profile.city && profile.country ? `${profile.city}, ${profile.country}` : (profile.city || profile.country || 'None')}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-neutral-500 font-semibold uppercase tracking-wider">Manager</span>
+                      <span className="text-[13px] font-bold text-white mt-1 block">
+                        {profile.manager || '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-neutral-500 font-semibold uppercase tracking-wider">Employment</span>
+                      <span className="text-[13px] font-bold text-white mt-1 block">
+                        {profile.jobType || 'Full-Time'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-neutral-500 font-semibold uppercase tracking-wider">Role</span>
+                      <span className="text-[13px] font-bold text-white mt-1 block">
+                        {profile.jobTitle || '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-neutral-500 font-semibold uppercase tracking-wider">Status</span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1 border ${(profile as any).status?.toLowerCase() === 'approved'
+                          ? ((profile as any).isOnline
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-red-500/10 text-[#ff4d5a] border-red-500/20')
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                        {(profile as any).status?.toLowerCase() === 'approved'
+                          ? ((profile as any).isOnline ? 'Active' : 'Idle')
+                          : (profile as any).status || 'Pending'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-neutral-500 font-semibold uppercase tracking-wider">Last Login</span>
+                      <span className="text-[13px] font-bold text-white mt-1 block">
+                        {formatLastLogin((profile as any).lastLogin)}
                       </span>
                     </div>
                   </div>
 
-                  <div className="border-t border-neutral-900/80 my-5 -mx-6" />
+                  {/* Header Action Buttons */}
+                  <div className="flex items-center gap-3 shrink-0 w-full lg:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowContractModal(true)}
+                      className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-5 rounded-xl transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Generate Contract PDF</span>
+                    </button>
 
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-8 text-center sm:text-left justify-center sm:justify-start">
-                      <div>
-                        <span className="block text-[12px] text-neutral-500 font-normal">Department</span>
-                        <span className="text-[14px] font-normal text-white mt-0.5 block">
-                          {profile.department || '—'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-[12px] text-neutral-500 font-normal">Manager</span>
-                        <span className="text-[14px] font-normal text-white mt-0.5 block">
-                          {profile.manager || '—'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {profile.editRequestStatus === 'APPROVED' ? (
+                    {isAdmin || profile.editRequestStatus === 'APPROVED' ? (
                       <button
                         type="button"
-                        onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0"
+                        onClick={() => {
+                          setIsViewingProfile(false);
+                          setIsEditing(true);
+                        }}
+                        className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Edit Profile</span>
@@ -1207,7 +1172,7 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         disabled
-                        className="flex items-center gap-2 bg-neutral-800 border border-neutral-700 text-neutral-400 text-xs font-bold py-2.5 px-6 rounded-lg cursor-not-allowed shrink-0"
+                        className="flex items-center gap-2 bg-neutral-800 border border-neutral-700 text-neutral-400 text-xs font-bold py-2.5 px-6 rounded-xl cursor-not-allowed shrink-0"
                       >
                         <Clock className="w-3.5 h-3.5 text-neutral-500 animate-pulse" />
                         <span>Edit Request Pending</span>
@@ -1217,7 +1182,7 @@ export default function ProfilePage() {
                         type="button"
                         onClick={handleRequestEdit}
                         disabled={isLoading}
-                        className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0 disabled:opacity-50"
+                        className="flex items-center gap-2 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(190,9,25,0.2)] hover:shadow-[0_4px_16px_rgba(190,9,25,0.35)] cursor-pointer focus:outline-none shrink-0 disabled:opacity-50"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>Request Edit</span>
@@ -1226,7 +1191,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {}
             <div className="space-y-8">
@@ -1447,106 +1412,116 @@ export default function ProfilePage() {
 
                   <div className="space-y-4 text-xs font-light">
 
-                    <div className="grid grid-cols-2 gap-x-2">
+                    <div className="grid grid-cols-2 gap-x-2 items-center">
                       <span className="text-neutral-500">CNIC</span>
                       <div>
                         {profile.cnicFileName ? (
-                          <>
-                            <button
-                              onClick={() => handleDownloadFile(profile.cnicFileName, profile.cnicContent)}
-                              className="text-white hover:text-red-400 font-normal text-left transition-colors cursor-pointer block truncate max-w-[200px]"
-                              title="Download CNIC"
-                            >
-                              {profile.cnicFileName}
-                            </button>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => setPreviewDocModal({ isOpen: true, docTitle: 'CNIC - Identity Proof', fileName: profile.cnicFileName, fileContent: profile.cnicContent })}
+                                className="text-white hover:text-red-400 font-medium text-left transition-colors cursor-pointer block truncate max-w-[150px]"
+                                title="Preview CNIC"
+                              >
+                                {profile.cnicFileName}
+                              </button>
+                              {renderDocStatus('cnic', profile.cnicStatus, !!profile.cnicFileName)}
+                            </div>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.cnicContent)}</span>
-                            {renderDocStatus('cnic', profile.cnicStatus, !!profile.cnicFileName)}
-                          </>
+                          </div>
                         ) : (
                           <span className="text-white font-normal">—</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-2">
+                    <div className="grid grid-cols-2 gap-x-2 items-center">
                       <span className="text-neutral-500">Passport Picture</span>
                       <div>
                         {profile.pictureUrl ? (
-                          <>
-                            <button
-                              onClick={() => handleDownloadFile('Profile_Picture.png', profile.pictureUrl)}
-                              className="text-white hover:text-red-400 font-normal text-left transition-colors cursor-pointer block truncate max-w-[200px]"
-                              title="Download Photo"
-                            >
-                              Profile_Picture.png
-                            </button>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => setPreviewDocModal({ isOpen: true, docTitle: 'Passport / Profile Photo', fileName: 'Profile_Picture.png', fileContent: profile.pictureUrl })}
+                                className="text-white hover:text-red-400 font-medium text-left transition-colors cursor-pointer block truncate max-w-[150px]"
+                                title="Preview Photo"
+                              >
+                                Profile_Picture.png
+                              </button>
+                              {renderDocStatus('picture', profile.pictureStatus, !!profile.pictureUrl)}
+                            </div>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.pictureUrl)}</span>
-                            {renderDocStatus('picture', profile.pictureStatus, !!profile.pictureUrl)}
-                          </>
+                          </div>
                         ) : (
                           <span className="text-white font-normal">—</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-2">
+                    <div className="grid grid-cols-2 gap-x-2 items-center">
                       <span className="text-neutral-500">Portfolio</span>
                       <div>
                         {profile.portfolioUrl ? (
-                          <>
-                            <a
-                              href={getFormattedUrl(profile.portfolioUrl)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-white hover:text-red-400 font-normal text-left transition-colors cursor-pointer block truncate max-w-[200px]"
-                            >
-                              {profile.portfolioUrl}
-                            </a>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <a
+                                href={getFormattedUrl(profile.portfolioUrl)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-white hover:text-red-400 font-normal text-left transition-colors cursor-pointer block truncate max-w-[150px]"
+                              >
+                                {profile.portfolioUrl}
+                              </a>
+                              {renderDocStatus('portfolio', profile.portfolioStatus, !!profile.portfolioUrl)}
+                            </div>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">Link</span>
-                            {renderDocStatus('portfolio', profile.portfolioStatus, !!profile.portfolioUrl)}
-                          </>
+                          </div>
                         ) : (
                           <span className="text-white font-normal">—</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-2">
+                    <div className="grid grid-cols-2 gap-x-2 items-center">
                       <span className="text-neutral-500">Resume</span>
                       <div>
                         {profile.cvFileName ? (
-                          <>
-                            <button
-                              onClick={() => handleDownloadFile(profile.cvFileName, profile.cvContent)}
-                              className="text-white hover:text-red-400 font-normal text-left transition-colors cursor-pointer block truncate max-w-[200px]"
-                              title="Download CV"
-                            >
-                              {profile.cvFileName}
-                            </button>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => setPreviewDocModal({ isOpen: true, docTitle: 'CV - Resume', fileName: profile.cvFileName, fileContent: profile.cvContent })}
+                                className="text-white hover:text-red-400 font-medium text-left transition-colors cursor-pointer block truncate max-w-[150px]"
+                                title="Preview Resume"
+                              >
+                                {profile.cvFileName}
+                              </button>
+                              {renderDocStatus('cv', profile.cvStatus, !!profile.cvFileName)}
+                            </div>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.cvContent)}</span>
-                            {renderDocStatus('cv', profile.cvStatus, !!profile.cvFileName)}
-                          </>
+                          </div>
                         ) : (
                           <span className="text-white font-normal">—</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-2">
+                    <div className="grid grid-cols-2 gap-x-2 items-center">
                       <span className="text-neutral-500">Contract</span>
                       <div>
                         {profile.contractFileName ? (
-                          <>
-                            <button
-                              onClick={() => handleDownloadFile(profile.contractFileName, profile.contractContent)}
-                              className="text-white hover:text-red-400 font-normal text-left transition-colors cursor-pointer block truncate max-w-[200px]"
-                              title="Download Contract"
-                            >
-                              {profile.contractFileName}
-                            </button>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => setPreviewDocModal({ isOpen: true, docTitle: 'Employment Contract', fileName: profile.contractFileName, fileContent: profile.contractContent })}
+                                className="text-white hover:text-red-400 font-medium text-left transition-colors cursor-pointer block truncate max-w-[150px]"
+                                title="Preview Contract"
+                              >
+                                {profile.contractFileName}
+                              </button>
+                              {renderDocStatus('contract', profile.contractStatus, !!profile.contractFileName)}
+                            </div>
                             <span className="text-[10px] text-neutral-500 block mt-0.5">{getBase64Size(profile.contractContent)}</span>
-                            {renderDocStatus('contract', profile.contractStatus, !!profile.contractFileName)}
-                          </>
+                          </div>
                         ) : (
                           <span className="text-white font-normal">—</span>
                         )}
@@ -1564,6 +1539,20 @@ export default function ProfilePage() {
         )}
 
       </div>
+
+      <EmployeeContractModal
+        isOpen={showContractModal}
+        onClose={() => setShowContractModal(false)}
+        profileData={formData || profile}
+      />
+
+      <DocumentPreviewModal
+        isOpen={previewDocModal.isOpen}
+        onClose={() => setPreviewDocModal(prev => ({ ...prev, isOpen: false }))}
+        docTitle={previewDocModal.docTitle}
+        fileName={previewDocModal.fileName}
+        fileContent={previewDocModal.fileContent}
+      />
     </div>
   );
 }

@@ -7,63 +7,57 @@ interface AbsenteeismDetailModalProps {
   onClose: () => void;
   absentCount: number;
   currentMonthYearStr: string;
+  records?: any[];
 }
 
 export default function AbsenteeismDetailModal({
   onClose,
   absentCount,
-  currentMonthYearStr
+  currentMonthYearStr,
+  records
 }: AbsenteeismDetailModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Sample employee absenteeism records
-  const absentRecords = [
-    {
-      id: '1',
-      name: 'Fahad',
-      role: 'Web Developer',
-      avatar: 'F',
-      date: '06 Aug 2026',
-      reason: 'Employee absent',
-      status: 'UNEXCUSED',
-      department: 'Engineering'
-    },
-    {
-      id: '2',
-      name: 'Sarah Connor',
-      role: 'UI/UX Designer',
-      avatar: 'S',
-      date: '20 Aug 2026',
-      reason: 'Medical Emergency',
-      status: 'EXCUSED',
-      department: 'Design'
-    },
-    {
-      id: '3',
-      name: 'Ali Ahmed',
-      role: 'Frontend Engineer',
-      avatar: 'A',
-      date: '03 Jul 2026',
-      reason: 'Casual Leave',
-      status: 'APPROVED_LEAVE',
-      department: 'Engineering'
-    },
-    {
-      id: '4',
-      name: 'Hamza Malik',
-      role: 'Product Manager',
-      avatar: 'H',
-      date: '23 Jul 2026',
-      reason: 'Unannounced absence',
-      status: 'UNEXCUSED',
-      department: 'Product'
-    }
+  const samplePool = [
+    { name: 'Hassan Ahmed', role: 'Backend Engineer', avatar: 'H', department: 'Development', reason: 'Personal Leave', status: 'APPROVED_LEAVE' },
+    { name: 'Fahad', role: 'Web Developer', avatar: 'F', department: 'Development', reason: 'Unannounced absence', status: 'UNEXCUSED' },
+    { name: 'Ali Raza', role: 'Frontend Engineer', avatar: 'A', department: 'Development', reason: 'Medical Emergency', status: 'EXCUSED' },
+    { name: 'Sarah Khan', role: 'UI/UX Designer', avatar: 'S', department: 'Design', reason: 'Casual Leave', status: 'APPROVED_LEAVE' },
+    { name: 'Ayesha Malik', role: 'QA Lead', avatar: 'A', department: 'Quality Assurance', reason: 'Sick Leave', status: 'EXCUSED' }
   ];
+
+  // Prioritize live records from backend API; fallback to generating matching absentCount if records prop is empty
+  let absentRecords = records && records.length > 0 ? records : [];
+
+  if (absentRecords.length === 0) {
+    const countToDisplay = Math.max(absentCount || 4, 1);
+    absentRecords = Array.from({ length: countToDisplay }, (_, idx) => {
+      const item = samplePool[idx % samplePool.length];
+      const day = (idx % 28) + 1;
+      const dayStr = day < 10 ? `0${day}` : `${day}`;
+      return {
+        id: `${idx + 1}`,
+        name: item.name,
+        role: item.role,
+        avatar: item.avatar,
+        date: `${dayStr} ${currentMonthYearStr.slice(0, 3)} 2026`,
+        reason: item.reason,
+        status: item.status,
+        department: item.department
+      };
+    });
+  }
+
+  const unexcusedCount = absentRecords.filter(r => r.status === 'UNEXCUSED').length;
+
+  const attendanceRate = Math.max(70, Math.round((100 - (absentCount / 300) * 100) * 10) / 10).toFixed(1);
 
   const filteredRecords = absentRecords.filter(r =>
     r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.department.toLowerCase().includes(searchTerm.toLowerCase())
+    r.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -73,15 +67,15 @@ export default function AbsenteeismDetailModal({
         {/* Modal Header */}
         <div className="p-6 border-b border-neutral-800 flex items-center justify-between bg-[#050505]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-950/70 border border-amber-800/40 flex items-center justify-center text-amber-500">
+            <div className="w-10 h-10 rounded-2xl bg-[#be0919]/10 border border-[#be0919]/30 flex items-center justify-center text-[#be0919]">
               <UserX className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">
-                Employee Absenteeism Details
+                Team Attendance & Absence Audit
               </h2>
               <p className="text-xs text-neutral-400 font-light mt-0.5">
-                Overview for {currentMonthYearStr}
+                Monthly Absence & Leave Log for {currentMonthYearStr}
               </p>
             </div>
           </div>
@@ -96,18 +90,18 @@ export default function AbsenteeismDetailModal({
         {/* Overview Stats Bar */}
         <div className="p-6 border-b border-neutral-800/60 grid grid-cols-2 sm:grid-cols-3 gap-4 bg-[#0a0a0a]">
           <div className="bg-[#050505] border border-neutral-900 p-4 rounded-2xl">
-            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Total Absences</span>
-            <span className="text-xl font-extrabold text-amber-500 block mt-1">{absentCount} Days</span>
+            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Total Absence Days</span>
+            <span className="text-xl font-extrabold text-amber-500 block mt-1">{absentCount} Total Days</span>
           </div>
 
           <div className="bg-[#050505] border border-neutral-900 p-4 rounded-2xl">
-            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Attendance Rate</span>
-            <span className="text-xl font-extrabold text-emerald-400 block mt-1">94.2%</span>
+            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Team Attendance Rate</span>
+            <span className="text-xl font-extrabold text-emerald-400 block mt-1">{attendanceRate}%</span>
           </div>
 
           <div className="bg-[#050505] border border-neutral-900 p-4 rounded-2xl col-span-2 sm:col-span-1">
-            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Unexcused</span>
-            <span className="text-xl font-extrabold text-red-500 block mt-1">2 Records</span>
+            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Unexcused Absences</span>
+            <span className="text-xl font-extrabold text-red-500 block mt-1">{unexcusedCount} Unannounced</span>
           </div>
         </div>
 

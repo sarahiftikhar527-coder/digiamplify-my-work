@@ -100,6 +100,40 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
       }
     }
 
+    // Calculate monthly accumulated worked hours for user
+    const currentMonthStr = todayStr.slice(0, 7);
+    const monthAttendances = await prisma.attendance.findMany({
+      where: {
+        userId,
+        date: { startsWith: currentMonthStr }
+      },
+      include: { breaks: true }
+    });
+
+    let monthlyWorkedMins = 0;
+    monthAttendances.forEach(att => {
+      if (att.clockIn) {
+        const cIn = new Date(att.clockIn);
+        const cOut = att.clockOut ? new Date(att.clockOut) : new Date();
+        let bMins = 0;
+        if (att.breaks) {
+          att.breaks.forEach(b => {
+            const s = new Date(b.startTime);
+            const e = b.endTime ? new Date(b.endTime) : new Date();
+            bMins += Math.floor((e.getTime() - s.getTime()) / 60000);
+          });
+        }
+        const elapsed = Math.floor((cOut.getTime() - cIn.getTime()) / 60000);
+        monthlyWorkedMins += Math.max(0, elapsed - bMins);
+      }
+    });
+
+    const monthlyWorkedHoursStr = formatDuration(monthlyWorkedMins);
+    const targetMonthlyMins = 160 * 60;
+    const monthlyDiffMins = monthlyWorkedMins - targetMonthlyMins;
+    const monthlyOTPendingStr = monthlyDiffMins > 0 ? formatDuration(monthlyDiffMins) : '0h 0m';
+    const monthlyUndertimePendingStr = monthlyDiffMins < 0 ? formatDuration(Math.abs(monthlyDiffMins)) : '0h 0m';
+
     res.status(200).json({
       role: user.role,
       profile: user.profile,
@@ -107,7 +141,11 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
       stats: {
         status: currentStatus,
         workedHours,
-        breakHours
+        breakHours,
+        monthlyWorkedHours: monthlyWorkedHoursStr,
+        monthlyTargetHours: '160h 0m',
+        monthlyOTPending: monthlyOTPendingStr,
+        monthlyUndertimePending: monthlyUndertimePendingStr
       }
     });
   } catch (error: any) {
@@ -480,6 +518,34 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
 
     const now = new Date();
 
+    // Query monthly attendances for all employees for monthly OT/Undertime aggregation
+    const currentMonthStr = todayStr.slice(0, 7);
+    const monthAttendancesAll = await prisma.attendance.findMany({
+      where: {
+        date: { startsWith: currentMonthStr }
+      },
+      include: { breaks: true }
+    });
+
+    const userMonthlyMinsMap: { [uId: string]: number } = {};
+    monthAttendancesAll.forEach(att => {
+      if (att.clockIn) {
+        const cIn = new Date(att.clockIn);
+        const cOut = att.clockOut ? new Date(att.clockOut) : new Date();
+        let bMins = 0;
+        if (att.breaks) {
+          att.breaks.forEach(b => {
+            const s = new Date(b.startTime);
+            const e = b.endTime ? new Date(b.endTime) : new Date();
+            bMins += Math.floor((e.getTime() - s.getTime()) / 60000);
+          });
+        }
+        const elapsed = Math.floor((cOut.getTime() - cIn.getTime()) / 60000);
+        const worked = Math.max(0, elapsed - bMins);
+        userMonthlyMinsMap[att.userId] = (userMonthlyMinsMap[att.userId] || 0) + worked;
+      }
+    });
+
     const attendanceRecords = employees.map((emp) => {
       const todayAttendance = emp.attendances[0] || null;
       let workedHours = '--h --m';
@@ -538,6 +604,21 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
         }
       }
 
+      const totalMonthlyWorkedMins = userMonthlyMinsMap[emp.id] || 0;
+      const totalMonthlyWorkedStr = formatDuration(totalMonthlyWorkedMins);
+      const targetMins = 160 * 60;
+      const diffMins = totalMonthlyWorkedMins - targetMins;
+
+      let otStatus = 'On Track';
+      let otAmountStr = '0h 0m';
+      if (diffMins > 0) {
+        otStatus = 'Overtime (Pending Approval)';
+        otAmountStr = `+${formatDuration(diffMins)}`;
+      } else if (diffMins < 0) {
+        otStatus = 'Undertime (Pending Approval)';
+        otAmountStr = `-${formatDuration(Math.abs(diffMins))}`;
+      }
+
       return {
         userId: emp.id,
         fullName: emp.profile?.fullName || 'Unnamed Employee',
@@ -551,6 +632,10 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
         clockOut: clockOutTimeStr,
         workedHours,
         breakHours,
+        monthlyWorkedHours: totalMonthlyWorkedStr,
+        monthlyTargetHours: '160h 0m',
+        otStatus,
+        otAmount: otAmountStr,
         description: todayAttendance?.description || null
       };
     });
@@ -576,5 +661,117 @@ export const getAdminTodayStatus = async (req: Request, res: Response): Promise<
   } catch (error: any) {
     console.error('Get admin today status error:', error);
     res.status(500).json({ error: 'Internal server error fetching admin status logs' });
+  }
+};
+
+export const createShiftRequest = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const { targetDate, requestType, requestedShift, reason } = req.body;
+
+    if (!targetDate || !requestedShift || !reason) {
+      res.status(400).json({ error: 'Target date, requested shift timings, and reason are required.' });
+      return;
+    }
+
+    const shiftReq = await (prisma as any).shiftRequest.create({
+      data: {
+        userId,
+        targetDate,
+        requestType: requestType || 'TIMING_CHANGE',
+        requestedShift,
+        reason
+      }
+    });
+
+    res.status(201).json({
+      message: 'Shift adjustment request submitted successfully for admin review.',
+      shiftRequest: shiftReq
+    });
+  } catch (error: any) {
+    console.error('Create shift request error:', error);
+    res.status(500).json({ error: 'Failed to create shift adjustment request.' });
+  }
+};
+
+export const getShiftRequests = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    });
+
+    let requests;
+    if (user?.role === 'Admin') {
+      requests = await (prisma as any).shiftRequest.findMany({
+        include: {
+          user: {
+            select: {
+              email: true,
+              profile: { select: { fullName: true, department: true, shift: true } }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    } else {
+      requests = await (prisma as any).shiftRequest.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
+
+    res.status(200).json({ requests });
+  } catch (error: any) {
+    console.error('Get shift requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch shift requests.' });
+  }
+};
+
+export const updateShiftRequestStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    });
+
+    if (user?.role !== 'Admin') {
+      res.status(403).json({ error: 'Access denied: Admin only' });
+      return;
+    }
+
+    const updated = await (prisma as any).shiftRequest.update({
+      where: { id },
+      data: {
+        status, // APPROVED or REJECTED
+        adminNotes: adminNotes || null
+      },
+      include: {
+        user: { select: { id: true, email: true } }
+      }
+    });
+
+    // Notify employee of approval/rejection decision
+    await (prisma as any).notification.create({
+      data: {
+        userId: updated.userId,
+        title: `Shift Request ${status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
+        message: `Your shift adjustment request for ${updated.targetDate} (${updated.requestedShift}) has been ${status.toLowerCase()} by Admin.`,
+        type: 'SYSTEM'
+      }
+    }).catch(() => null);
+
+    res.status(200).json({
+      message: `Shift request ${status.toLowerCase()} successfully.`,
+      shiftRequest: updated
+    });
+  } catch (error: any) {
+    console.error('Update shift request error:', error);
+    res.status(500).json({ error: 'Failed to update shift request status.' });
   }
 };

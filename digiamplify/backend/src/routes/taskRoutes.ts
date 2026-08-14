@@ -7,7 +7,10 @@ import {
   getTaskActivities,
   getTaskRequests,
   approveTaskRequest,
-  rejectTaskRequest
+  rejectTaskRequest,
+  addSubtask,
+  toggleSubtask,
+  deleteSubtask
 } from '../controllers/taskController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
@@ -21,5 +24,9 @@ router.post('/requests/:requestId/approve', authenticateToken as any, approveTas
 router.post('/requests/:requestId/reject', authenticateToken as any, rejectTaskRequest as any);
 router.patch('/:taskId', authenticateToken as any, updateTaskStatus as any);
 router.delete('/:taskId', authenticateToken as any, deleteTask as any);
+
+router.post('/:taskId/subtasks', authenticateToken as any, addSubtask as any);
+router.patch('/:taskId/subtasks/:subtaskId', authenticateToken as any, toggleSubtask as any);
+router.delete('/:taskId/subtasks/:subtaskId', authenticateToken as any, deleteSubtask as any);
 
 export default router;

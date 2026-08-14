@@ -4,12 +4,15 @@ import AdminMonthlyPayrollChart from './AdminMonthlyPayrollChart';
 import AdminPerformanceAlerts from './AdminPerformanceAlerts';
 import AdminEmployeePerformanceTable from './AdminEmployeePerformanceTable';
 import AdminManageFinancesModal from './AdminManageFinancesModal';
+import AdminPendingRequestsWidget from './AdminPendingRequestsWidget';
+import { Send } from 'lucide-react';
 
 export default function AdminFinanceView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDisbursing, setIsDisbursing] = useState(false);
 
   const [adminName, setAdminName] = useState('Fahad');
   const [stats, setStats] = useState<any>({});
@@ -51,6 +54,35 @@ export default function AdminFinanceView() {
       setError(e.message || 'Error loading finance overview');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDisbursePayroll = async () => {
+    if (!window.confirm('Are you sure you want to run monthly payroll for all eligible employees?')) {
+      return;
+    }
+    setIsDisbursing(true);
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/finance/admin/disburse-payroll', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess(data.message || 'Payroll disbursed successfully!');
+        await fetchOverview();
+      } else {
+        setError(data.error || 'Failed to disburse payroll');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Error disbursing payroll');
+    } finally {
+      setIsDisbursing(false);
     }
   };
 
@@ -165,7 +197,7 @@ export default function AdminFinanceView() {
     }
   };
 
-  const handleSavePaymentSettings = async (settings: { bankName: string; accountNumber: string; accountHolderName: string; salary: string; bonus: string; currency: string }) => {
+  const handleSavePaymentSettings = async (settings: { bankName: string; accountNumber: string; accountHolderName: string; salary: string; bonus: string; currency: string; taxRate?: string; taxId?: string }) => {
     if (!selectedEmp) return;
     setError('');
     setSuccess('');
@@ -188,7 +220,9 @@ export default function AdminFinanceView() {
           bankName: settings.bankName,
           accountNumber: settings.accountNumber,
           salary: `$${parseFloat(settings.salary || '0').toLocaleString()}`,
-          bonus: `$${parseFloat(settings.bonus || '0').toLocaleString()}`
+          bonus: `$${parseFloat(settings.bonus || '0').toLocaleString()}`,
+          taxRate: settings.taxRate || '0',
+          taxId: settings.taxId || ''
         };
         setSelectedEmp(updatedEmp);
         await fetchOverview();
@@ -238,19 +272,30 @@ export default function AdminFinanceView() {
       `}</style>
 
       {/* Breadcrumb & Greeting Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 text-xs font-normal text-neutral-400 mb-4">
-          <span className="hover:text-white cursor-pointer transition-colors">Home</span>
-          <span>/</span>
-          <span className="text-[#be0919] font-medium">Dashboard</span>
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-normal text-neutral-400 mb-4">
+            <span className="hover:text-white cursor-pointer transition-colors">Home</span>
+            <span>/</span>
+            <span className="text-[#be0919] font-medium">Dashboard</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-white">
+            Good Morning, <span className="text-[#be0919]">{adminName}</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-400 font-light mt-1">
+            {dateFormattedString}
+          </p>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-white">
-          Good Morning, <span className="text-[#be0919]">{adminName}</span>
-        </h1>
-        <p className="text-xs sm:text-sm text-neutral-400 font-light mt-1">
-          {dateFormattedString}
-        </p>
+        <button
+          onClick={handleDisbursePayroll}
+          disabled={isDisbursing}
+          className="px-5 py-3 bg-[#be0919] hover:bg-[#990714] text-white font-bold text-xs sm:text-sm rounded-xl cursor-pointer transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 shrink-0"
+        >
+          <Send className="w-4 h-4" />
+          <span>{isDisbursing ? 'Disbursing Payroll...' : 'Run Monthly Payroll'}</span>
+        </button>
       </div>
 
       {error && (
@@ -273,6 +318,9 @@ export default function AdminFinanceView() {
         <>
           {/* Top 4 Stat Cards */}
           <AdminFinanceStats stats={stats} />
+
+          {/* Pending Financial Requests Approval Queue Widget */}
+          <AdminPendingRequestsWidget onActionComplete={fetchOverview} />
 
           {/* Analytics Line Chart & Performance Alerts */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8 items-stretch">

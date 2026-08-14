@@ -14,6 +14,9 @@ interface AdminClockInViewProps {
   onBreakEmployeesCount: number;
   filteredRecords: any[];
   onViewNoteClick: (rec: any) => void;
+  shiftRequests?: any[];
+  onApproveShiftRequest?: (id: string) => void;
+  onRejectShiftRequest?: (id: string) => void;
 }
 
 export default function AdminClockInView({
@@ -27,7 +30,10 @@ export default function AdminClockInView({
   lateEmployeesCount,
   onBreakEmployeesCount,
   filteredRecords,
-  onViewNoteClick
+  onViewNoteClick,
+  shiftRequests = [],
+  onApproveShiftRequest,
+  onRejectShiftRequest
 }: AdminClockInViewProps) {
   const hasActiveRecords = filteredRecords.some(rec => rec.status.toUpperCase() !== 'ABSENT');
 
@@ -39,17 +45,21 @@ export default function AdminClockInView({
       'Shift',
       'Clock In',
       'Clock Out',
+      'Monthly Worked Hours',
+      'OT / Shortfall Status',
       'Status',
       'Task Summary (Description)'
     ];
 
     downloadCSV(headers, filteredRecords, 'attendance_records.csv', (rec: any) => [
-      rec.id,
+      rec.userId || rec.id,
       rec.fullName,
       rec.email,
       rec.shift,
       rec.clockIn,
       rec.clockOut,
+      rec.monthlyWorkedHours || '0h 0m',
+      `${rec.otStatus || 'On Track'} (${rec.otAmount || '0h'})`,
       rec.status,
       rec.description || ''
     ]);
@@ -147,12 +157,13 @@ export default function AdminClockInView({
           <table className="w-full text-left border-collapse min-w-[850px] table-fixed">
             <thead>
               <tr className="border-b border-neutral-900 text-neutral-500 select-none text-[11px] font-bold uppercase tracking-widest bg-[#050505]">
-                <th className="py-4.5 px-6 font-semibold w-[25%]">Employee</th>
-                <th className="py-4.5 px-6 font-semibold w-[15%]">Shift</th>
-                <th className="py-4.5 px-6 font-semibold w-[15%]">Clock In</th>
-                <th className="py-4.5 px-6 font-semibold w-[15%]">Clock Out</th>
-                <th className="py-4.5 px-6 font-semibold w-[15%] text-center">Status</th>
-                <th className="py-4.5 px-6 font-semibold w-[15%] text-right pr-6">Task Summary</th>
+                <th className="py-4.5 px-6 font-semibold w-[20%]">Employee</th>
+                <th className="py-4.5 px-6 font-semibold w-[12%]">Shift</th>
+                <th className="py-4.5 px-6 font-semibold w-[12%]">Clock In</th>
+                <th className="py-4.5 px-6 font-semibold w-[12%]">Clock Out</th>
+                <th className="py-4.5 px-6 font-semibold w-[18%] text-center">Monthly OT / Shortfall</th>
+                <th className="py-4.5 px-6 font-semibold w-[13%] text-center">Status</th>
+                <th className="py-4.5 px-6 font-semibold w-[13%] text-right pr-6">Task Summary</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-900 font-light text-neutral-300">
@@ -181,6 +192,20 @@ export default function AdminClockInView({
                         <span className={rec.clockOut !== '--:--' ? 'text-emerald-400 font-semibold text-sm whitespace-nowrap' : 'text-neutral-500 font-light text-sm whitespace-nowrap'}>
                           {rec.clockOut}
                         </span>
+                      </td>
+                      <td className="py-4.5 px-6 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs font-bold text-white">{rec.monthlyWorkedHours || '0h 0m'} / 160h</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border mt-1 ${
+                            rec.otAmount && rec.otAmount.startsWith('+')
+                              ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40'
+                              : rec.otAmount && rec.otAmount.startsWith('-')
+                              ? 'bg-amber-950/60 text-amber-400 border-amber-800/40'
+                              : 'bg-neutral-900 text-neutral-400 border-neutral-800'
+                          }`}>
+                            {rec.otStatus || 'On Track'} ({rec.otAmount || '0h'})
+                          </span>
+                        </div>
                       </td>
                       <td className="py-4.5 px-6 text-center">
                         <span className={`inline-block px-3 py-1 rounded text-xs font-bold uppercase border select-none whitespace-nowrap ${rec.status.toLowerCase() === 'on time' || rec.status.toLowerCase().includes('late')
@@ -229,6 +254,71 @@ export default function AdminClockInView({
               <Download className="w-4.5 h-4.5" />
               <span>Download Attendance CSV</span>
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Shift & Custom Timing Requests Section */}
+      <div className="mt-8 bg-black border border-neutral-900 rounded-xl p-6 shadow-lg animate-fadeIn">
+        <div className="flex items-center justify-between pb-4 border-b border-neutral-900 mb-5">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-5 h-5 text-[#be0919]" />
+            <h3 className="text-sm font-bold text-white tracking-wide">Shift Swap & Custom Timing Requests</h3>
+          </div>
+          <span className="text-xs px-2.5 py-1 bg-neutral-900 border border-neutral-800 text-neutral-400 font-bold rounded-lg">
+            {shiftRequests.filter((r) => r.status === 'PENDING').length} Pending
+          </span>
+        </div>
+
+        {shiftRequests.length > 0 ? (
+          <div className="divide-y divide-neutral-900">
+            {shiftRequests.map((req) => (
+              <div key={req.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white">{req.user?.profile?.fullName || req.user?.email}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-400 font-semibold">
+                      {req.requestType === 'WEEKDAY_OFF_SUNDAY_WORK' ? 'Weekday/Sunday Swap' : 'Timing Change'}
+                    </span>
+                  </div>
+                  <span className="text-xs text-neutral-400">
+                    <strong className="text-neutral-300">Target Date:</strong> {req.targetDate} | <strong className="text-neutral-300">Requested:</strong> {req.requestedShift}
+                  </span>
+                  <p className="text-xs text-neutral-500 italic mt-0.5">"{req.reason}"</p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {req.status === 'PENDING' ? (
+                    <>
+                      <button
+                        onClick={() => onApproveShiftRequest && onApproveShiftRequest(req.id)}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => onRejectShiftRequest && onRejectShiftRequest(req.id)}
+                        className="px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 text-xs font-bold rounded-lg transition-all cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  ) : (
+                    <span className={`text-xs font-bold px-3 py-1 rounded border uppercase ${
+                      req.status === 'APPROVED'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                    }`}>
+                      {req.status}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-6 text-center text-xs text-neutral-500 font-light select-none">
+            No employee shift adjustment requests at this time.
           </div>
         )}
       </div>

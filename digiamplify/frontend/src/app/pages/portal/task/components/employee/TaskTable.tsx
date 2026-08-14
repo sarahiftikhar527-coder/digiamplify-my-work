@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, Download, Link as LinkIcon } from 'lucide-react';
+import { formatDateStandard } from '@/utils/dateUtils';
 
 interface TaskTableProps {
   tasks: any[];
@@ -46,14 +47,7 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
 
   // Helper: Format date to e.g. "13 July, 2026"
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    return formatDateStandard(dateStr);
   };
 
   const handleDownloadLocal = (fileName: string, fileContent: string) => {
@@ -83,11 +77,11 @@ export default function TaskTable({ tasks, onUpdateStatus, onOpenUpdateModal, on
 
   // Filtering Logic
   const filteredTasks = tasks.filter(task => {
-    const status = task.status.toUpperCase();
-    const isOverdue = !['COMPLETED', 'FINISHED'].includes(status) && new Date(task.dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
+    const status = (task.status || '').toUpperCase();
+    const isOverdue = !['COMPLETED', 'FINISHED'].includes(status) && task.dueDate && new Date(task.dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
 
     if (activeTab === 'Ongoing') {
-      return status === 'ONGOING' || status === 'PENDING';
+      return status === 'ONGOING' || status === 'PENDING' || status === 'IN_PROGRESS';
     }
     if (activeTab === 'Completed') {
       return status === 'COMPLETED' || status === 'FINISHED';

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { formatDateShort } from '@/utils/dateUtils';
 
 interface ShiftRecord {
   id: string;
@@ -31,7 +32,7 @@ export default function ShiftAssignedCard() {
         if (data.logs && data.logs.length > 0) {
           const formatted = data.logs.slice(0, 5).map((log: any) => {
             const dateObj = new Date(log.clockInTime || log.date);
-            const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+            const dateStr = formatDateShort(log.clockInTime || log.date);
             const clockIn = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
             const clockOut = log.clockOutTime
               ? new Date(log.clockOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
