@@ -21,7 +21,7 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const { assignedToId, assignedToIds, subject, priority, description, dueDate, dueTime, fileName, fileContent } = req.body;
+    const { assignedToId, assignedToIds, subject, priority, description, dueDate, dueTime, fileName, fileContent, initialSubtasks } = req.body;
 
     const targetIds: string[] = [];
     if (Array.isArray(assignedToIds)) {
@@ -96,6 +96,19 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
           progress: 0
         }
       });
+
+      if (Array.isArray(initialSubtasks) && initialSubtasks.length > 0) {
+        await prisma.subtask.createMany({
+          data: initialSubtasks
+            .filter((t: any) => typeof t === 'string' && t.trim())
+            .map((t: string) => ({
+              taskId: taskItem.id,
+              title: t.trim(),
+              completed: false
+            }))
+        });
+      }
+
       createdTasks.push(taskItem);
 
       await prisma.taskActivity.create({

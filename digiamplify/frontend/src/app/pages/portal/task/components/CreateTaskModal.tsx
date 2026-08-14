@@ -20,6 +20,8 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
   const [dueTime, setDueTime] = useState('');
   
   const [attachments, setAttachments] = useState<{ name: string; content: string }[]>([]);
+  const [subtasksList, setSubtasksList] = useState<string[]>([]);
+  const [newSubtaskInput, setNewSubtaskInput] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,6 +88,8 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
     setDueDate('');
     setDueTime('');
     setAttachments([]);
+    setSubtasksList([]);
+    setNewSubtaskInput('');
     setError('');
   };
 
@@ -176,7 +180,8 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
           dueDate,
           dueTime: dueTime || null,
           fileName: attachments.length > 0 ? JSON.stringify(attachments.map(a => a.name)) : null,
-          fileContent: attachments.length > 0 ? JSON.stringify(attachments.map(a => a.content)) : null
+          fileContent: attachments.length > 0 ? JSON.stringify(attachments.map(a => a.content)) : null,
+          initialSubtasks: subtasksList
         })
       });
 
@@ -502,6 +507,60 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
                         setAttachments(prev => prev.filter((_, i) => i !== idx));
                       }}
                       className="text-neutral-400 hover:text-white cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Subtasks Section */}
+          <div className="flex flex-col">
+            <label className="text-xs font-semibold text-white uppercase tracking-wider mb-2">
+              Subtasks Checklist (Optional)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Enter subtask title and press Add..."
+                value={newSubtaskInput}
+                onChange={(e) => setNewSubtaskInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (newSubtaskInput.trim()) {
+                      setSubtasksList(prev => [...prev, newSubtaskInput.trim()]);
+                      setNewSubtaskInput('');
+                    }
+                  }
+                }}
+                className="flex-1 bg-[#050505] border border-neutral-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-red-500/50"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (newSubtaskInput.trim()) {
+                    setSubtasksList(prev => [...prev, newSubtaskInput.trim()]);
+                    setNewSubtaskInput('');
+                  }
+                }}
+                className="px-4 py-2.5 bg-[#be0919] hover:bg-[#990714] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0"
+              >
+                + Add Item
+              </button>
+            </div>
+
+            {subtasksList.length > 0 && (
+              <div className="mt-3 space-y-1.5 bg-[#050505] border border-neutral-900 rounded-xl p-3 max-h-40 overflow-y-auto">
+                {subtasksList.map((st, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-[#101010] border border-neutral-850 rounded-lg text-xs text-white">
+                    <span className="truncate max-w-[400px]">{st}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSubtasksList(prev => prev.filter((_, i) => i !== idx))}
+                      className="text-neutral-500 hover:text-red-400 text-xs px-1.5 cursor-pointer"
                     >
                       ✕
                     </button>
