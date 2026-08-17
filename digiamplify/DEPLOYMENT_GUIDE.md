@@ -148,7 +148,7 @@ module.exports = {
     {
       name: 'digiamplify-prod-frontend',
       cwd: '/var/www/digiamplify-prod/digiamplify/frontend',
-      script: '../../node_modules/next/dist/bin/next',
+      script: '../node_modules/next/dist/bin/next',
       args: 'start -p 3016',
       env: {
         NODE_ENV: 'production',
