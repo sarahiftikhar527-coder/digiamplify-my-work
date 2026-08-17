@@ -495,7 +495,7 @@ export default function ChatWindow({
       onConfirm: async () => {
         if (!activeRoom) return;
         try {
-          const res = await fetch(`http://localhost:5000/api/chat/rooms/${activeRoom.id}/exit`, {
+          const res = await fetch(`/api/chat/rooms/${activeRoom.id}/exit`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -526,7 +526,7 @@ export default function ChatWindow({
       onConfirm: async () => {
         if (!activeRoom) return;
         try {
-          const res = await fetch(`http://localhost:5000/api/chat/rooms/${activeRoom.id}`, {
+          const res = await fetch(`/api/chat/rooms/${activeRoom.id}`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -550,7 +550,7 @@ export default function ChatWindow({
   const handleAddMemberSubmit = async (targetUserId: string) => {
     if (!activeRoom) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/chat/rooms/${activeRoom.id}/participants`, {
+      const res = await fetch(`/api/chat/rooms/${activeRoom.id}/participants`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

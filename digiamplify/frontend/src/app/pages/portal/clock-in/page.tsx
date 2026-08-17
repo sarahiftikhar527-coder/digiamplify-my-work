@@ -119,7 +119,7 @@ export default function ClockInPage() {
   const fetchShiftRequests = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/attendance/shift-requests', {
+      const response = await fetch('/api/attendance/shift-requests', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -134,7 +134,7 @@ export default function ClockInPage() {
   const handleUpdateShiftRequestStatus = async (id: string, status: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/attendance/shift-requests/${id}`, {
+      const response = await fetch(`/api/attendance/shift-requests/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ export default function ClockInPage() {
   const fetchTodayStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/attendance/today', {
+      const response = await fetch('/api/attendance/today', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -192,7 +192,7 @@ export default function ClockInPage() {
   const fetchAdminAttendanceLogs = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/attendance/admin/today', {
+      const response = await fetch('/api/attendance/admin/today', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -256,11 +256,11 @@ export default function ClockInPage() {
 
     try {
       const token = localStorage.getItem('token');
-      let url = 'http://localhost:5000/api/attendance/clock-in';
+      let url = '/api/attendance/clock-in';
       let payload: any = { pin };
 
       if (isClockedIn && !isClockedOut) {
-        url = 'http://localhost:5000/api/attendance/clock-out';
+        url = '/api/attendance/clock-out';
         payload.description = todayDescription;
       }
 
@@ -296,7 +296,7 @@ export default function ClockInPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const url = `http://localhost:5000/api/attendance/break/${action}`;
+      const url = `/api/attendance/break/${action}`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -336,7 +336,7 @@ export default function ClockInPage() {
     setIsResetting(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/attendance/reset-pin', {
+      const response = await fetch('/api/attendance/reset-pin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -121,7 +121,7 @@ export default function EmployeeTaskView() {
   const fetchTasks = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/tasks', {
+      const res = await fetch('/api/tasks', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -147,7 +147,7 @@ export default function EmployeeTaskView() {
     try {
       if (!silent) setLoadingRequests(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/tasks/requests', {
+      const res = await fetch('/api/tasks/requests', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -169,7 +169,7 @@ export default function EmployeeTaskView() {
   const fetchActivities = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/tasks/activities', {
+      const res = await fetch('/api/tasks/activities', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -263,7 +263,7 @@ export default function EmployeeTaskView() {
   const handleUpdateStatus = async (taskId: string, newStatus: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

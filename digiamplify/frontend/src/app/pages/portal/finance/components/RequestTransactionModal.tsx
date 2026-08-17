@@ -38,7 +38,7 @@ export default function RequestTransactionModal({
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/finance/employee/request', {
+      const res = await fetch('/api/finance/employee/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

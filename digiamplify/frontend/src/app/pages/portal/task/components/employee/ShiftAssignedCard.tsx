@@ -24,7 +24,7 @@ export default function ShiftAssignedCard() {
         return;
       }
 
-      const res = await fetch('http://localhost:5000/api/attendance/logs', {
+      const res = await fetch('/api/attendance/logs', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {

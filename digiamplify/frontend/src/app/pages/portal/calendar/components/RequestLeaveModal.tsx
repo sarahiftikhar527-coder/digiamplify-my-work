@@ -34,7 +34,7 @@ export default function RequestLeaveModal({ onClose, onSuccess }: RequestLeaveMo
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/calendar/leave-request', {
+      const res = await fetch('/api/calendar/leave-request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -38,7 +38,7 @@ export default function WithdrawModal({
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/finance/employee/withdraw', {
+      const res = await fetch('/api/finance/employee/withdraw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

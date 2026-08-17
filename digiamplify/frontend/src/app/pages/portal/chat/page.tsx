@@ -83,7 +83,7 @@ export default function ChatPage() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/chat/users', {
+      const res = await fetch('/api/chat/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -99,7 +99,7 @@ export default function ChatPage() {
   const fetchRooms = async (silent = false) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/chat/rooms', {
+      const res = await fetch('/api/chat/rooms', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -123,7 +123,7 @@ export default function ChatPage() {
   const fetchMessages = async (roomId: string, silent = false) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat/rooms/${roomId}/messages`, {
+      const res = await fetch(`/api/chat/rooms/${roomId}/messages`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -155,7 +155,7 @@ export default function ChatPage() {
   const fetchGroupRequests = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/chat/group-requests', {
+      const res = await fetch('/api/chat/group-requests', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -171,7 +171,7 @@ export default function ChatPage() {
     if (!confirm('Are you sure you want to approve this group chat request?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat/group-requests/${requestId}/approve`, {
+      const res = await fetch(`/api/chat/group-requests/${requestId}/approve`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -197,7 +197,7 @@ export default function ChatPage() {
     if (!confirm('Are you sure you want to reject this group chat request?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat/group-requests/${requestId}/reject`, {
+      const res = await fetch(`/api/chat/group-requests/${requestId}/reject`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -249,7 +249,7 @@ export default function ChatPage() {
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
-        await fetch('http://localhost:5000/api/chat/ping', {
+        await fetch('/api/chat/ping', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -280,7 +280,7 @@ export default function ChatPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat/rooms/${activeRoom.id}`, {
+      const res = await fetch(`/api/chat/rooms/${activeRoom.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -473,7 +473,7 @@ export default function ChatPage() {
 
     // 1. Persist pin/unpin on server
     try {
-      const pinRes = await fetch(`http://localhost:5000/api/chat/rooms/${activeRoom.id}/pin`, {
+      const pinRes = await fetch(`/api/chat/rooms/${activeRoom.id}/pin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -502,7 +502,7 @@ export default function ChatPage() {
       : `${userName} pinned "${excerpt}"`;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/chat/rooms/${activeRoom.id}/messages`, {
+      const res = await fetch(`/api/chat/rooms/${activeRoom.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -539,7 +539,7 @@ export default function ChatPage() {
     setActiveMessageMenuId(null);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat/messages/${msgId}`, {
+      const res = await fetch(`/api/chat/messages/${msgId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -567,7 +567,7 @@ export default function ChatPage() {
     if (!forwardContent) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat/rooms/${targetRoomId}/messages`, {
+      const res = await fetch(`/api/chat/rooms/${targetRoomId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -615,7 +615,7 @@ export default function ChatPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/chat/rooms/${activeRoom.id}/messages`, {
+      const res = await fetch(`/api/chat/rooms/${activeRoom.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -650,7 +650,7 @@ export default function ChatPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/chat/rooms', {
+      const res = await fetch('/api/chat/rooms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

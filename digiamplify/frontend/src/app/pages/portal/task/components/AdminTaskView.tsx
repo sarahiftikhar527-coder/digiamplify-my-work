@@ -89,7 +89,7 @@ export default function AdminTaskView() {
     try {
       if (!silent) setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/tasks', {
+      const res = await fetch('/api/tasks', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -118,7 +118,7 @@ export default function AdminTaskView() {
     try {
       if (!silent) setLoadingRequests(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/tasks/requests', {
+      const res = await fetch('/api/tasks/requests', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -255,7 +255,7 @@ export default function AdminTaskView() {
     if (!confirm('Are you sure you want to delete this task?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -273,7 +273,7 @@ export default function AdminTaskView() {
     if (!confirm('Are you sure you want to approve this task request?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/tasks/requests/${requestId}/approve`, {
+      const res = await fetch(`/api/tasks/requests/${requestId}/approve`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -297,7 +297,7 @@ export default function AdminTaskView() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/tasks/requests/${requestId}/reject`, {
+      const res = await fetch(`/api/tasks/requests/${requestId}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -513,7 +513,7 @@ export default function AdminTaskView() {
               onUpdateTaskStatus={async (taskId, newStatus) => {
                 try {
                   const token = localStorage.getItem('token');
-                  await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+                  await fetch(`/api/tasks/${taskId}`, {
                     method: 'PATCH',
                     headers: {
                       'Content-Type': 'application/json',

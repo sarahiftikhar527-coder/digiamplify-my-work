@@ -64,7 +64,7 @@ export default function CalendarPage() {
         return;
       }
 
-      const res = await fetch(`http://localhost:5000/api/calendar/month?month=${selectedMonth}`, {
+      const res = await fetch(`/api/calendar/month?month=${selectedMonth}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -84,7 +84,7 @@ export default function CalendarPage() {
   const fetchDayScheduleData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/calendar/day?date=${selectedDate}`, {
+      const res = await fetch(`/api/calendar/day?date=${selectedDate}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

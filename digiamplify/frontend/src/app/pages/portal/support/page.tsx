@@ -62,7 +62,7 @@ export default function HelpAndSupportPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/support', {
+      const response = await fetch('/api/support', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -149,7 +149,7 @@ export default function HelpAndSupportPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/support', {
+      const response = await fetch('/api/support', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ export default function HelpAndSupportPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/support/respond/${selectedTicket.id}`, {
+      const response = await fetch(`/api/support/respond/${selectedTicket.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

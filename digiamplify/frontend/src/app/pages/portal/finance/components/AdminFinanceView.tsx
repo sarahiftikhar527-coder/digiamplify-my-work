@@ -35,7 +35,7 @@ export default function AdminFinanceView() {
         return;
       }
 
-      const res = await fetch('http://localhost:5000/api/finance/admin/overview', {
+      const res = await fetch('/api/finance/admin/overview', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -66,7 +66,7 @@ export default function AdminFinanceView() {
     setSuccess('');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/finance/admin/disburse-payroll', {
+      const res = await fetch('/api/finance/admin/disburse-payroll', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -89,7 +89,7 @@ export default function AdminFinanceView() {
   const fetchEmployeeTransactions = async (userId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/finance/admin/employee/${userId}`, {
+      const res = await fetch(`/api/finance/admin/employee/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -121,7 +121,7 @@ export default function AdminFinanceView() {
     setSuccess('');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/finance/admin/transaction', {
+      const res = await fetch('/api/finance/admin/transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,7 +151,7 @@ export default function AdminFinanceView() {
     setSuccess('');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/finance/admin/transaction/${txId}`, {
+      const res = await fetch(`/api/finance/admin/transaction/${txId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -176,7 +176,7 @@ export default function AdminFinanceView() {
     setSuccess('');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/finance/admin/transaction/${txId}/status`, {
+      const res = await fetch(`/api/finance/admin/transaction/${txId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ export default function AdminFinanceView() {
     setSuccess('');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/profile/${selectedEmp.id}`, {
+      const res = await fetch(`/api/profile/${selectedEmp.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

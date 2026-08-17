@@ -123,7 +123,7 @@ export default function KanbanBoardView({
       // Fallback direct API call
       try {
         const token = localStorage.getItem('token');
-        await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+        await fetch(`/api/tasks/${taskId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
