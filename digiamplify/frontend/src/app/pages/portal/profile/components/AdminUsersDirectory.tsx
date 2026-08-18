@@ -162,7 +162,7 @@ export default function AdminUsersDirectory({
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication token missing. Please log in.');
 
-      const res = await fetch('http://localhost:5000/api/profile/add-employee', {
+      const res = await fetch('/api/profile/add-employee', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

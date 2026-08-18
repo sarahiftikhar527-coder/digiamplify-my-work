@@ -220,7 +220,7 @@ export default function DashboardPage() {
 
       // Profile
       try {
-        const res = await fetch('http://localhost:5000/api/profile', { headers });
+        const res = await fetch('/api/profile', { headers });
         if (res.ok) {
           const profile = await res.json();
           setUserProfile(profile);
@@ -239,7 +239,7 @@ export default function DashboardPage() {
 
       // Tasks
       try {
-        const res = await fetch('http://localhost:5000/api/tasks', { headers });
+        const res = await fetch('/api/tasks', { headers });
         if (res.ok) {
           const fetched = await res.json();
           if (Array.isArray(fetched)) {
@@ -316,7 +316,7 @@ export default function DashboardPage() {
 
       // Leave Requests
       try {
-        const res = await fetch('http://localhost:5000/api/calendar/leave-request', { headers });
+        const res = await fetch('/api/calendar/leave-request', { headers });
         if (res.ok) {
           const leaves = await res.json();
           if (Array.isArray(leaves) && leaves.length > 0) {
@@ -335,7 +335,7 @@ export default function DashboardPage() {
 
       // Team
       try {
-        const res = await fetch('http://localhost:5000/api/profile/all', { headers });
+        const res = await fetch('/api/profile/all', { headers });
         if (res.ok) {
           const profiles = await res.json();
           if (Array.isArray(profiles) && profiles.length > 0) {
@@ -373,7 +373,7 @@ export default function DashboardPage() {
 
     try {
       const headers = getHeaders();
-      await fetch(`http://localhost:5000/api/tasks/${id}`, {
+      await fetch(`/api/tasks/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status: newCompleted ? 'COMPLETED' : 'IN_PROGRESS' }),
@@ -397,7 +397,7 @@ export default function DashboardPage() {
 
     try {
       const headers = getHeaders();
-      await fetch('http://localhost:5000/api/calendar/leave-request', {
+      await fetch('/api/calendar/leave-request', {
         method: 'POST',
         headers,
         body: JSON.stringify({

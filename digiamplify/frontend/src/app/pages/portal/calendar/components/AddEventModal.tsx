@@ -40,7 +40,7 @@ export default function AddEventModal({ onClose, onEventCreated }: AddEventModal
   const fetchTeamMembers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/calendar/users', {
+      const res = await fetch('/api/calendar/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -80,7 +80,7 @@ export default function AddEventModal({ onClose, onEventCreated }: AddEventModal
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/calendar/events', {
+      const res = await fetch('/api/calendar/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -78,7 +78,7 @@ export default function EmployeeFinanceView() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/finance/employee', {
+      const response = await fetch('/api/finance/employee', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -38,7 +38,7 @@ export default function AddCardModal({
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/finance/employee/card', {
+      const res = await fetch('/api/finance/employee/card', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

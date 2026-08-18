@@ -37,7 +37,7 @@ export default function SubtaskChecklist({
     setIsAdding(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/tasks/${taskId}/subtasks`, {
+      const res = await fetch(`/api/tasks/${taskId}/subtasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ export default function SubtaskChecklist({
     if (readOnly) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/tasks/${taskId}/subtasks/${subtaskId}`, {
+      const res = await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ export default function SubtaskChecklist({
     if (readOnly) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/tasks/${taskId}/subtasks/${subtaskId}`, {
+      const res = await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

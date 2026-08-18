@@ -49,7 +49,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
     const fetchEmployees = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/profile/all', {
+        const res = await fetch('/api/profile/all', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -166,7 +166,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated }: Crea
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/tasks', {
+      const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

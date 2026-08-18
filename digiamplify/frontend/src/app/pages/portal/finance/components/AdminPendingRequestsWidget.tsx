@@ -35,7 +35,7 @@ export default function AdminPendingRequestsWidget({ onActionComplete }: AdminPe
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const res = await fetch('http://localhost:5000/api/finance/admin/pending-requests', {
+      const res = await fetch('/api/finance/admin/pending-requests', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -62,7 +62,7 @@ export default function AdminPendingRequestsWidget({ onActionComplete }: AdminPe
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/finance/admin/request/${requestId}/action`, {
+      const res = await fetch(`/api/finance/admin/request/${requestId}/action`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

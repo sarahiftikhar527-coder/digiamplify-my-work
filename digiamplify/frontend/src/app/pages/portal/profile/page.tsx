@@ -172,7 +172,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/all', {
+      const response = await fetch('/api/profile/all', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -206,7 +206,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/profile/${userId}`, {
+      const response = await fetch(`/api/profile/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -250,7 +250,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/profile/${userId}`, {
+      const response = await fetch(`/api/profile/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -303,7 +303,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/profile/approve/${userId}`, {
+      const response = await fetch(`/api/profile/approve/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -335,7 +335,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/profile/reject/${userId}`, {
+      const response = await fetch(`/api/profile/reject/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -367,7 +367,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/request-edit', {
+      const response = await fetch('/api/profile/request-edit', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -399,7 +399,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/profile/approve-edit/${userId}`, {
+      const response = await fetch(`/api/profile/approve-edit/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -431,7 +431,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/profile/verify-doc/${userId}`, {
+      const response = await fetch(`/api/profile/verify-doc/${userId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -466,7 +466,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile', {
+      const response = await fetch('/api/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -675,8 +675,8 @@ export default function ProfilePage() {
       }
 
       const url = isAdmin && selectedUserId
-        ? `http://localhost:5000/api/profile/${selectedUserId}`
-        : 'http://localhost:5000/api/profile';
+        ? `/api/profile/${selectedUserId}`
+        : '/api/profile';
 
       const response = await fetch(url, {
         method: 'POST',

@@ -51,7 +51,7 @@ export default function Sidebar() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/profile', {
+      const response = await fetch('/api/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -99,7 +99,7 @@ export default function Sidebar() {
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
-        await fetch('http://localhost:5000/api/auth/heartbeat', {
+        await fetch('/api/auth/heartbeat', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -132,7 +132,7 @@ export default function Sidebar() {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          await fetch('http://localhost:5000/api/auth/logout', {
+          await fetch('/api/auth/logout', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`
@@ -175,7 +175,7 @@ export default function Sidebar() {
 
     try {
       // 1. Chat Section unread count check
-      const chatRes = await fetch('http://localhost:5000/api/chat/rooms', { headers });
+      const chatRes = await fetch('/api/chat/rooms', { headers });
       if (chatRes.ok) {
         const rooms = await chatRes.json();
         if (Array.isArray(rooms)) {
@@ -189,7 +189,7 @@ export default function Sidebar() {
       // 2. Tasks / Assign Tasks Section update check
       if (isAdm) {
         // Admin: check for pending task requests from employees
-        const taskReqRes = await fetch('http://localhost:5000/api/tasks/requests', { headers });
+        const taskReqRes = await fetch('/api/tasks/requests', { headers });
         if (taskReqRes.ok) {
           const reqs = await taskReqRes.json();
           if (Array.isArray(reqs)) {
@@ -202,7 +202,7 @@ export default function Sidebar() {
         }
       } else {
         // Employee: check for assigned tasks updates
-        const tasksRes = await fetch('http://localhost:5000/api/tasks', { headers });
+        const tasksRes = await fetch('/api/tasks', { headers });
         if (tasksRes.ok) {
           const tasks = await tasksRes.json();
           if (Array.isArray(tasks)) {
@@ -220,7 +220,7 @@ export default function Sidebar() {
       // 3. Employees / Profile Section update check
       if (isAdm) {
         // Admin: check for pending employee registrations or profile edit requests
-        const usersRes = await fetch('http://localhost:5000/api/profile/all', { headers });
+        const usersRes = await fetch('/api/profile/all', { headers });
         if (usersRes.ok) {
           const users = await usersRes.json();
           if (Array.isArray(users)) {
@@ -240,7 +240,7 @@ export default function Sidebar() {
       // 4. Finance Section check
       if (isAdm) {
         // Admin: check if there are pending transaction requests
-        const finRes = await fetch('http://localhost:5000/api/finance/admin/overview', { headers });
+        const finRes = await fetch('/api/finance/admin/overview', { headers });
         if (finRes.ok) {
           const finData = await finRes.json();
           const transactions = finData?.transactions || [];
@@ -254,7 +254,7 @@ export default function Sidebar() {
         }
       } else {
         // Employee: check if any transaction/claim is pending
-        const finRes = await fetch('http://localhost:5000/api/finance/employee', { headers });
+        const finRes = await fetch('/api/finance/employee', { headers });
         if (finRes.ok) {
           const finData = await finRes.json();
           const claims = finData?.claims || finData?.transactions || [];
@@ -271,7 +271,7 @@ export default function Sidebar() {
 
     try {
       // 5. Help & Support Section check
-      const supportRes = await fetch('http://localhost:5000/api/support', { headers });
+      const supportRes = await fetch('/api/support', { headers });
       if (supportRes.ok) {
         const tickets = await supportRes.json();
         if (Array.isArray(tickets)) {
@@ -287,7 +287,7 @@ export default function Sidebar() {
     try {
       // 6. Clock In reminder for employees
       if (!isAdm) {
-        const attRes = await fetch('http://localhost:5000/api/attendance/today', { headers });
+        const attRes = await fetch('/api/attendance/today', { headers });
         if (attRes.ok) {
           const att = await attRes.json();
           newValues['Clock In'] = (!att || !att.clockIn) ? 1 : 0;

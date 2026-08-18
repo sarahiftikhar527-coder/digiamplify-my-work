@@ -96,7 +96,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
     try {
       // 1. Employees / Team Profiles
       try {
-        const res = await fetch('http://localhost:5000/api/profile/all', { headers });
+        const res = await fetch('/api/profile/all', { headers });
         if (res.ok) {
           const profiles = await res.json();
           if (Array.isArray(profiles)) {
@@ -111,7 +111,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
 
       // 2. All Tasks (Company-wide)
       try {
-        const res = await fetch('http://localhost:5000/api/tasks', { headers });
+        const res = await fetch('/api/tasks', { headers });
         if (res.ok) {
           const tasks = await res.json();
           if (Array.isArray(tasks)) {
@@ -154,7 +154,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
 
       // 3. Task Creation Requests (Pending Approval)
       try {
-        const res = await fetch('http://localhost:5000/api/tasks/requests', { headers });
+        const res = await fetch('/api/tasks/requests', { headers });
         if (res.ok) {
           const reqs = await res.json();
           if (Array.isArray(reqs)) {
@@ -168,7 +168,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
 
       // 4. Admin Attendance Today
       try {
-        const res = await fetch('http://localhost:5000/api/attendance/admin/today', { headers });
+        const res = await fetch('/api/attendance/admin/today', { headers });
         if (res.ok) {
           const att = await res.json();
           setAttendanceOverview({
@@ -183,7 +183,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
 
       // 5. Support Tickets
       try {
-        const res = await fetch('http://localhost:5000/api/support', { headers });
+        const res = await fetch('/api/support', { headers });
         if (res.ok) {
           const tickets = await res.json();
           if (Array.isArray(tickets)) {
@@ -197,7 +197,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
 
       // 6. Leave Requests
       try {
-        const res = await fetch('http://localhost:5000/api/calendar/leave-request', { headers });
+        const res = await fetch('/api/calendar/leave-request', { headers });
         if (res.ok) {
           const leaves = await res.json();
           if (Array.isArray(leaves)) {
@@ -224,7 +224,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
     setActionLoadingId(requestId);
     try {
       const headers = getHeaders();
-      const res = await fetch(`http://localhost:5000/api/tasks/requests/${requestId}/approve`, {
+      const res = await fetch(`/api/tasks/requests/${requestId}/approve`, {
         method: 'POST',
         headers,
       });
@@ -245,7 +245,7 @@ export default function AdminDashboardView({ adminName }: AdminDashboardViewProp
     setActionLoadingId(requestId);
     try {
       const headers = getHeaders();
-      const res = await fetch(`http://localhost:5000/api/tasks/requests/${requestId}/reject`, {
+      const res = await fetch(`/api/tasks/requests/${requestId}/reject`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ rejectionReason: 'Request rejected by Admin' }),

@@ -115,7 +115,7 @@ export default function UpdateTaskModal({ isOpen, onClose, task, onTaskUpdated }
         finalFileContent = JSON.stringify(completionAttachments.map(a => a.content));
       }
 
-      const res = await fetch(`http://localhost:5000/api/tasks/${task.id}`, {
+      const res = await fetch(`/api/tasks/${task.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
