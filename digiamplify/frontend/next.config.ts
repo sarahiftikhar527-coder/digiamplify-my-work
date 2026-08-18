@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
         destination: '/pages/services',
       },
       {
+        source: '/services/:slug',
+        destination: '/pages/services/:slug',
+      },
+      {
         source: '/login',
         destination: '/pages/login',
       },

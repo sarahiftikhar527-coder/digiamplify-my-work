@@ -14,9 +14,12 @@ export default function Navbar() {
     return null;
   }
 
-  const linkClass = (path: string) =>
-    `font-semibold text-[0.99rem] transition-colors duration-200 ${pathname === path ? 'text-[#be0919]' : 'text-white hover:text-[#be0919]'
+  const linkClass = (path: string) => {
+    const isActive = pathname === path || (path !== '/' && pathname?.startsWith(path));
+    return `font-semibold text-[0.99rem] transition-colors duration-200 ${
+      isActive ? 'text-[#be0919]' : 'text-white hover:text-[#be0919]'
     }`;
+  };
 
   const handleLinkClick = () => {
     setIsMenuOpen(false);

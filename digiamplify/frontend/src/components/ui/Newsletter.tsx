@@ -15,18 +15,18 @@ export default function Newsletter() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto shrink-0">
-          <input 
-            type="email" 
-            placeholder="Enter your Email" 
-            className="bg-transparent border border-[#333] text-white py-3 px-6 rounded-full w-full sm:w-[280px] text-[0.85rem] focus:outline-none focus:border-[#be0919]" 
+          <input
+            type="email"
+            placeholder="Enter your Email"
+            className="bg-transparent border border-[#333] text-white py-3 px-6 rounded-full w-full sm:w-[280px] text-[0.85rem] focus:outline-none focus:border-[#be0919]"
           />
           <Button variant="subscribe" className="w-full sm:w-auto">
             Subscribe
           </Button>
         </div>
       </section>
-      
-      <p className="text-left text-[#555] text-[0.85rem] mt-6 px-2 lg:px-4 w-full">
+
+      <p className="text-left text-[#ffffff]/50 text-[0.85rem] mt-6 px-2 lg:px-4 w-full">
         We respect your inbox. No noise. No spam. Only strategic perspective.
       </p>
     </div>
