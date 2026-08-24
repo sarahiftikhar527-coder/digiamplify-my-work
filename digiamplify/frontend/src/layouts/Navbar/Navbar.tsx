@@ -16,9 +16,8 @@ export default function Navbar() {
 
   const linkClass = (path: string) => {
     const isActive = pathname === path || (path !== '/' && pathname?.startsWith(path));
-    return `font-semibold text-[0.99rem] transition-colors duration-200 ${
-      isActive ? 'text-[#be0919]' : 'text-white hover:text-[#be0919]'
-    }`;
+    return `font-semibold text-[0.99rem] transition-colors duration-200 ${isActive ? 'text-[#be0919]' : 'text-white hover:text-[#be0919]'
+      }`;
   };
 
   const handleLinkClick = () => {
@@ -80,7 +79,7 @@ export default function Navbar() {
               </Button>
             </Link>
             <Link href="/signup" className="w-full" onClick={handleLinkClick}>
-              <Button variant="secondary" className="w-full cursor-pointer">
+              <Button variant="outline" className="w-full cursor-pointer">
                 Signup
               </Button>
             </Link>
@@ -94,7 +93,7 @@ export default function Navbar() {
             </Button>
           </Link>
           <Link href="/signup">
-            <Button variant="secondary">
+            <Button variant="outline">
               Signup
             </Button>
           </Link>

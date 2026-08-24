@@ -15,7 +15,7 @@ export default function Title({
   const baseStyles = 'text-white';
 
   const sizes = {
-    h1: 'text-5xl lg:text-[5.5rem] font-normal tracking-wide',
+    h1: `text-5xl lg:text-[5.5rem] ${className.includes('font-') ? '' : 'font-normal'} tracking-wide`,
     h2: "text-3xl lg:text-[2.2rem] font-['Glacial'] leading-[1.3]",
     h3: "text-[2.0rem] font-['Glacial']"
   };
