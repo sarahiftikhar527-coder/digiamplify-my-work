@@ -67,7 +67,7 @@ export default function Footer() {
             <h4 className="text-[#777777] text-[0.9rem] uppercase tracking-wider font-medium">Support</h4>
             <ul className="flex flex-col gap-3.5 w-full">
               <li><Link href="/contact" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Contact</Link></li>
-              <li><Link href="https://linkedin.com" target="_blank" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">LinkedIn</Link></li>
+              <li><Link href="https://linkedin.com/company/digiamplify" target="_blank" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">LinkedIn</Link></li>
               <li><Link href="/privacy" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Privacy Policy</Link></li>
               <li><Link href="/terms" className="text-white text-[0.9rem] transition-colors duration-200 hover:text-[#be0919]">Terms</Link></li>
             </ul>

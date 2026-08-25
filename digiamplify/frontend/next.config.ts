@@ -33,6 +33,14 @@ const nextConfig: NextConfig = {
         destination: '/pages/services/:slug',
       },
       {
+        source: '/privacy',
+        destination: '/pages/privacy',
+      },
+      {
+        source: '/terms',
+        destination: '/pages/terms',
+      },
+      {
         source: '/login',
         destination: '/pages/login',
       },

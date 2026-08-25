@@ -23,10 +23,10 @@ const heroStats = [
                 <line x1="25" y1="125" x2="175" y2="125" stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
 
                 {/* Y-axis Labels */}
-                <text x="20" y="13" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">15k</text>
-                <text x="20" y="51.3" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">10k</text>
-                <text x="20" y="89.6" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">5k</text>
-                <text x="20" y="128" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">0</text>
+                <text x="20" y="13" fill="#ffffff" fontSize="8.5" textAnchor="end">15k</text>
+                <text x="20" y="51.3" fill="#ffffff" fontSize="8.5" textAnchor="end">10k</text>
+                <text x="20" y="89.6" fill="#ffffff" fontSize="8.5" textAnchor="end">5k</text>
+                <text x="20" y="128" fill="#ffffff" fontSize="8.5" textAnchor="end">0</text>
 
                 {/* Bars */}
                 <rect x="32" y="63.7" width="8" height="61.3" rx="2" fill="#be0919" />
@@ -38,13 +38,13 @@ const heroStats = [
                 <rect x="158" y="33" width="8" height="92" rx="2" fill="#be0919" />
 
                 {/* X-axis Labels */}
-                <text x="36" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Mon</text>
-                <text x="57" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Tue</text>
-                <text x="78" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Wed</text>
-                <text x="99" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Thu</text>
-                <text x="120" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Fri</text>
-                <text x="141" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Sat</text>
-                <text x="162" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Sun</text>
+                <text x="36" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Mon</text>
+                <text x="57" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Tue</text>
+                <text x="78" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Wed</text>
+                <text x="99" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Thu</text>
+                <text x="120" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Fri</text>
+                <text x="141" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Sat</text>
+                <text x="162" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Sun</text>
             </svg>
         )
     },
@@ -75,10 +75,10 @@ const heroStats = [
                 <line x1="25" y1="125" x2="175" y2="125" stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
 
                 {/* Y-axis Labels */}
-                <text x="20" y="13" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">750</text>
-                <text x="20" y="51.3" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">500</text>
-                <text x="20" y="89.6" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">250</text>
-                <text x="20" y="128" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">0</text>
+                <text x="20" y="13" fill="#ffffff" fontSize="8.5" textAnchor="end">750</text>
+                <text x="20" y="51.3" fill="#ffffff" fontSize="8.5" textAnchor="end">500</text>
+                <text x="20" y="89.6" fill="#ffffff" fontSize="8.5" textAnchor="end">250</text>
+                <text x="20" y="128" fill="#ffffff" fontSize="8.5" textAnchor="end">0</text>
 
                 {/* Shaded Area */}
                 <path d="M 36 109.7 L 57 75.9 L 78 82.1 L 99 45.3 L 120 40.7 L 141 28.4 L 162 16.1 L 162 125 L 36 125 Z" fill="url(#projectsGrad)" />
@@ -96,13 +96,13 @@ const heroStats = [
                 <circle cx="162" cy="16.1" r="3" fill="#be0919" stroke="#ffffff" strokeWidth="1" />
 
                 {/* X-axis Labels */}
-                <text x="36" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Mon</text>
-                <text x="57" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Tue</text>
-                <text x="78" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Wed</text>
-                <text x="99" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Thu</text>
-                <text x="120" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Fri</text>
-                <text x="141" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Sat</text>
-                <text x="162" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Sun</text>
+                <text x="36" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Mon</text>
+                <text x="57" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Tue</text>
+                <text x="78" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Wed</text>
+                <text x="99" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Thu</text>
+                <text x="120" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Fri</text>
+                <text x="141" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Sat</text>
+                <text x="162" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Sun</text>
             </svg>
         )
     },
@@ -130,10 +130,10 @@ const heroStats = [
                 <line x1="25" y1="125" x2="175" y2="125" stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
 
                 {/* Y-axis Labels */}
-                <text x="20" y="13" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">180</text>
-                <text x="20" y="51.3" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">120</text>
-                <text x="20" y="89.6" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">60</text>
-                <text x="20" y="128" fill="rgba(255,255,255,0.4)" fontSize="8.5" textAnchor="end">0</text>
+                <text x="20" y="13" fill="#ffffff" fontSize="8.5" textAnchor="end">180</text>
+                <text x="20" y="51.3" fill="#ffffff" fontSize="8.5" textAnchor="end">120</text>
+                <text x="20" y="89.6" fill="#ffffff" fontSize="8.5" textAnchor="end">60</text>
+                <text x="20" y="128" fill="#ffffff" fontSize="8.5" textAnchor="end">0</text>
 
                 {/* Shaded Area - Spline */}
                 <path d="M 36 112 C 45 104, 50 86, 57 84 C 64 82, 71 66, 78 64 C 85 62, 92 73, 99 71 C 106 69, 113 31, 120 29 C 127 27, 134 29, 141 32 C 148 35, 155 39, 162 42 L 162 125 L 36 125 Z" fill="url(#clientsGrad)" />
@@ -151,13 +151,13 @@ const heroStats = [
                 <circle cx="162" cy="42" r="3" fill="#be0919" stroke="#ffffff" strokeWidth="1" />
 
                 {/* X-axis Labels */}
-                <text x="36" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Mon</text>
-                <text x="57" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Tue</text>
-                <text x="78" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Wed</text>
-                <text x="99" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Thu</text>
-                <text x="120" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Fri</text>
-                <text x="141" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Sat</text>
-                <text x="162" y="142" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Sun</text>
+                <text x="36" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Mon</text>
+                <text x="57" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Tue</text>
+                <text x="78" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Wed</text>
+                <text x="99" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Thu</text>
+                <text x="120" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Fri</text>
+                <text x="141" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Sat</text>
+                <text x="162" y="142" fill="#ffffff" fontSize="8" textAnchor="middle">Sun</text>
             </svg>
         )
     },
@@ -172,20 +172,20 @@ const heroStats = [
         chart: (
             <svg viewBox="0 0 180 150" width="100%" height="auto" className="w-full h-auto mt-2">
                 {/* Background Track Circle */}
-                <circle cx="90" cy="68" r="34" fill="none" stroke="rgba(190, 9, 25, 0.08)" strokeWidth="7" />
+                <circle cx="90" cy="68" r="52" fill="none" stroke="rgba(190, 9, 25, 0.08)" strokeWidth="10" />
 
                 {/* Active Circle (99% coverage, visible gap, no rounded caps to overlap gap) */}
-                {/* Circumference = 2 * PI * 34 = 213.63 */}
-                {/* Dasharray = 213.63, Dashoffset = 213.63 * 0.02 = 4.27 */}
-                <circle cx="90" cy="68" r="34" fill="none" stroke="#be0919" strokeWidth="7"
-                    strokeDasharray="213.63" strokeDashoffset="4.3"
+                {/* Circumference = 2 * PI * 52 = 326.73 */}
+                {/* Dasharray = 326.73, Dashoffset = 326.73 * 0.02 = 6.53 */}
+                <circle cx="90" cy="68" r="52" fill="none" stroke="#be0919" strokeWidth="10"
+                    strokeDasharray="326.73" strokeDashoffset="6.5"
                     transform="rotate(-90 90 68)" />
 
                 {/* Inner Text */}
-                <text x="90" y="74" fill="#ffffff" fontSize="16" fontWeight="bold" textAnchor="middle">99%</text>
+                <text x="90" y="77" fill="#ffffff" fontSize="24" fontWeight="bold" textAnchor="middle">99%</text>
 
                 {/* Bottom Label */}
-                <text x="90" y="135" fill="rgba(255,255,255,0.4)" fontSize="9" textAnchor="middle">Positive Feedback</text>
+                <text x="90" y="138" fill="#ffffff" fontSize="9" textAnchor="middle">Positive Feedback</text>
             </svg>
         )
     }
@@ -211,10 +211,8 @@ export default function HomeHero() {
                             {heroStats.map((stat, index) => (
                                 <div
                                     key={index}
-                                    className="relative bg-gradient-to-b from-[#0a0a0a] to-[#040404] rounded-2xl p-5 border border-red-500/15 flex flex-col hover:-translate-y-2 hover:shadow-[0_0_20px_rgba(190,9,25,0.18)] transition-all duration-300 cursor-default overflow-hidden"
+                                    className="relative stats-card rounded-2xl p-5 flex flex-col cursor-default"
                                 >
-                                    <div className="absolute right-0 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-[#be0919] to-transparent opacity-90 blur-[0.5px]"></div>
-                                    <div className="absolute right-[-2px] top-1/4 bottom-1/4 w-[5px] bg-[#be0919]/40 blur-sm rounded-full pointer-events-none"></div>
 
                                     <div className="flex items-start gap-2.5 mb-3.5">
                                         <div className="flex-shrink-0 mt-0.5">

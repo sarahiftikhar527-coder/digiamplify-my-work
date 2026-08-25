@@ -89,7 +89,7 @@ export default function HomeFAQ() {
 
                                     {isOpen && (
                                         <div className="px-6 pb-6 pt-2">
-                                            <p className="text-[#ffffff] text-[11px] leading-[1.7]">
+                                            <p className="text-[#ffffff] text-[12px] leading-[1.7]">
                                                 {faq.answer}
                                             </p>
                                         </div>
