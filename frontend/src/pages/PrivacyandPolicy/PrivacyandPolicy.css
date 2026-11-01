@@ -1,0 +1,39 @@
+/* =========================================
+   PRIVACY POLICY PAGE — SCOPED STYLES
+   Footer aur doosre pages ko affect nahi karega
+   ========================================= */
+
+.privacy-policy-page {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+}
+
+.privacy-policy-page,
+.privacy-policy-page * {
+  box-sizing: border-box;
+}
+
+.privacy-policy-page img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Privacy page ke sections tak styling limited rakho */
+.privacy-policy-page .privacy-description {
+  position: relative;
+  width: 100%;
+  background: #ffffff;
+}
+
+/* Footer ko page styles se independent rakho */
+.footer {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  margin: 0;
+}

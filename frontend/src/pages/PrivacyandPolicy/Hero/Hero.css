@@ -1,0 +1,77 @@
+
+/* =========================================
+   PRIVACY POLICY HERO
+   ========================================= */
+
+.privacy-policy-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 340px;
+  padding: 90px 24px;
+  overflow: hidden;
+  background: #070907;
+}
+
+.privacy-policy-hero__background {
+  position: absolute;
+  z-index: -2;
+  inset: -8px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: blur(3px);
+  transform: scale(1.035);
+}
+
+.privacy-policy-hero__overlay {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.privacy-policy-hero__content {
+  width: 100%;
+  max-width: 1100px;
+  text-align: center;
+}
+
+.privacy-policy-hero__content h1 {
+  margin: 0;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: clamp(36px, 5vw, 62px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -1.5px;
+  text-wrap: balance;
+}
+
+@media (max-width: 700px) {
+  .privacy-policy-hero {
+    min-height: 260px;
+    padding: 72px 20px;
+  }
+
+  .privacy-policy-hero__background {
+    filter: blur(2.5px);
+  }
+
+  .privacy-policy-hero__overlay {
+    background: rgba(0, 0, 0, 0.62);
+  }
+
+  .privacy-policy-hero__content h1 {
+    font-size: clamp(32px, 8vw, 44px);
+    letter-spacing: -0.8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privacy-policy-hero__background {
+    transform: none;
+  }
+}

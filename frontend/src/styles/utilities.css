@@ -1,0 +1,56 @@
+.container-digi {
+  width: min(92%, var(--container-width));
+  margin-inline: auto;
+}
+
+.section-padding {
+  padding-block: var(--section-padding);
+}
+
+.section-gradient {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.035), transparent 35%),
+    linear-gradient(180deg, #000000 0%, #111111 50%, #000000 100%);
+}
+
+.red-text {
+  color: var(--color-red);
+}
+
+.glass-card {
+  background: rgba(11, 11, 11, 0.82);
+  border: 1px solid var(--border-light);
+  backdrop-filter: blur(18px);
+}
+
+.red-border-glow {
+  border-color: rgba(217, 0, 18, 0.65);
+  box-shadow: var(--red-glow);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-label {
+  color: var(--color-label);
+}
+
+.heading-display {
+  font-family: var(--font-heading);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-red);
+  outline-offset: 3px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

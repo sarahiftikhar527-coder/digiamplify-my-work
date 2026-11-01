@@ -1,0 +1,76 @@
+/* =========================================
+   DIGIAMPLIFY — TERMS HERO
+   Single blurred background image
+========================================= */
+
+.terms-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 340px;
+  padding: 90px 24px;
+  overflow: hidden;
+  background: #070907;
+}
+
+.terms-hero__background {
+  position: absolute;
+  z-index: -2;
+  inset: -8px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: blur(3px);
+  transform: scale(1.035);
+}
+
+.terms-hero__overlay {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.53);
+}
+
+.terms-hero__content {
+  width: 100%;
+  max-width: 1100px;
+  text-align: center;
+}
+
+.terms-hero__content h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(36px, 5vw, 62px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -1.8px;
+  text-wrap: balance;
+}
+
+@media (max-width: 700px) {
+  .terms-hero {
+    min-height: 260px;
+    padding: 72px 20px;
+  }
+
+  .terms-hero__background {
+    filter: blur(2.5px);
+  }
+
+  .terms-hero__overlay {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .terms-hero__content h1 {
+    font-size: clamp(32px, 8vw, 44px);
+    letter-spacing: -1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terms-hero__background {
+    transform: none;
+  }
+}

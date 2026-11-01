@@ -1,0 +1,21 @@
+export const paths = {
+  home: '/',
+  about: '/about',
+  services: '/services',
+  serviceDetail: '/services/:slug',
+  projects: '/projects',
+  projectDetail: '/projects/:id',
+  blog: '/blog',
+  blogDetail: '/blog/:slug',
+  contact: '/contact',
+  login: '/login',
+  signup: '/signup',
+  dashboard: '/dashboard',
+  profile: '/dashboard/profile',
+  tasks: '/dashboard/tasks',
+  finance: '/dashboard/finance',
+  calendar: '/dashboard/calendar',
+  chat: '/dashboard/chat',
+  clockIn: '/dashboard/clock-in',
+  help: '/dashboard/help'
+}

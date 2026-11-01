@@ -1,0 +1,44 @@
+import { z } from "zod";
+import {
+  PURPOSES,
+  PREFERENCE_DEFAULTS,
+} from "../../constants/notifications.js";
+
+const objectId = z
+  .string()
+  .regex(/^[a-f\d]{24}$/i, "Invalid id");
+
+export const idSchema = z.object({
+  params: z.object({
+    id: objectId,
+  }),
+});
+
+export const listSchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    unread: z.enum(["true", "false"]).optional(),
+  }),
+});
+
+export const sendSchema = z.object({
+  body: z.object({
+    to: z.union([
+      z.literal("all"),
+      z.array(objectId).min(1).max(1000),
+    ]),
+    purpose: z.enum(Object.keys(PURPOSES)),
+    title: z.string().trim().min(1).max(80),
+    details: z.string().trim().min(1).max(500),
+  }),
+});
+
+export const preferenceSchema = z.object({
+  params: z.object({
+    key: z.enum(PREFERENCE_DEFAULTS.map((item) => item.key)),
+  }),
+  body: z.object({
+    on: z.boolean(),
+  }),
+});

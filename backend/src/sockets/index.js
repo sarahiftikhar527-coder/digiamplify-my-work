@@ -1,0 +1,40 @@
+import { Server } from 'socket.io'
+import { allowedOrigins } from '../config/cors.js'
+import { verifyAccessToken } from '../utils/jwt.js'
+import User from '../models/User.js'
+
+let io = null
+
+export function initSocket(server) {
+  io = new Server(server, {
+    cors: { origin: allowedOrigins, credentials: true },
+  })
+
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token
+      if (!token) return next(new Error('unauthorized'))
+
+      const payload = verifyAccessToken(token)
+      const user = await User.findOne({
+        _id: payload.sub, isDeleted: false, status: 'active',
+      }).select('_id')
+      if (!user) return next(new Error('unauthorized'))
+
+      socket.data.userId = user.id
+      next()
+    } catch {
+      next(new Error('unauthorized'))
+    }
+  })
+
+  io.on('connection', (socket) => {
+    socket.join(`user:${socket.data.userId}`) // har user ka apna room
+  })
+
+  return io
+}
+
+export const emitToUser = (userId, event, payload) => {
+  io?.to(`user:${userId}`).emit(event, payload)
+}
