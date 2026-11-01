@@ -34,7 +34,7 @@ export default function AttendanceTable({ rows = [], loading = false, onView = (
           {loading ? (
             <Message>Loading attendance...</Message>
           ) : rows.length === 0 ? (
-            <Message>Koi employee attendance record nahi mila.</Message>
+            <Message> No Employee Attendance Record Found</Message>
           ) : (
             rows.map((employee, index) => (
               <tr
