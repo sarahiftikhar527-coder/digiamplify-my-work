@@ -2,6 +2,14 @@
 import mongoose from "mongoose";
 import Calendar from "../../models/Calendar.js";
 import User from "../../models/User.js";
+import {
+  isAdmin,
+  forbidden,
+  canEmployeeReadEvent,
+  canEmployeeMutateEvent,
+  assertEmployeeCreateEventType,
+  isCompanyHoliday,
+} from "./calendar.auth.js";
 
 const EVENT_TYPES = ["holiday", "leave", "shift", "attendance"];
 
@@ -15,7 +23,7 @@ const VALID_STATUSES = [
   "cancelled",
 ];
 
-const EDITABLE_FIELDS = [
+const CREATE_FIELDS = [
   "eventType",
   "title",
   "subject",
@@ -29,14 +37,47 @@ const EDITABLE_FIELDS = [
   "clockIn",
   "clockOut",
   "worked",
-  "status",
   "description",
   "leaveType",
   "approverIds",
   "attachments",
 ];
 
+const UPDATE_FIELDS = [
+  "title",
+  "subject",
+  "employeeId",
+  "employeeName",
+  "role",
+  "from",
+  "to",
+  "startTime",
+  "endTime",
+  "clockIn",
+  "clockOut",
+  "worked",
+  "description",
+  "leaveType",
+];
+
 const LEAVE_TYPES = ["Sick", "Casual", "Annual", "Unpaid"];
+
+const EMPLOYEE_CREATE_BLOCKED = new Set([
+  "clockIn",
+  "clockOut",
+  "worked",
+  "status",
+  "employeeId",
+  "reviewedBy",
+  "reviewedAt",
+]);
+
+export function actorFromUser(user) {
+  return {
+    userId: String(user._id || user.id),
+    role: user.role,
+  };
+}
 
 const validateDateRange = (from, to) => {
   const start = new Date(from);
@@ -113,21 +154,23 @@ const normalizeAttachments = (value) => {
   return attachments;
 };
 
-const normalizePayload = (payload = {}) => {
+const pickFields = (payload, fields) => {
   const data = {};
 
-  for (const field of EDITABLE_FIELDS) {
+  for (const field of fields) {
     if (payload[field] !== undefined) {
       data[field] = payload[field];
     }
   }
 
+  return data;
+};
+
+const normalizePayload = (payload = {}, { allowedFields = CREATE_FIELDS } = {}) => {
+  const data = pickFields(payload, allowedFields);
+
   if (data.eventType && !EVENT_TYPES.includes(data.eventType)) {
     throw new Error("Invalid calendar event type.");
-  }
-
-  if (data.status && !VALID_STATUSES.includes(data.status)) {
-    throw new Error("Invalid calendar event status.");
   }
 
   if (data.employeeId) {
@@ -175,9 +218,38 @@ const normalizePayload = (payload = {}) => {
   return data;
 };
 
+async function resolveActiveUserId(employeeId) {
+  if (!mongoose.isValidObjectId(employeeId)) {
+    throw new Error("Invalid employee ID.");
+  }
+
+  const user = await User.findOne({
+    _id: employeeId,
+    status: "active",
+    isDeleted: false,
+  }).select("_id");
+
+  if (!user) {
+    throw new Error("The selected employee is not available.");
+  }
+
+  return user._id;
+}
+
+function employeeReadFilter(actor) {
+  const userObjectId = new mongoose.Types.ObjectId(actor.userId);
+
+  return {
+    $or: [
+      { employeeId: userObjectId },
+      { eventType: "holiday", employeeId: null },
+    ],
+  };
+}
+
 export const searchCalendarApprovers = async (search = "") => {
   const queryText = String(search || "").trim();
-  const filter = {};
+  const filter = { role: { $regex: /^admin$/i } };
 
   if (queryText) {
     const escaped = queryText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -187,56 +259,52 @@ export const searchCalendarApprovers = async (search = "") => {
       { name: regex },
       { fullName: regex },
       { username: regex },
-      { email: regex },
     ];
   }
 
-  filter.role = { $regex: /^admin$/i };
-
   const users = await User.find(filter)
-    .select("_id name fullName username email role")
+    .select("_id name fullName username role department")
     .limit(20)
     .lean();
 
   return users.map((user) => ({
     id: String(user._id),
-    _id: user._id,
     name:
       user.name ||
       user.fullName ||
       user.username ||
-      user.email ||
       "Admin",
-    email: user.email || "",
-    role: user.role,
+    role: user.role || "admin",
+    department: user.department || "",
   }));
 };
 
-export const getCalendarEvents = async (filters = {}) => {
+export const getCalendarEvents = async (actor, filters = {}) => {
   const query = {};
 
-  if (filters.eventType) {
-    if (!EVENT_TYPES.includes(filters.eventType)) {
-      throw new Error("Invalid calendar event type.");
+  if (!isAdmin(actor)) {
+    Object.assign(query, employeeReadFilter(actor));
+
+    if (
+      filters.employeeId &&
+      String(filters.employeeId) !== actor.userId
+    ) {
+      throw forbidden("You do not have permission to view these events.");
     }
-
-    query.eventType = filters.eventType;
-  }
-
-  if (filters.status) {
-    if (!VALID_STATUSES.includes(filters.status)) {
-      throw new Error("Invalid calendar event status.");
-    }
-
-    query.status = filters.status;
-  }
-
-  if (filters.employeeId) {
+  } else if (filters.employeeId) {
     if (!mongoose.isValidObjectId(filters.employeeId)) {
       throw new Error("Invalid employee ID.");
     }
 
     query.employeeId = filters.employeeId;
+  }
+
+  if (filters.eventType) {
+    query.eventType = filters.eventType;
+  }
+
+  if (filters.status) {
+    query.status = filters.status;
   }
 
   if (filters.from || filters.to) {
@@ -265,33 +333,51 @@ export const getCalendarEvents = async (filters = {}) => {
   }
 
   return Calendar.find(query)
-    .populate("employeeId", "name email role")
-    .populate("createdBy", "name email")
-    .populate("reviewedBy", "name email")
+    .populate("employeeId", "name role")
+    .populate("createdBy", "name")
+    .populate("reviewedBy", "name")
     .sort({ from: 1, createdAt: -1 })
     .lean();
 };
 
-export const getCalendarEventById = async (id) => {
+export const getCalendarEventById = async (actor, id) => {
   if (!mongoose.isValidObjectId(id)) {
     throw new Error("Invalid calendar event ID.");
   }
 
   const event = await Calendar.findById(id)
-    .populate("employeeId", "name email role")
-    .populate("createdBy", "name email")
-    .populate("reviewedBy", "name email")
+    .populate("employeeId", "name role")
+    .populate("createdBy", "name")
+    .populate("reviewedBy", "name")
     .lean();
 
   if (!event) {
     throw new Error("Calendar event not found.");
   }
 
+  if (!isAdmin(actor) && !canEmployeeReadEvent(event, actor.userId)) {
+    throw forbidden("You do not have permission to view this event.");
+  }
+
   return event;
 };
 
-export const createCalendarEvent = async (payload, userId = null) => {
-  const data = normalizePayload(payload);
+export const createCalendarEvent = async (actor, payload) => {
+  const sanitized = { ...payload };
+
+  if (!isAdmin(actor)) {
+    for (const key of EMPLOYEE_CREATE_BLOCKED) {
+      delete sanitized[key];
+    }
+
+    assertEmployeeCreateEventType(sanitized.eventType);
+  } else if (
+    ["holiday", "shift", "attendance"].includes(sanitized.eventType)
+  ) {
+    // admin-only types
+  }
+
+  const data = normalizePayload(sanitized, { allowedFields: CREATE_FIELDS });
 
   if (!data.eventType) {
     throw new Error("Event type is required.");
@@ -299,6 +385,14 @@ export const createCalendarEvent = async (payload, userId = null) => {
 
   if (!data.from || !data.to) {
     throw new Error("Both from and to dates are required.");
+  }
+
+  if (!isAdmin(actor)) {
+    if (data.eventType !== "leave") {
+      throw forbidden(
+        "You do not have permission to create this type of calendar event."
+      );
+    }
   }
 
   if (data.eventType === "leave") {
@@ -318,58 +412,79 @@ export const createCalendarEvent = async (payload, userId = null) => {
       throw new Error("At least one approver is required.");
     }
 
-    if (!userId || !mongoose.isValidObjectId(userId)) {
-      throw new Error("Authenticated employee is required.");
+    if (isAdmin(actor) && data.employeeId) {
+      data.employeeId = await resolveActiveUserId(data.employeeId);
+    } else {
+      data.employeeId = new mongoose.Types.ObjectId(actor.userId);
     }
 
-    data.employeeId = new mongoose.Types.ObjectId(userId);
     data.status = "pending";
+  } else if (isAdmin(actor)) {
+    if (data.employeeId) {
+      data.employeeId = await resolveActiveUserId(data.employeeId);
+    }
+
+    if (data.eventType === "holiday" && !data.status) {
+      data.status = "pending";
+    }
+
+    if (data.eventType === "shift" && !data.status) {
+      data.status = "scheduled";
+    }
+
+    if (data.eventType === "attendance" && !data.status) {
+      data.status = "completed";
+    }
   }
 
-  if (userId && mongoose.isValidObjectId(userId)) {
-    data.createdBy = new mongoose.Types.ObjectId(userId);
-  }
+  data.createdBy = new mongoose.Types.ObjectId(actor.userId);
 
-  if (data.eventType === "holiday" && !data.status) {
-    data.status = "pending";
-  }
-
-  if (data.eventType === "shift" && !data.status) {
-    data.status = "scheduled";
-  }
-
-  if (data.eventType === "attendance" && !data.status) {
-    data.status = "completed";
-  }
+  delete data.leaveType;
+  delete data.approverIds;
+  delete data.attachments;
 
   const event = await Calendar.create(data);
 
   return Calendar.findById(event._id)
-    .populate("employeeId", "name email role")
-    .populate("createdBy", "name email")
-    .populate("reviewedBy", "name email")
+    .populate("employeeId", "name role")
+    .populate("createdBy", "name")
+    .populate("reviewedBy", "name")
     .lean();
 };
 
-export const updateCalendarEvent = async (id, payload) => {
+export const updateCalendarEvent = async (actor, id, payload) => {
   if (!mongoose.isValidObjectId(id)) {
     throw new Error("Invalid calendar event ID.");
   }
 
-  const data = normalizePayload(payload);
   const existing = await Calendar.findById(id);
 
   if (!existing) {
     throw new Error("Calendar event not found.");
   }
 
+  if (isCompanyHoliday(existing) && !isAdmin(actor)) {
+    throw forbidden("You do not have permission to edit this event.");
+  }
+
+  if (!isAdmin(actor) && !canEmployeeMutateEvent(existing, actor.userId)) {
+    throw forbidden("You do not have permission to edit this event.");
+  }
+
+  const data = normalizePayload(payload, { allowedFields: UPDATE_FIELDS });
+
   if (existing.eventType === "leave") {
     delete data.employeeId;
-    delete data.createdBy;
-    delete data.reviewedBy;
-    delete data.approverIds;
-    delete data.attachments;
-    delete data.eventType;
+    delete data.leaveType;
+  }
+
+  if (!isAdmin(actor)) {
+    delete data.employeeId;
+    delete data.clockIn;
+    delete data.clockOut;
+    delete data.worked;
+  } else if (data.employeeId) {
+    data.employeeId = await resolveActiveUserId(data.employeeId);
   }
 
   const nextFrom = data.from ?? existing.from;
@@ -385,25 +500,25 @@ export const updateCalendarEvent = async (id, payload) => {
       runValidators: true,
     }
   )
-    .populate("employeeId", "name email role")
-    .populate("createdBy", "name email")
-    .populate("reviewedBy", "name email")
+    .populate("employeeId", "name role")
+    .populate("createdBy", "name")
+    .populate("reviewedBy", "name")
     .lean();
 };
 
-export const updateCalendarEventStatus = async (
-  id,
-  status,
-  reviewerId = null
-) => {
+export const updateCalendarEventStatus = async (actor, id, status) => {
+  if (!isAdmin(actor)) {
+    throw forbidden("Only administrators can approve or reject calendar events.");
+  }
+
   if (!mongoose.isValidObjectId(id)) {
     throw new Error("Invalid calendar event ID.");
   }
 
   const normalizedStatus = String(status || "").toLowerCase();
 
-  if (!VALID_STATUSES.includes(normalizedStatus)) {
-    throw new Error("Invalid calendar event status.");
+  if (!["approved", "rejected"].includes(normalizedStatus)) {
+    throw new Error("Status must be approved or rejected.");
   }
 
   const existing = await Calendar.findById(id);
@@ -412,27 +527,11 @@ export const updateCalendarEventStatus = async (
     throw new Error("Calendar event not found.");
   }
 
-  if (
-    existing.eventType === "leave" &&
-    !["approved", "rejected", "pending"].includes(normalizedStatus)
-  ) {
-    throw new Error(
-      "Leave requests can only be pending, approved, or rejected."
-    );
-  }
-
-  const update = { status: normalizedStatus };
-
-  if (["approved", "rejected"].includes(normalizedStatus)) {
-    update.reviewedAt = new Date();
-
-    if (reviewerId && mongoose.isValidObjectId(reviewerId)) {
-      update.reviewedBy = new mongoose.Types.ObjectId(reviewerId);
-    }
-  } else {
-    update.reviewedAt = null;
-    update.reviewedBy = null;
-  }
+  const update = {
+    status: normalizedStatus,
+    reviewedAt: new Date(),
+    reviewedBy: new mongoose.Types.ObjectId(actor.userId),
+  };
 
   return Calendar.findByIdAndUpdate(
     id,
@@ -442,22 +541,32 @@ export const updateCalendarEventStatus = async (
       runValidators: true,
     }
   )
-    .populate("employeeId", "name email role")
-    .populate("createdBy", "name email")
-    .populate("reviewedBy", "name email")
+    .populate("employeeId", "name role")
+    .populate("createdBy", "name")
+    .populate("reviewedBy", "name")
     .lean();
 };
 
-export const deleteCalendarEvent = async (id) => {
+export const deleteCalendarEvent = async (actor, id) => {
   if (!mongoose.isValidObjectId(id)) {
     throw new Error("Invalid calendar event ID.");
   }
 
-  const event = await Calendar.findByIdAndDelete(id);
+  const existing = await Calendar.findById(id);
 
-  if (!event) {
+  if (!existing) {
     throw new Error("Calendar event not found.");
   }
+
+  if (isCompanyHoliday(existing) && !isAdmin(actor)) {
+    throw forbidden("You do not have permission to delete this event.");
+  }
+
+  if (!isAdmin(actor) && !canEmployeeMutateEvent(existing, actor.userId)) {
+    throw forbidden("You do not have permission to delete this event.");
+  }
+
+  const event = await Calendar.findByIdAndDelete(id);
 
   return event;
 };

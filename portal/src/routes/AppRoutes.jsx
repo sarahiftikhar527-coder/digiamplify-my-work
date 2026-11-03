@@ -5,6 +5,7 @@ import AdminLayout from "@/layouts/AdminLayout/AdminLayout";
 import NotificationsPage from "@/modules/notifications/pages/NotificationsPage/NotificationsPage";
 
 import Login from "@/pages/Login/Login";
+import ResetPinPage from "@/pages/ResetPin/ResetPinPage";
 
 // Employee pages
 import DashboardPage from "@/modules/employee/dashboard/pages/DashboardPage";
@@ -56,6 +57,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-pin" element={<ResetPinPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<RoleDashboardRedirect />} />

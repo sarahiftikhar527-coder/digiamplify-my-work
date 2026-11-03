@@ -6,14 +6,13 @@ import multer from "multer";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import * as service from "./chat.service.js";
 import ApiError from "../../utils/ApiError.js";
+import { CHAT_ATTACHMENTS_DIR } from "../../config/uploads.js";
+import {
+  buildChatAttachmentId,
+  buildChatAttachmentUrl,
+} from "../../utils/fileUrls.js";
 
-const uploadDirectory = path.resolve(
-  process.cwd(),
-  "uploads",
-  "chat"
-);
-
-fs.mkdirSync(uploadDirectory, { recursive: true });
+fs.mkdirSync(CHAT_ATTACHMENTS_DIR, { recursive: true });
 
 const allowedMimeTypes = new Set([
   "image/jpeg",
@@ -30,7 +29,7 @@ const allowedMimeTypes = new Set([
 
 const storage = multer.diskStorage({
   destination: (_req, _file, callback) =>
-    callback(null, uploadDirectory),
+    callback(null, CHAT_ATTACHMENTS_DIR),
   filename: (_req, file, callback) => {
     const extension = path.extname(file.originalname).slice(0, 15);
     callback(null, `${crypto.randomUUID()}${extension}`);
@@ -187,12 +186,12 @@ export const uploadAttachment = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please select a file to upload.");
   }
 
-  const id = `chat/${req.file.filename}`;
+  const id = buildChatAttachmentId(req.file.filename);
 
   const attachment = {
     id,
     name: req.file.originalname,
-    url: `/uploads/${id}`,
+    url: buildChatAttachmentUrl(req.file.filename),
     mimeType: req.file.mimetype,
     size: req.file.size,
   };

@@ -7,7 +7,17 @@ const LOCK_MS = 30000;
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "back", "0", "#"];
 
 // onSubmit(pin) -> Promise<{ ok, error, invalidPin }>
-const PinPad = ({ mode, onSubmit, onForgot, disabled = false, keyboard = true }) => {
+const PinPad = ({
+  mode,
+  onSubmit,
+  onForgot,
+  disabled = false,
+  keyboard = true,
+  showForgot = true,
+  heading = "Enter 4-Digit PIN",
+  description,
+  submitLabel,
+}) => {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +29,11 @@ const PinPad = ({ mode, onSubmit, onForgot, disabled = false, keyboard = true })
 
   const locked = lockedUntil > 0;
   const blocked = disabled || loading || locked;
-  const label = mode === "in" ? "Clock In" : "Clock Out";
+  const label =
+    submitLabel || (mode === "in" ? "Clock In" : "Clock Out");
+  const helper =
+    description ||
+    `Use your PIN to ${mode === "in" ? "clock in" : "clock out"}`;
 
   useEffect(() => {
     if (!lockedUntil) return;
@@ -92,12 +106,14 @@ const PinPad = ({ mode, onSubmit, onForgot, disabled = false, keyboard = true })
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-[13px] font-semibold text-white">Enter 4-Digit PIN</h4>
-          <p className="mt-0.5 text-[11px] text-white/50">Use your PIN to {mode === "in" ? "clock in" : "clock out"}</p>
+          <h4 className="text-[13px] font-semibold text-white">{heading}</h4>
+          <p className="mt-0.5 text-[11px] text-white/50">{helper}</p>
         </div>
-        <button type="button" onClick={onForgot} className="shrink-0 text-[11px] font-medium text-red-500 hover:text-red-400">
-          Forgot PIN?
-        </button>
+        {showForgot ? (
+          <button type="button" onClick={onForgot} className="shrink-0 text-[11px] font-medium text-red-500 hover:text-red-400">
+            Forgot PIN?
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-5 flex justify-center gap-3 sm:gap-4" style={shake ? { animation: "pin-shake .4s" } : undefined}>

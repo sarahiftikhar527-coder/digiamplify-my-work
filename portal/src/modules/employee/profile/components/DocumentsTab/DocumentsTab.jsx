@@ -10,6 +10,12 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import apiClient from '@/services/api/apiClient';
+import {
+  downloadAuthenticatedFile,
+  needsAuthenticatedFetch,
+  openAuthenticatedFile,
+  resolveProtectedFileFetchUrl,
+} from '@/utils/authenticatedFile';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
@@ -61,6 +67,8 @@ function resolveDocumentUrl(url) {
   }
 
   if (cleanUrl.startsWith('/')) {
+    const mapped = resolveProtectedFileFetchUrl(cleanUrl)
+    if (mapped) return mapped
     return `${API_ORIGIN}${cleanUrl}`;
   }
 
@@ -301,8 +309,17 @@ export default function DocumentsTab({
     }
   };
 
-  const handleOpen = (url, name) => {
+  const handleOpen = async (url, name) => {
     setError('');
+
+    if (needsAuthenticatedFetch(url)) {
+      try {
+        await openAuthenticatedFile(url);
+      } catch (err) {
+        setError(err?.message || `Unable to open ${name}.`);
+      }
+      return;
+    }
 
     const permanentUrl = resolveDocumentUrl(url);
 
@@ -316,8 +333,17 @@ export default function DocumentsTab({
     openUrl(permanentUrl);
   };
 
-  const handleDownload = (url, name) => {
+  const handleDownload = async (url, name) => {
     setError('');
+
+    if (needsAuthenticatedFetch(url)) {
+      try {
+        await downloadAuthenticatedFile(url, safeFileName(name));
+      } catch (err) {
+        setError(err?.message || `Unable to download ${name}.`);
+      }
+      return;
+    }
 
     const permanentUrl = resolveDocumentUrl(url);
 

@@ -1,5 +1,9 @@
 import { useRef, useState } from 'react';
 import Icon from '../Icon';
+import {
+  needsAuthenticatedFetch,
+  openAuthenticatedFile,
+} from '@/utils/authenticatedFile';
 
 const DOCUMENT_TYPES = [
   'Employment Contract',
@@ -84,8 +88,17 @@ function DocumentCard({ doc, editable, onUpdate, onRemove }) {
   const isCnic = doc.label === 'CNIC (Front & Back)';
   const isLink = doc.kind === 'link';
 
-  const openUrl = (url, link = false) => {
+  const openUrl = async (url, link = false) => {
     if (!url) return;
+
+    if (!link && needsAuthenticatedFetch(url)) {
+      try {
+        await openAuthenticatedFile(url);
+      } catch {
+        setError('Unable to open this document.');
+      }
+      return;
+    }
 
     const target = link ? normalizeUrl(url) : url;
 

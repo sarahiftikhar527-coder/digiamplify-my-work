@@ -13,8 +13,8 @@ export const PRIVACY_POLICY_DATA = {
       id: "information-we-collect",
       title: "Information We Collect",
       paragraphs: [
-        "We may collect information that you provide directly when you contact us, request a quotation, submit a project enquiry, subscribe to updates, or communicate with our team.",
-        "Depending on your interaction with us, this information may include your name, business name, email address, phone number, project details, and other information you choose to provide.",
+        "We may collect information that you provide directly when you use our website contact form, request a quotation, submit a project enquiry, subscribe to marketing updates, or communicate with our team.",
+        "For contact enquiries, we may collect your name, email address, company name (optional), project type, and message. For newsletter sign-up, we collect your email address. We use these details only to respond to enquiries or send updates you have agreed to receive.",
         "We may also collect limited technical information, such as browser type, device information, pages visited, and general usage data, where permitted by applicable law.",
       ],
     },
@@ -22,7 +22,7 @@ export const PRIVACY_POLICY_DATA = {
       id: "how-we-use-information",
       title: "How We Use Your Information",
       paragraphs: [
-        "We use the information we collect to respond to enquiries, understand project requirements, prepare proposals, provide our services, communicate with clients, and maintain our website.",
+        "We use the information we collect to respond to contact form enquiries, deliver newsletter updates where you have opted in, understand project requirements, prepare proposals, provide our services, and maintain our website.",
         "We may also use information to improve website performance, protect our systems, prevent misuse, maintain business records, and meet applicable legal obligations.",
         "We do not use personal information for purposes materially different from those described here without an appropriate legal basis or notice where required.",
       ],
@@ -41,6 +41,7 @@ export const PRIVACY_POLICY_DATA = {
       title: "How We Share Information",
       paragraphs: [
         "We do not sell your personal information. We may share relevant information with trusted service providers who help us operate our website, manage communications, deliver services, or maintain our business systems.",
+        "For example, we use Resend to send transactional and marketing emails (such as internal contact notifications, newsletter welcome messages, and unsubscribe links). Resend processes recipient email addresses and message content only as needed to deliver those emails on our behalf.",
         "These providers should access information only as necessary to perform their services and subject to appropriate confidentiality and security obligations.",
         "We may also disclose information where required by law, to respond to valid legal requests, to protect our rights, or to address security and fraud concerns.",
       ],
@@ -59,6 +60,8 @@ export const PRIVACY_POLICY_DATA = {
       title: "Data Retention",
       paragraphs: [
         "We retain personal information only for as long as reasonably necessary for the purposes described in this policy, including providing services, maintaining business records, resolving disputes, and meeting legal requirements.",
+        "Contact form submissions stored in our systems are automatically deleted after approximately twelve (12) months unless a longer period is required for an ongoing enquiry, legal obligation, or legitimate business record.",
+        "Newsletter subscription records are kept until you unsubscribe or ask us to delete them, subject to any legal requirements.",
         "Retention periods may vary depending on the type of information, our relationship with you, and applicable legal or contractual obligations.",
       ],
     },

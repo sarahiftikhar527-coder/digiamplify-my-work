@@ -8,6 +8,7 @@ import Task from "../../models/Task.js";
 import Calendar from "../../models/Calendar.js";
 import Attendance from "./attendance.model.js";
 import { ROLES } from "../../constants/roles.js";
+import { env } from "../../config/env.js";
 
 const DEFAULT_TIME_ZONE = "Asia/Karachi";
 
@@ -862,25 +863,33 @@ export async function setPin(userId, password, newPin) {
 |--------------------------------------------------------------------------
 */
 
+const PIN_RESET_EXPIRY_MS = 30 * 60 * 1000;
+const FORGOT_MIN_RESPONSE_MS = 250;
+const GENERIC_FORGOT_MESSAGE =
+  "If the account exists, a reset email will be sent.";
+
+function hashPinResetToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function sendPinResetEmail(email, token) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
-  const frontendUrl = process.env.FRONTEND_URL;
+  const frontendUrl = String(env.FRONTEND_URL || "").trim();
 
   if (!apiKey || !from || !frontendUrl) {
-    throw fail(
-      503,
-      "PIN reset email is not configured.",
-      "PIN_RESET_EMAIL_NOT_CONFIGURED"
-    );
+    console.error("PIN reset email is not configured.");
+    return;
   }
 
-  const resetUrl =
-    `${frontendUrl.replace(/\/$/, "")}/reset-pin?token=${encodeURIComponent(token)}`;
+  const resetUrl = `${frontendUrl.replace(/\/$/, "")}/reset-pin?token=${encodeURIComponent(token)}`;
 
-  const response = await fetch(
-    "https://api.resend.com/emails",
-    {
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -893,16 +902,21 @@ async function sendPinResetEmail(email, token) {
         text:
           `A PIN reset was requested for your account.\n\n` +
           `Open this link to set a new PIN: ${resetUrl}\n\n` +
-          `This link expires in 15 minutes. If you did not request this, ignore this email.`,
+          `This link expires in 30 minutes. If you did not request this, ignore this email.`,
       }),
-    }
-  );
+    });
 
-  if (!response.ok) {
-    throw fail(
-      502,
-      "Unable to send the PIN reset email right now.",
-      "PIN_RESET_EMAIL_FAILED"
+    if (!response.ok) {
+      console.error(
+        "PIN reset email send failed:",
+        response.status,
+        response.statusText
+      );
+    }
+  } catch (error) {
+    console.error(
+      "PIN reset email send failed:",
+      error?.message || "network error"
     );
   }
 }
@@ -914,17 +928,8 @@ async function sendPinResetEmail(email, token) {
 */
 
 export async function requestPinReset(email) {
-  const normalizedEmail = String(email ?? "")
-    .trim()
-    .toLowerCase();
-
-  if (!normalizedEmail) {
-    throw fail(
-      400,
-      "Email is required.",
-      "EMAIL_REQUIRED"
-    );
-  }
+  const startedAt = Date.now();
+  const normalizedEmail = String(email ?? "").trim().toLowerCase();
 
   const user = await User.findOne({
     email: normalizedEmail,
@@ -932,38 +937,27 @@ export async function requestPinReset(email) {
     isDeleted: false,
   }).select("+pinResetTokenHash +pinResetExpires");
 
-  if (!user) {
-    return {
-      message: "If the account exists, a reset email will be sent.",
-    };
-  }
+  if (user) {
+    const token = crypto.randomBytes(32).toString("hex");
 
-  const token = crypto.randomBytes(32).toString("hex");
-
-  user.pinResetTokenHash = crypto
-    .createHash("sha256")
-    .update(token)
-    .digest("hex");
-
-  user.pinResetExpires = new Date(
-    Date.now() + 15 * 60 * 1000
-  );
-
-  await user.save();
-
-  try {
-    await sendPinResetEmail(user.email, token);
-  } catch (error) {
-    user.pinResetTokenHash = undefined;
-    user.pinResetExpires = undefined;
+    user.pinResetTokenHash = hashPinResetToken(token);
+    user.pinResetExpires = new Date(Date.now() + PIN_RESET_EXPIRY_MS);
 
     await user.save();
 
-    throw error;
+    void sendPinResetEmail(user.email, token);
+  } else {
+    hashPinResetToken(crypto.randomBytes(32).toString("hex"));
+  }
+
+  const elapsed = Date.now() - startedAt;
+
+  if (elapsed < FORGOT_MIN_RESPONSE_MS) {
+    await wait(FORGOT_MIN_RESPONSE_MS - elapsed);
   }
 
   return {
-    message: "If the account exists, a reset email will be sent.",
+    message: GENERIC_FORGOT_MESSAGE,
   };
 }
 
@@ -976,27 +970,14 @@ export async function requestPinReset(email) {
 export async function resetPin(token, newPin) {
   const pin = validatePin(newPin);
 
-  if (typeof token !== "string" || token.length < 32) {
-    throw fail(
-      400,
-      "Reset link is invalid or expired.",
-      "INVALID_RESET_TOKEN"
-    );
-  }
-
-  const tokenHash = crypto
-    .createHash("sha256")
-    .update(token)
-    .digest("hex");
+  const tokenHash = hashPinResetToken(token);
 
   const user = await User.findOne({
     pinResetTokenHash: tokenHash,
     pinResetExpires: { $gt: new Date() },
     status: "active",
     isDeleted: false,
-  }).select(
-    "+pinResetTokenHash +pinResetExpires +pinHash"
-  );
+  }).select("+pinResetTokenHash +pinResetExpires +pinHash");
 
   if (!user) {
     throw fail(

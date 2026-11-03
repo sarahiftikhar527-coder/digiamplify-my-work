@@ -4,6 +4,7 @@ import Chat from "../../models/chat.js";
 import User from "../../models/User.js";
 import ApiError from "../../utils/ApiError.js";
 import { ROLES } from "../../constants/roles.js";
+import { buildChatAttachmentUrl } from "../../utils/fileUrls.js";
 
 const idOf = (value) =>
   String(value?._id || value?.id || value || "");
@@ -490,7 +491,7 @@ export async function sendMessage(chatId, data = {}, user) {
     (attachmentId) => ({
       id: attachmentId,
       name: attachmentId.split("/").pop(),
-      url: `/uploads/${attachmentId}`,
+      url: buildChatAttachmentUrl(attachmentId.split("/").pop()),
       mimeType: "application/octet-stream",
       size: 0,
     })

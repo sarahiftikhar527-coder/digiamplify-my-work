@@ -91,5 +91,10 @@ const chatSchema = new mongoose.Schema(
 
 chatSchema.index({ "members.user": 1, lastMessageAt: -1 });
 chatSchema.index({ type: 1, "members.user": 1 });
+chatSchema.index({ "messages.attachments.id": 1 });
+chatSchema.index({
+  "messages.attachments.id": 1,
+  "members.user": 1,
+});
 
 export default mongoose.models.Chat || mongoose.model("Chat", chatSchema);

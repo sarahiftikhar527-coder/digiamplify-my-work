@@ -15,6 +15,7 @@ import {
   Plus,
 } from "lucide-react";
 import Avatar from "../Avatar";
+import ChatAttachment from "@/components/ChatAttachment/ChatAttachment";
 import useClickOutside from "../../../../../hooks/useClickOutside";
 import { formatTime } from "../../../../../utils/format";
 
@@ -250,77 +251,17 @@ const MessageBubble = ({
                         isMine ? "justify-end" : ""
                       }`}
                     >
-                      {attachments.map((attachment, index) => {
-                        const attachmentId =
-                          attachment.id ||
-                          attachment._id ||
-                          attachment.url ||
-                          `attachment-${index}`;
-
-                        const attachmentUrl =
-                          attachment.url ||
-                          attachment.secureUrl ||
-                          "";
-
-                        const attachmentName =
-                          attachment.name ||
-                          attachment.originalName ||
-                          "Attachment";
-
-                        const attachmentType =
-                          attachment.type ||
-                          attachment.mimeType ||
-                          attachment.mimetype ||
-                          "";
-
-                        if (!attachmentUrl) {
-                          return (
-                            <div
-                              key={attachmentId}
-                              className="flex items-center gap-2 rounded-lg bg-black/30 px-2.5 py-1.5 text-[11px] text-white/60"
-                            >
-                              <FileText size={14} />
-                              <span className="max-w-[140px] truncate">
-                                {attachmentName}
-                              </span>
-                            </div>
-                          );
-                        }
-
-                        if (attachmentType.startsWith("image/")) {
-                          return (
-                            <a
-                              key={attachmentId}
-                              href={attachmentUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="block overflow-hidden rounded-lg"
-                            >
-                              <img
-                                src={attachmentUrl}
-                                alt={attachmentName}
-                                loading="lazy"
-                                className="h-24 w-24 rounded-lg object-cover"
-                              />
-                            </a>
-                          );
-                        }
-
-                        return (
-                          <a
-                            key={attachmentId}
-                            href={attachmentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 rounded-lg bg-black/30 px-2.5 py-1.5 text-[11px] text-white/80 transition-colors hover:bg-black/50"
-                          >
-                            <FileText size={14} />
-                            <span className="max-w-[140px] truncate">
-                              {attachmentName}
-                            </span>
-                          </a>
-                        );
-                      })}
+                      {attachments.map((attachment, index) => (
+                        <ChatAttachment
+                          key={
+                            attachment.id ||
+                            attachment._id ||
+                            attachment.url ||
+                            `attachment-${index}`
+                          }
+                          attachment={attachment}
+                        />
+                      ))}
                     </div>
                   )}
                 </>

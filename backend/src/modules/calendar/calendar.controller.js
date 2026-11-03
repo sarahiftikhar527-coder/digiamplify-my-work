@@ -6,6 +6,7 @@ import {
   updateCalendarEventStatus,
   deleteCalendarEvent,
   searchCalendarApprovers,
+  actorFromUser,
 } from "./calendar.service.js";
 
 const getUserId = (req) =>
@@ -14,6 +15,10 @@ const getUserId = (req) =>
   null;
 
 const getErrorStatus = (error) => {
+  if (error?.statusCode === 403) {
+    return 403;
+  }
+
   const message = String(error?.message || "").toLowerCase();
 
   if (
@@ -30,7 +35,8 @@ const getErrorStatus = (error) => {
     message.includes("invalid") ||
     message.includes("required") ||
     message.includes("cannot be") ||
-    message.includes("must be")
+    message.includes("must be") ||
+    message.includes("not available")
   ) {
     return 400;
   }
@@ -72,7 +78,7 @@ export const getApprovers = async (req, res) => {
     if (!requireUser(req, res)) return;
 
     const approvers = await searchCalendarApprovers(
-      String(req.query.q || "").trim()
+      req.validated?.query?.q || ""
     );
 
     return res.status(200).json({
@@ -89,13 +95,9 @@ export const getEvents = async (req, res) => {
   try {
     if (!requireUser(req, res)) return;
 
-    const events = await getCalendarEvents({
-      from: req.query.from,
-      to: req.query.to,
-      eventType: req.query.eventType,
-      status: req.query.status,
-      employeeId: req.query.employeeId,
-    });
+    const query = req.validated?.query || {};
+
+    const events = await getCalendarEvents(actorFromUser(req.user), query);
 
     return res.status(200).json({
       success: true,
@@ -111,7 +113,10 @@ export const getEvent = async (req, res) => {
   try {
     if (!requireUser(req, res)) return;
 
-    const event = await getCalendarEventById(req.params.id);
+    const event = await getCalendarEventById(
+      actorFromUser(req.user),
+      req.params.id
+    );
 
     return res.status(200).json({
       success: true,
@@ -126,37 +131,12 @@ export const createEvent = async (req, res) => {
   try {
     if (!requireUser(req, res)) return;
 
-    const userId = getUserId(req);
-    const payload = { ...(req.body || {}) };
+    const payload = { ...(req.validated?.body || {}) };
 
-    if (typeof payload.approverIds === "string") {
-      try {
-        payload.approverIds = JSON.parse(payload.approverIds);
-      } catch {
-        return res.status(400).json({
-          success: false,
-          message: "Approver IDs must be a valid JSON array.",
-        });
-      }
-    }
-
-    if (typeof payload.attachments === "string") {
-      try {
-        payload.attachments = JSON.parse(payload.attachments);
-      } catch {
-        return res.status(400).json({
-          success: false,
-          message: "Attachments must be a valid JSON array.",
-        });
-      }
-    }
-
-    if (payload.eventType === "leave") {
-      payload.status = "pending";
-      payload.employeeId = userId;
-    }
-
-    const event = await createCalendarEvent(payload, userId);
+    const event = await createCalendarEvent(
+      actorFromUser(req.user),
+      payload
+    );
 
     return res.status(201).json({
       success: true,
@@ -176,8 +156,9 @@ export const updateEvent = async (req, res) => {
     if (!requireUser(req, res)) return;
 
     const event = await updateCalendarEvent(
+      actorFromUser(req.user),
       req.params.id,
-      req.body || {}
+      req.validated?.body || {}
     );
 
     return res.status(200).json({
@@ -194,19 +175,12 @@ export const updateEventStatus = async (req, res) => {
   try {
     if (!requireUser(req, res)) return;
 
-    const status = String(req.body?.status || "").toLowerCase();
-
-    if (!["approved", "rejected"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Status must be approved or rejected.",
-      });
-    }
+    const status = req.validated?.body?.status;
 
     const event = await updateCalendarEventStatus(
+      actorFromUser(req.user),
       req.params.id,
-      status,
-      getUserId(req)
+      status
     );
 
     return res.status(200).json({
@@ -223,7 +197,7 @@ export const removeEvent = async (req, res) => {
   try {
     if (!requireUser(req, res)) return;
 
-    await deleteCalendarEvent(req.params.id);
+    await deleteCalendarEvent(actorFromUser(req.user), req.params.id);
 
     return res.status(200).json({
       success: true,

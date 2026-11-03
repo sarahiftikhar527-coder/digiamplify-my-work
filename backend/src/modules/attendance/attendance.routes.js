@@ -3,11 +3,33 @@ import * as controller from "./attendance.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { allowRoles } from "../../middlewares/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
+import { validate } from "../../middlewares/validate.middleware.js";
+import {
+  pinForgotIpLimiter,
+  pinForgotEmailLimiter,
+  pinResetLimiter,
+} from "../../middlewares/rateLimit.middleware.js";
+import {
+  pinForgotSchema,
+  pinResetSchema,
+} from "./attendance.validation.js";
 
 const router = Router();
 
-router.post("/pin/forgot", controller.requestPinReset);
-router.post("/pin/reset", controller.resetPin);
+router.post(
+  "/pin/forgot",
+  pinForgotIpLimiter,
+  validate(pinForgotSchema),
+  pinForgotEmailLimiter,
+  controller.requestPinReset
+);
+
+router.post(
+  "/pin/reset",
+  pinResetLimiter,
+  validate(pinResetSchema),
+  controller.resetPin
+);
 
 router.use(authenticate);
 

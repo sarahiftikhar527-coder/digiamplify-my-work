@@ -13,6 +13,8 @@ import financeRoutes from "../modules/finance/finance.routes.js";
 import calendarRoutes from "../modules/calendar/calendar.routes.js";
 import announcementsRoutes from "../modules/announcements/announcements.routes.js";
 import chatRoutes from "../modules/chat/chat.routes.js";
+import filesRoutes from "../modules/files/files.routes.js";
+import publicRoutes from "../modules/public/public.routes.js";
 
 const router = Router();
 
@@ -34,5 +36,7 @@ router.use("/finance", financeRoutes);
 router.use("/calendar", calendarRoutes);
 router.use("/announcements", announcementsRoutes);
 router.use("/chat", chatRoutes);
+router.use("/files", filesRoutes);
+router.use("/public", publicRoutes);
 
 export default router;

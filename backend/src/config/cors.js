@@ -1,13 +1,18 @@
-import { env } from './env.js'
+import { env } from "./env.js";
 
-export const allowedOrigins = env.CLIENT_URL.split(',')
-  .map((s) => s.trim())
-  .filter(Boolean)
+export const allowedOrigins = env.CLIENT_URL;
 
 export const corsOptions = {
   origin(origin, cb) {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
-    cb(new Error('Not allowed by CORS'))
+    if (!origin) {
+      return cb(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return cb(null, true);
+    }
+
+    return cb(null, false);
   },
   credentials: true,
-}
+};

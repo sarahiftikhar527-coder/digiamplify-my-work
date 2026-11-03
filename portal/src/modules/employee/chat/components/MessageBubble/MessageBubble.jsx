@@ -3,6 +3,7 @@ import {
   AlertCircle, ChevronDown, Clock, FileText, Forward, Pin, PinOff, Reply, Smile, Trash2, User, Plus,
 } from "lucide-react";
 import Avatar from "../Avatar";
+import ChatAttachment from "@/components/ChatAttachment/ChatAttachment";
 import useClickOutside from "../../../../../hooks/useClickOutside";
 import { formatTime } from "../../../../../utils/format";
 
@@ -92,24 +93,9 @@ const MessageBubble = ({
                   )}
                   {attachments.length > 0 && (
                     <div className={`mt-2 flex flex-wrap gap-2 ${isMine ? "justify-end" : ""}`}>
-                      {attachments.map((a) =>
-                        a.type?.startsWith("image") ? (
-                          <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
-                            <img src={a.url} alt={a.name} className="h-24 w-24 rounded-lg object-cover" />
-                          </a>
-                        ) : (
-                          <a
-                            key={a.id}
-                            href={a.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 rounded-lg bg-black/30 px-2.5 py-1.5 text-[11px] text-white/80 hover:bg-black/50"
-                          >
-                            <FileText size={14} />
-                            <span className="max-w-[140px] truncate">{a.name}</span>
-                          </a>
-                        )
-                      )}
+                      {attachments.map((a) => (
+                        <ChatAttachment key={a.id || a.url} attachment={a} />
+                      ))}
                     </div>
                   )}
                 </>

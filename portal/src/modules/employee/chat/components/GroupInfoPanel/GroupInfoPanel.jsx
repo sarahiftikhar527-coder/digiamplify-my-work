@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, FileText, Images, Search, Trash2, UserPlus, Users, Video, X, LogOut, Ban } from "lucide-react";
 import Avatar from "../Avatar";
+import ChatAttachment from "@/components/ChatAttachment/ChatAttachment";
 import { scrollbar } from "../../../../../utils/format.js";
 
 const GroupInfoPanel = ({ className = "", conversation, onClose, onVideoCall, onAddMembers, onClear, onExit }) => {
@@ -56,17 +57,14 @@ const GroupInfoPanel = ({ className = "", conversation, onClose, onVideoCall, on
           {media.length > 0 ? (
             <div className="mt-3 flex items-center gap-2">
               <div className="grid flex-1 grid-cols-3 gap-2">
-                {shownMedia.map((a) =>
-                  a.type?.startsWith("image") ? (
-                    <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
-                      <img src={a.url} alt={a.name} className="aspect-[4/3] w-full rounded object-cover" />
-                    </a>
-                  ) : (
-                    <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="flex aspect-[4/3] items-center justify-center rounded bg-white/10 text-white/70">
-                      <FileText size={18} />
-                    </a>
-                  )
-                )}
+                {shownMedia.map((a) => (
+                  <ChatAttachment
+                    key={a.id || a.url}
+                    attachment={a}
+                    imageClassName="aspect-[4/3] w-full rounded object-cover"
+                    fileClassName="flex aspect-[4/3] w-full items-center justify-center rounded bg-white/10 text-white/70"
+                  />
+                ))}
               </div>
               {media.length > 3 && (
                 <button onClick={() => setShowAllMedia((v) => !v)} aria-label="Toggle media" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-black">

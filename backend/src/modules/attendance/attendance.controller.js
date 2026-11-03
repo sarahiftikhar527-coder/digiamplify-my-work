@@ -61,13 +61,13 @@ export const setPin = handle((req) =>
 );
 
 export const requestPinReset = handle((req) =>
-  service.requestPinReset(req.body?.email)
+  service.requestPinReset(req.validated?.body?.email)
 );
 
 export const resetPin = handle((req) =>
   service.resetPin(
-    req.body?.token,
-    req.body?.newPin
+    req.validated?.body?.token,
+    req.validated?.body?.newPin
   )
 );
 

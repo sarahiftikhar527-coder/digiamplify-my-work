@@ -4,8 +4,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 import { env } from './config/env.js';
 import { corsOptions } from './config/cors.js';
@@ -18,20 +16,13 @@ import {
 
 const app = express();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsDirectory = path.resolve(__dirname, '../uploads');
-
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-];
+if (env.TRUST_PROXY > 0) {
+  app.set('trust proxy', env.TRUST_PROXY);
+}
 
 app.use(
   cors({
     ...corsOptions,
-    origin: allowedOrigins,
-    credentials: true,
     methods: [
       'GET',
       'POST',
@@ -56,8 +47,6 @@ app.use(cookieParser());
 if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
-
-app.use('/uploads', express.static(uploadsDirectory));
 
 app.use('/api/v1', apiLimiter, routes);
 

@@ -3,17 +3,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-import { fileURLToPath } from "url";
+import { PROFILE_DOCUMENTS_DIR } from "../config/uploads.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const uploadDirectory = path.resolve(
-  __dirname,
-  "../../../uploads/profile-documents"
-);
-
-fs.mkdirSync(uploadDirectory, { recursive: true });
+fs.mkdirSync(PROFILE_DOCUMENTS_DIR, { recursive: true });
 
 const allowedExtensions = new Set([
   ".pdf",
@@ -27,7 +19,7 @@ const allowedExtensions = new Set([
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDirectory);
+    cb(null, PROFILE_DOCUMENTS_DIR);
   },
   filename: (req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();

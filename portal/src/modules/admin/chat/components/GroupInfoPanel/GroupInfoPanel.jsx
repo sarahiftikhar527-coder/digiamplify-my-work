@@ -14,6 +14,7 @@ import {
   Ban,
 } from "lucide-react";
 import Avatar from "../Avatar";
+import ChatAttachment from "@/components/ChatAttachment/ChatAttachment";
 import { scrollbar } from "../../../../../utils/format.js";
 
 const GroupInfoPanel = ({
@@ -242,40 +243,13 @@ const GroupInfoPanel = ({
                 {shownMedia.map((item, index) => {
                   const attachment = getMediaDetails(item);
 
-                  if (!attachment.url) {
-                    return (
-                      <div
-                        key={attachment.id || index}
-                        className="flex aspect-[4/3] items-center justify-center rounded bg-white/10 text-white/50"
-                        title={attachment.name}
-                      >
-                        <FileText size={18} />
-                      </div>
-                    );
-                  }
-
-                  const isImage = attachment.type.startsWith("image/");
-
                   return (
-                    <a
+                    <ChatAttachment
                       key={attachment.id || index}
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      title={attachment.name}
-                      className="flex aspect-[4/3] min-w-0 items-center justify-center overflow-hidden rounded bg-white/10 text-white/70 transition-colors hover:bg-white/15"
-                    >
-                      {isImage ? (
-                        <img
-                          src={attachment.url}
-                          alt={attachment.name}
-                          loading="lazy"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <FileText size={18} />
-                      )}
-                    </a>
+                      attachment={attachment}
+                      imageClassName="h-full w-full object-cover"
+                      fileClassName="flex aspect-[4/3] min-w-0 w-full items-center justify-center overflow-hidden rounded bg-white/10 text-white/70 transition-colors hover:bg-white/15"
+                    />
                   );
                 })}
               </div>

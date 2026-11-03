@@ -5,6 +5,7 @@ import {
   getProfileByUserId,
   updateProfileByUserId,
 } from "./profile.service.js";
+import { buildProfileDocumentUrl } from "../../utils/fileUrls.js";
 
 const currentUserId = (req) =>
   req.user?._id || req.user?.id || req.user?.userId;
@@ -35,7 +36,7 @@ const saveUploadedDocument = async (userId, req) => {
     label: req.file.originalname,
     kind: "file",
     fileName: req.file.originalname,
-    url: `/uploads/profile-documents/${req.file.filename}`,
+    url: buildProfileDocumentUrl(req.file.filename),
     backFileName: "",
     backUrl: "",
     uploadedOn,
