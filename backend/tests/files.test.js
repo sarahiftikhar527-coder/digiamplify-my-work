@@ -2,10 +2,10 @@ import fs from 'fs'
 import path from 'path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import request from 'supertest'
-import mongoose from 'mongoose'
+import crypto from 'node:crypto'
 
-const userA = new mongoose.Types.ObjectId()
-const userB = new mongoose.Types.ObjectId()
+const userA = crypto.randomUUID()
+const userB = crypto.randomUUID()
 
 const chatExistsMock = vi.fn()
 const profileFindOneMock = vi.fn()

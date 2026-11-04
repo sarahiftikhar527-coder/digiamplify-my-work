@@ -1,5 +1,5 @@
 
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import Calendar from "../../models/Calendar.js";
 import User from "../../models/User.js";
 import {

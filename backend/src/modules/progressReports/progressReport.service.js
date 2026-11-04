@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import ProgressReport from "./progressReport.model.js";
 import Task from "../../models/Task.js";
 import User from "../../models/User.js";

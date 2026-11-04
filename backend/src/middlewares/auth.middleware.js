@@ -1,8 +1,7 @@
-
 import ApiError from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { verifyAccessToken } from "../utils/jwt.js";
-import User from "../models/User.js";
+import { prisma } from "../config/db.js";
 
 export const authenticate = asyncHandler(async (req, res, next) => {
   const header = req.headers.authorization || "";
@@ -22,16 +21,19 @@ export const authenticate = asyncHandler(async (req, res, next) => {
     throw new ApiError(401, "Invalid or expired token");
   }
 
-  const user = await User.findOne({
-    _id: payload.sub,
-    isDeleted: false,
-    status: "active",
+  const user = await prisma.user.findFirst({
+    where: {
+      id: payload.sub,
+      isDeleted: false,
+      status: "active",
+    },
   });
 
   if (!user) {
     throw new ApiError(401, "User not found or inactive");
   }
 
+  user._id = user.id;
   req.user = user;
   next();
 });

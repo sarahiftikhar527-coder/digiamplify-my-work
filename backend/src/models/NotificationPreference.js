@@ -1,11 +1,7 @@
-import mongoose from 'mongoose'
+import { createPrismaModel } from "./prismaModelHelper.js";
 
-const schema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  key: { type: String, required: true },
-  on: { type: Boolean, default: true },
-})
+const NotificationPreference = createPrismaModel("notificationPreference", {
+  user: "userId",
+});
 
-schema.index({ user: 1, key: 1 }, { unique: true })
-
-export default mongoose.model('NotificationPreference', schema)
+export default NotificationPreference;

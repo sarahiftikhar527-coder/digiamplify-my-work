@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import {
   submitProgressReport,

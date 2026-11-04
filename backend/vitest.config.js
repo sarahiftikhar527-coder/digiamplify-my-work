@@ -7,7 +7,7 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       PORT: '5000',
-      MONGO_URI: 'mongodb://127.0.0.1:27017/digiamplify_test',
+      DATABASE_URL: 'mysql://root:password@127.0.0.1:3306/digiamplify_test',
       CLIENT_URL: 'http://localhost:5173,http://localhost:5174',
       JWT_ACCESS_SECRET: 'test-access-secret-at-least-16',
       JWT_REFRESH_SECRET: 'test-refresh-secret-at-least-16',

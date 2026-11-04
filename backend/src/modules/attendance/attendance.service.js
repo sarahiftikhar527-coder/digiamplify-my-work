@@ -1,5 +1,5 @@
 
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 

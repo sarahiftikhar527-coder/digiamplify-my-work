@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import fs from 'fs'
 import path from 'path'
-import mongoose from 'mongoose'
+import { prisma } from '../config/db.js'
 import { connectDB } from '../config/db.js'
 import Profile from '../models/Profile.js'
 import Chat from '../models/chat.js'
@@ -187,7 +187,7 @@ async function run() {
     console.log('\nRe-run with --apply to persist MongoDB changes.')
   }
 
-  await mongoose.disconnect()
+  await prisma.$disconnect()
 }
 
 run().catch((error) => {

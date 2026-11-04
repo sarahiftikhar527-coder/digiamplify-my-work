@@ -1,7 +1,7 @@
 import { Server } from 'socket.io'
 import { allowedOrigins } from '../config/cors.js'
 import { verifyAccessToken } from '../utils/jwt.js'
-import User from '../models/User.js'
+import { prisma } from '../config/db.js'
 
 let io = null
 
@@ -16,9 +16,10 @@ export function initSocket(server) {
       if (!token) return next(new Error('unauthorized'))
 
       const payload = verifyAccessToken(token)
-      const user = await User.findOne({
-        _id: payload.sub, isDeleted: false, status: 'active',
-      }).select('_id')
+      const user = await prisma.user.findFirst({
+        where: { id: payload.sub, isDeleted: false, status: 'active' },
+        select: { id: true },
+      })
       if (!user) return next(new Error('unauthorized'))
 
       socket.data.userId = user.id

@@ -9,7 +9,7 @@ const baseSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   PORT: z.coerce.number().default(5000),
-  MONGO_URI: z.string().min(1),
+  DATABASE_URL: z.string().min(1),
   CLIENT_URL: z.string().optional().default(""),
   FRONTEND_URL: z.string().optional().default(""),
   TRUST_PROXY: z.string().optional().default(""),

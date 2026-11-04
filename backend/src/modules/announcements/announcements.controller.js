@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import Announcement from "./announcement.model.js";
 import User from "../../models/User.js";
 import ApiError from "../../utils/ApiError.js";

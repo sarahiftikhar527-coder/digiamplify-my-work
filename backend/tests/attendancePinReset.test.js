@@ -7,7 +7,7 @@ import {
   afterEach,
 } from "vitest";
 import crypto from "node:crypto";
-import mongoose from "mongoose";
+
 
 import {
   pinForgotSchema,
@@ -153,7 +153,7 @@ describe("attendance.service pin reset (mocked User)", () => {
     const tokenHash = hashToken(rawToken);
 
     const user = {
-      _id: new mongoose.Types.ObjectId(),
+      _id: crypto.randomUUID(),
       pinHash: "old-hash",
       pinResetTokenHash: tokenHash,
       pinResetExpires: new Date(Date.now() + 60_000),

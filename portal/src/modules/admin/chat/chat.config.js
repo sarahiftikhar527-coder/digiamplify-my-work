@@ -3,7 +3,7 @@ const USER_KEY = "digiamplify_user";
 const TOKEN_KEY = "digiamplify_token";
 
 export const CHAT_CONFIG = {
-  API_BASE_URL: "http://localhost:5000/api/v1",
+  API_BASE_URL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1",
   WS_URL: "",
   POLL_INTERVAL: 5000,
 

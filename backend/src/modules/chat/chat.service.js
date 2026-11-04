@@ -1,5 +1,5 @@
 
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import Chat from "../../models/chat.js";
 import User from "../../models/User.js";
 import ApiError from "../../utils/ApiError.js";

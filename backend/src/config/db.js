@@ -1,8 +1,23 @@
-import mongoose from 'mongoose'
-import { env } from './env.js'
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis;
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["error", "warn"]
+        : ["error"],
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
 
 export async function connectDB() {
-  mongoose.set('strictQuery', true)
-  await mongoose.connect(env.MONGO_URI)
-  console.log('MongoDB connected')
+  await prisma.$connect();
+  console.log("MySQL (Prisma) connected successfully");
 }
+
+export default prisma;

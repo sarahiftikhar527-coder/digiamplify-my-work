@@ -1,6 +1,5 @@
-
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import { prisma } from "../config/db.js";
 
 export default async function requireAuth(req, res, next) {
   try {
@@ -37,17 +36,25 @@ export default async function requireAuth(req, res, next) {
       });
     }
 
-    const user = await User.findById(payload.sub);
+    const user = await prisma.user.findFirst({
+      where: {
+        id: payload.sub,
+        isDeleted: false,
+        status: "active",
+      },
+    });
 
-    if (!user || !user.isActive) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: "User account is unavailable.",
       });
     }
 
+    user._id = user.id;
     req.user = {
       id: user.id,
+      _id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,

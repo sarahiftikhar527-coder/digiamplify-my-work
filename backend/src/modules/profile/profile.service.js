@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import Profile from "../../models/Profile.js";
 import User from "../../models/User.js";
 

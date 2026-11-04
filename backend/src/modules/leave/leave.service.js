@@ -1,5 +1,5 @@
 
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import Leave from "../../models/Leave.js";
 
 const LEAVE_TYPES = ["Annual Leave", "Sick Leave", "Casual Leave"];

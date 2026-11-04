@@ -1,7 +1,4 @@
-
-import mongoose from 'mongoose';
-import { connectDB } from '../config/db.js';
-import User from '../models/User.js';
+import { prisma, connectDB } from '../config/db.js';
 import { ROLES } from '../constants/roles.js';
 import { hashPassword } from '../utils/password.js';
 
@@ -12,7 +9,7 @@ async function createAdmin() {
   try {
     await connectDB();
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
       if (existingUser.role === ROLES.ADMIN && !existingUser.isDeleted) {
@@ -21,21 +18,21 @@ async function createAdmin() {
         return;
       }
 
-      console.log(
-        'This email already belongs to an account. No changes made.'
-      );
+      console.log('This email already belongs to an account. No changes made.');
       return;
     }
 
     const passwordHash = await hashPassword(password);
 
-    await User.create({
-      name: 'Admin',
-      email,
-      passwordHash,
-      role: ROLES.ADMIN,
-      status: 'active',
-      isDeleted: false,
+    await prisma.user.create({
+      data: {
+        name: 'Admin',
+        email,
+        passwordHash,
+        role: ROLES.ADMIN,
+        status: 'active',
+        isDeleted: false,
+      },
     });
 
     console.log('Admin account created successfully.');
@@ -45,7 +42,7 @@ async function createAdmin() {
     console.error('Unable to create admin:', error.message);
     process.exitCode = 1;
   } finally {
-    await mongoose.disconnect();
+    await prisma.$disconnect();
   }
 }
 

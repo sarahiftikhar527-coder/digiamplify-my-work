@@ -1,5 +1,5 @@
 
-import mongoose from "mongoose";
+import mongoose from "../../utils/mongooseCompat.js";
 import Finance from "../../models/finance.js";
 import User from "../../models/User.js";
 import Profile from "../../models/Profile.js";

@@ -1,0 +1,462 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  name               String    @db.VarChar(100)
+  email              String    @unique @db.VarChar(191)
+  passwordHash       String    @db.VarChar(255)
+  role               String    @default("employee") @db.VarChar(50)
+  phone              String    @default("") @db.VarChar(50)
+  department         String    @default("") @db.VarChar(100)
+  designation        String    @default("") @db.VarChar(100)
+  avatarUrl          String    @default("") @db.Text
+  timeZone           String    @default("UTC") @db.VarChar(100)
+  status             String    @default("active") @db.VarChar(50)
+  isDeleted          Boolean   @default(false)
+  pinHash            String?   @db.VarChar(255)
+  pinResetTokenHash  String?   @db.VarChar(255)
+  pinResetExpires    DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  profile                 Profile?
+  refreshTokens           RefreshToken[]
+  attendances             Attendance[]
+  assignedShifts          ShiftAssignment[]       @relation("AssignedToShift")
+  createdShifts           ShiftAssignment[]       @relation("CreatedShift")
+  leaves                  Leave[]                 @relation("EmployeeLeaves")
+  reviewedLeaves          Leave[]                 @relation("ReviewedLeaves")
+  assignedTasks           Task[]                  @relation("AssignedTasks")
+  createdTasks            Task[]                  @relation("CreatedTasks")
+  calendarEvents          Calendar[]              @relation("EmployeeCalendar")
+  createdCalendarEvents   Calendar[]              @relation("CreatedCalendar")
+  reviewedCalendarEvents  Calendar[]              @relation("ReviewedCalendar")
+  createdChats            Chat[]                  @relation("CreatedChats")
+  chatMemberships         ChatMember[]
+  sentMessages            ChatMessage[]
+  finances                Finance[]               @relation("EmployeeFinances")
+  createdFinances         Finance[]               @relation("CreatedFinances")
+  updatedFinances         Finance[]               @relation("UpdatedFinances")
+  receivedNotifications   Notification[]          @relation("ReceivedNotifications")
+  sentNotifications       Notification[]          @relation("SentNotifications")
+  notificationPreferences NotificationPreference[]
+  createdAnnouncements    Announcement[]          @relation("CreatedAnnouncements")
+  announcementRecipients  AnnouncementRecipient[]
+  progressReports         ProgressReport[]        @relation("EmployeeProgressReports")
+  reviewedProgressReports ProgressReport[]        @relation("ReviewedProgressReports")
+
+  @@index([role])
+  @@index([isDeleted])
+  @@map("users")
+}
+
+model Profile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName            String   @default("") @db.VarChar(191)
+  userName            String   @default("") @db.VarChar(191)
+  dob                 String   @default("") @db.VarChar(50)
+  gender              String   @default("") @db.VarChar(50)
+  nationality         String   @default("") @db.VarChar(100)
+  language            String   @default("") @db.VarChar(100)
+  email               String   @default("") @db.VarChar(191)
+  workEmail           String   @default("") @db.VarChar(191)
+  phone               String   @default("") @db.VarChar(50)
+  emergencyNumber     String   @default("") @db.VarChar(50)
+  currentAddress      String   @default("") @db.Text
+  permanentAddress    String   @default("") @db.Text
+  country             String   @default("") @db.VarChar(100)
+  city                String   @default("") @db.VarChar(100)
+  education           String   @default("") @db.VarChar(191)
+  bankName            String   @default("") @db.VarChar(191)
+  annualSalary        Float    @default(0)
+  accountHolder       String   @default("") @db.VarChar(191)
+  salaryType          String   @default("Monthly") @db.VarChar(50)
+  accountNumber       String   @default("") @db.VarChar(100)
+  salary              Float    @default(0)
+  currency            String   @default("Rupees") @db.VarChar(50)
+  deductionPerAbsence Float    @default(0)
+  bonus               Float    @default(0)
+  salaryPaymentDate   String   @default("") @db.VarChar(50)
+  jobTitle            String   @default("") @db.VarChar(100)
+  department          String   @default("") @db.VarChar(100)
+  team                String   @default("") @db.VarChar(100)
+  manager             String   @default("") @db.VarChar(100)
+  jobLevel            String   @default("Junior") @db.VarChar(50)
+  probationPeriod     String   @default("") @db.VarChar(50)
+  dateOfJoining       String   @default("") @db.VarChar(50)
+  confirmationDate    String   @default("") @db.VarChar(50)
+  annualLeave         Int      @default(0)
+  jobType             String   @default("Full Time") @db.VarChar(50)
+  workType            String   @default("Remote") @db.VarChar(50)
+  shift               String   @default("Day Shift") @db.VarChar(50)
+  workingDays         Json?
+  weeklyOff           String   @default("Sunday") @db.VarChar(50)
+  noticePeriod        String   @default("") @db.VarChar(50)
+  avatarUrl           String   @default("") @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  documents ProfileDocument[]
+
+  @@map("profiles")
+}
+
+model ProfileDocument {
+  id           String   @id @default(uuid())
+  profileId    String
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  documentId   String   @db.VarChar(100)
+  label        String   @default("") @db.VarChar(191)
+  kind         String   @default("file") @db.VarChar(50)
+  fileName     String   @default("") @db.VarChar(255)
+  url          String   @default("") @db.Text
+  backFileName String   @default("") @db.VarChar(255)
+  backUrl      String   @default("") @db.Text
+  uploadedOn   String   @default("") @db.VarChar(50)
+  status       String   @default("missing") @db.VarChar(50)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([profileId])
+  @@index([fileName])
+  @@map("profile_documents")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique @db.VarChar(255)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Attendance {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateKey       String    @db.VarChar(50)
+  clockInAt     DateTime?
+  clockOutAt    DateTime?
+  workedMinutes Int       @default(0)
+  status        String    @default("incomplete") @db.VarChar(50)
+  description   String    @default("") @db.VarChar(500)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, dateKey])
+  @@index([dateKey, status])
+  @@map("attendances")
+}
+
+model ShiftAssignment {
+  id           String    @id @default(uuid())
+  employeeId   String
+  employee     User      @relation("AssignedToShift", fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedById String?
+  assignedBy   User?     @relation("CreatedShift", fields: [assignedById], references: [id], onDelete: SetNull)
+  startDate    String    @db.VarChar(50)
+  endDate      String    @db.VarChar(50)
+  startTime    String    @db.VarChar(50)
+  endTime      String    @db.VarChar(50)
+  breakStart   String    @default("") @db.VarChar(50)
+  breakEnd     String    @default("") @db.VarChar(50)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([employeeId, startDate, endDate])
+  @@map("shift_assignments")
+}
+
+model Leave {
+  id           String    @id @default(uuid())
+  employeeId   String
+  employee     User      @relation("EmployeeLeaves", fields: [employeeId], references: [id], onDelete: Cascade)
+  type         String    @db.VarChar(100)
+  from         String    @db.VarChar(50)
+  to           String    @db.VarChar(50)
+  days         Int
+  reason       String    @db.Text
+  status       String    @default("pending") @db.VarChar(50)
+  remarks      String    @default("") @db.Text
+  reviewedById String?
+  reviewedBy   User?     @relation("ReviewedLeaves", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  appliedOn    String    @db.VarChar(50)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("leaves")
+}
+
+model Task {
+  id           String    @id @default(uuid())
+  title        String    @db.VarChar(200)
+  subtitle     String    @default("") @db.VarChar(200)
+  description  String    @default("") @db.Text
+  priority     String    @default("Medium") @db.VarChar(50)
+  assignedToId String
+  assignedTo   User      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedById String
+  assignedBy   User      @relation("CreatedTasks", fields: [assignedById], references: [id], onDelete: Cascade)
+  status       String    @default("pending") @db.VarChar(50)
+  dueDate      DateTime
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([assignedToId, status, dueDate])
+  @@map("tasks")
+}
+
+model Calendar {
+  id           String    @id @default(uuid())
+  eventType    String    @db.VarChar(50)
+  title        String    @default("") @db.VarChar(200)
+  employeeId   String?
+  employee     User?     @relation("EmployeeCalendar", fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeName String    @default("") @db.VarChar(100)
+  role         String    @default("") @db.VarChar(100)
+  from         DateTime
+  to           DateTime
+  startTime    String    @default("") @db.VarChar(50)
+  endTime      String    @default("") @db.VarChar(50)
+  clockIn      String    @default("") @db.VarChar(50)
+  clockOut     String    @default("") @db.VarChar(50)
+  worked       String    @default("") @db.VarChar(50)
+  status       String    @default("pending") @db.VarChar(50)
+  description  String    @default("") @db.Text
+  createdById  String?
+  createdBy    User?     @relation("CreatedCalendar", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedById String?
+  reviewedBy   User?     @relation("ReviewedCalendar", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([from, to, eventType])
+  @@index([employeeId, from])
+  @@map("calendars")
+}
+
+model Chat {
+  id              String        @id @default(uuid())
+  type            String        @default("direct") @db.VarChar(50)
+  name            String        @default("") @db.VarChar(100)
+  createdById     String
+  createdBy       User          @relation("CreatedChats", fields: [createdById], references: [id], onDelete: Cascade)
+  lastMessageAt   DateTime      @default(now())
+  lastMessageText String        @default("") @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  members    ChatMember[]
+  messages   ChatMessage[]
+  clearedFor ChatCleared[]
+
+  @@map("chats")
+}
+
+model ChatMember {
+  id         String    @id @default(uuid())
+  chatId     String
+  chat       Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isAdmin    Boolean   @default(false)
+  lastReadAt DateTime?
+  joinedAt   DateTime  @default(now())
+
+  @@unique([chatId, userId])
+  @@index([userId])
+  @@map("chat_members")
+}
+
+model ChatMessage {
+  id            String   @id @default(uuid())
+  chatId        String
+  chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId      String
+  sender        User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  text          String   @default("") @db.Text
+  attachments   Json?
+  mentions      Json?
+  replyTo       String?  @db.VarChar(100)
+  forwardedFrom String?  @db.VarChar(100)
+  reactions     Json?
+  pinned        Boolean  @default(false)
+  deleted       Boolean  @default(false)
+  readBy        Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([chatId, createdAt])
+  @@map("chat_messages")
+}
+
+model ChatCleared {
+  id        String   @id @default(uuid())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId    String
+  clearedAt DateTime
+
+  @@unique([chatId, userId])
+  @@map("chat_cleared")
+}
+
+model Finance {
+  id          String    @id @default(uuid())
+  employeeId  String
+  employee    User      @relation("EmployeeFinances", fields: [employeeId], references: [id], onDelete: Cascade)
+  salary      Float
+  bonus       Float     @default(0)
+  deduction   Float     @default(0)
+  department  String    @default("") @db.VarChar(100)
+  bank        String    @default("") @db.VarChar(100)
+  account     String    @default("") @db.VarChar(100)
+  paymentDate DateTime?
+  periodMonth Int
+  periodYear  Int
+  status      String    @default("Pending") @db.VarChar(50)
+  notes       String    @default("") @db.Text
+  createdById String?
+  createdBy   User?     @relation("CreatedFinances", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User?     @relation("UpdatedFinances", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([employeeId, periodYear, periodMonth])
+  @@index([status])
+  @@map("finances")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  toId      String
+  to        User     @relation("ReceivedNotifications", fields: [toId], references: [id], onDelete: Cascade)
+  fromId    String?
+  from      User?    @relation("SentNotifications", fields: [fromId], references: [id], onDelete: SetNull)
+  type      String   @db.VarChar(50)
+  tag       String   @db.VarChar(50)
+  title     String   @db.VarChar(150)
+  message   String   @db.VarChar(500)
+  details   String   @default("") @db.Text
+  link      String   @default("") @db.Text
+  linkLabel String   @default("") @db.VarChar(100)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([toId, createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String   @db.VarChar(100)
+  on        Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@map("notification_preferences")
+}
+
+model ContactMessage {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(200)
+  email       String   @db.VarChar(191)
+  company     String   @default("") @db.VarChar(200)
+  projectType String   @db.VarChar(120)
+  message     String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("contact_messages")
+}
+
+model NewsletterSubscriber {
+  id                   String    @id @default(uuid())
+  email                String    @unique @db.VarChar(191)
+  unsubscribeTokenHash String    @db.VarChar(255)
+  subscribedAt         DateTime  @default(now())
+  unsubscribedAt       DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("newsletter_subscribers")
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String   @db.VarChar(150)
+  message     String   @db.Text
+  audience    String   @default("all") @db.VarChar(50)
+  priority    String   @default("normal") @db.VarChar(50)
+  status      String   @default("published") @db.VarChar(50)
+  createdById String
+  createdBy   User     @relation("CreatedAnnouncements", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipients AnnouncementRecipient[]
+
+  @@index([status, createdAt])
+  @@map("announcements")
+}
+
+model AnnouncementRecipient {
+  id             String       @id @default(uuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       User         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, employeeId])
+  @@map("announcement_recipients")
+}
+
+model ProgressReport {
+  id              String    @id @default(uuid())
+  employeeId      String
+  employee        User      @relation("EmployeeProgressReports", fields: [employeeId], references: [id], onDelete: Cascade)
+  periodStart     DateTime
+  periodEnd       DateTime
+  summary         String    @db.Text
+  accomplishments String    @default("") @db.Text
+  blockers        String    @default("") @db.Text
+  nextSteps       String    @default("") @db.Text
+  status          String    @default("submitted") @db.VarChar(50)
+  adminFeedback   String    @default("") @db.Text
+  reviewedById    String?
+  reviewedBy      User?     @relation("ReviewedProgressReports", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([employeeId, periodStart])
+  @@index([status])
+  @@map("progress_reports")
+}
+

@@ -1,1 +1,2 @@
-export { default as AppRoutes } from "./AppRoutes";
+export { default } from "./App.jsx";
+export { default as App } from "./App.jsx";

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import mongoose from "mongoose";
+import crypto from "node:crypto";
 
 import {
   isAdmin,
@@ -17,9 +17,9 @@ import {
   approversQuerySchema,
 } from "../src/modules/calendar/calendar.validation.js";
 
-const employeeId = new mongoose.Types.ObjectId();
-const otherId = new mongoose.Types.ObjectId();
-const holidayId = new mongoose.Types.ObjectId();
+const employeeId = crypto.randomUUID();
+const otherId = crypto.randomUUID();
+const holidayId = crypto.randomUUID();
 
 const calendarFindMock = vi.fn();
 const calendarFindByIdMock = vi.fn();
@@ -224,7 +224,7 @@ describe("calendar.service (mocked models)", () => {
   });
 
   it("createCalendarEvent strips non-persisted leave fields before create", async () => {
-    const createdId = new mongoose.Types.ObjectId();
+    const createdId = crypto.randomUUID();
 
     calendarCreateMock.mockResolvedValue({ _id: createdId });
 
