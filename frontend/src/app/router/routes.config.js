@@ -47,8 +47,8 @@ const routesConfig = [
     ]
   },
   
-  { path: "/login", element: React.createElement(Login) },
-  { path: "/signup", element: React.createElement(Signup) },
+  { path: "/login", element: React.createElement(LoginRedirect) },
+  { path: "/signup", element: React.createElement(SignupRedirect) },
   {
     path: "/dashboard",
     element: React.createElement(DashboardRedirect)
