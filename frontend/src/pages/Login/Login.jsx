@@ -13,7 +13,7 @@ import {
 
 const LOGIN_IMAGE = '/images/Login/login.webp';
 const REMEMBER_KEY = 'digiamplify_remembered_email';
-const PORTAL_URL = 'http://localhost:5174/dashboard?demoLogin=1';
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || 'https://portal.digiamplify.com';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
