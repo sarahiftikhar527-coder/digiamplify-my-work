@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import apiClient from "@/services/api/apiClient.js";
-import TaskBoardHeader from "../../components/TaskBoardHeader/TaskBoardHeader.jsx";
-import TaskColumn from "../../components/TaskColumn/TaskColumn.jsx";
-import AdminAddTaskModal from "../../components/AdminAddTaskModal/AdminAddTaskModal.jsx";
-import TaskDetailDrawer from "../../components/TaskDetailDrawer/TaskDetailDrawer.jsx";
+import TaskBoardHeader from "../../components/Taskboardheader/Taskboardheader.jsx";
+import TaskColumn from "../../components/Taskcolumn/Taskcolumn.jsx";
+import AdminAddTaskModal from "../../components/Adminaddtaskmodal/Adminaddtaskmodal.jsx";
+import TaskDetailDrawer from "../../components/Taskdetaildrawer/Taskdetaildrawer.jsx";
 
 const BOARD_STATUSES = [
   { id: "todo", key: "todo", value: "todo", label: "To Do" },

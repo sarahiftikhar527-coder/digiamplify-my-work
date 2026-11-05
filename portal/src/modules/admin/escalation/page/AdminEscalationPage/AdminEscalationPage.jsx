@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useAuth } from "@/context";
 
 import StatCards from "../../components/Statcards/Statcards";
 import EscalationQueue from "../../components/Escalationqueue/Escalationqueue";
@@ -14,8 +15,10 @@ import {
 
 const DEFAULT_FILTERS = { priority: "All", status: "All", category: "All" };
 
-export default function EscalationPage({ userName = "Fahad" }) {
-  const [items, setItems] = useState(INITIAL_ESCALATIONS);
+export default function EscalationPage({ userName }) {
+  const { user } = useAuth();
+  const displayName = userName || user?.name || user?.fullName || "Super Admin";
+  const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
@@ -77,12 +80,12 @@ export default function EscalationPage({ userName = "Fahad" }) {
     <div className="min-h-full bg-black p-6 text-white">
       <header className="mb-5">
         <h1 className="text-3xl font-medium text-white">
-          {getGreeting(now)}, <span className="text-red-600">{userName}</span>
+          {getGreeting(now)}, <span className="text-red-600">{displayName}</span>
         </h1>
         <p className="mt-1 text-sm text-neutral-300">It&rsquo;s {formatLongDate(now)}.</p>
       </header>
 
-      <StatCards stats={stats} />
+      <StatCards stats={stats} yesterday={{ open: 0, inProgress: 0, resolved: 0, critical: 0 }} />
 
       <div className="mt-4 flex flex-col gap-4 lg:flex-row">
         <EscalationQueue

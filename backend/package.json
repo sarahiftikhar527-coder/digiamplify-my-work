@@ -10,6 +10,7 @@
     "test:watch": "vitest",
     "seed:admin": "node src/seeds/createAdmin.js",
     "seed": "node src/seeds/seed.js",
+    "db:clean": "node src/scripts/cleanDatabaseKeepAdmin.js",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate"
