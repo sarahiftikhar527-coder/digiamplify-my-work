@@ -192,6 +192,32 @@ export function wrapDoc(doc, delegate, fieldMap = {}) {
     }
   }
 
+  // Populate compatibility helpers: ensure both relation name and ID field are accessible
+  if (doc.employee && typeof doc.employee === "object") {
+    enhanced.employee = doc.employee;
+    enhanced.employeeId = doc.employee;
+  }
+  if (doc.user && typeof doc.user === "object") {
+    enhanced.user = doc.user;
+    enhanced.userId = doc.user;
+  }
+  if (doc.createdBy && typeof doc.createdBy === "object") {
+    enhanced.createdBy = doc.createdBy;
+    enhanced.createdById = doc.createdBy;
+  }
+  if (doc.reviewedBy && typeof doc.reviewedBy === "object") {
+    enhanced.reviewedBy = doc.reviewedBy;
+    enhanced.reviewedById = doc.reviewedBy;
+  }
+  if (doc.assignedTo && typeof doc.assignedTo === "object") {
+    enhanced.assignedTo = doc.assignedTo;
+    enhanced.assignedToId = doc.assignedTo;
+  }
+  if (doc.assignedBy && typeof doc.assignedBy === "object") {
+    enhanced.assignedBy = doc.assignedBy;
+    enhanced.assignedById = doc.assignedBy;
+  }
+
   // Handle embedded JSON arrays if present
   if (Array.isArray(enhanced.messages)) {
     enhanced.messages = makeSubdocArray(enhanced.messages);
@@ -322,6 +348,39 @@ async function populateChatUsers(chatDocs) {
   }
 }
 
+async function populateAnnouncementUsers(docs) {
+  if (!docs || docs.length === 0) return;
+  const userIds = new Set();
+  for (const d of docs) {
+    if (Array.isArray(d.employeeIds)) {
+      for (const id of d.employeeIds) {
+        const uid = String(id?._id || id?.id || id || "");
+        if (uid) userIds.add(uid);
+      }
+    }
+  }
+  if (userIds.size === 0) return;
+  const users = await prisma.user.findMany({
+    where: { id: { in: [...userIds] } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      department: true,
+      designation: true,
+    },
+  });
+  const map = new Map(users.map((u) => [u.id, { ...u, _id: u.id }]));
+  for (const d of docs) {
+    if (Array.isArray(d.employeeIds)) {
+      d.employeeIds = d.employeeIds.map((id) => {
+        const uid = String(id?._id || id?.id || id || "");
+        return map.get(uid) || id;
+      });
+    }
+  }
+}
+
 class QueryChain {
   constructor(delegate, operation, queryParams, fieldMap = {}) {
     this.delegate = delegate;
@@ -342,14 +401,23 @@ class QueryChain {
 
   populate(field, selectStr) {
     if (field) {
-      const rootField = String(field).split(".")[0];
-      // Skip non-relational JSON fields (such as 'members', 'admins', 'messages' on Chat)
+      let rootField = String(field).split(".")[0];
+      // Skip non-relational JSON fields (such as 'members', 'admins', 'messages' on Chat, or 'employeeIds' on Announcement)
       if (
-        this.delegate === "chat" &&
-        ["members", "admins", "messages", "clearedFor"].includes(rootField)
+        (this.delegate === "chat" &&
+          ["members", "admins", "messages", "clearedFor"].includes(rootField)) ||
+        (this.delegate === "announcement" && rootField === "employeeIds")
       ) {
         return this;
       }
+
+      // Map relation names if field is named after scalar ID
+      if (rootField === "employeeId") {
+        rootField = "employee";
+      } else if (rootField === "userId") {
+        rootField = "user";
+      }
+
       if (selectStr && typeof selectStr === "string") {
         const selectObj = {};
         selectStr.split(/\s+/).forEach((f) => {
@@ -473,6 +541,8 @@ class QueryChain {
       );
       if (this.delegate === "chat") {
         await populateChatUsers(docs);
+      } else if (this.delegate === "announcement") {
+        await populateAnnouncementUsers(docs);
       }
       return docs;
     }
@@ -481,6 +551,8 @@ class QueryChain {
       : null;
     if (single && this.delegate === "chat") {
       await populateChatUsers([single]);
+    } else if (single && this.delegate === "announcement") {
+      await populateAnnouncementUsers([single]);
     }
     return single;
   }
