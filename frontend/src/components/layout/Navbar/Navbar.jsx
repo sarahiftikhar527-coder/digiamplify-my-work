@@ -13,6 +13,11 @@ const navLinks = [
 // 👉 Is width se upar desktop navbar, neeche hamburger menu (CSS mein bhi 1100px hai)
 const DESKTOP_QUERY = '(min-width: 1101px)'
 
+const PORTAL_URL =
+  typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:5174'
+    : 'https://portal.digiamplify.com';
+
 function Navbar() {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
@@ -521,8 +526,8 @@ function Navbar() {
             </div>
 
             <div className="nb-auth">
-              <Link to="/login" className="nb-login">Login</Link>
-              <Link to="/signup" className="nb-signup">Signup</Link>
+              <a href={`${PORTAL_URL}/login`} className="nb-login">Login</a>
+              <a href={`${PORTAL_URL}/signup`} className="nb-signup">Signup</a>
             </div>
           </div>
 
@@ -573,12 +578,12 @@ function Navbar() {
 
             <div className="nb-item nb-wide" style={{ '--i': navLinks.length }}>
               <div className="nb-auth">
-                <Link to="/login" className="nb-login" onClick={close} tabIndex={open ? 0 : -1}>
+                <a href={`${PORTAL_URL}/login`} className="nb-login" onClick={close} tabIndex={open ? 0 : -1}>
                   Login
-                </Link>
-                <Link to="/signup" className="nb-signup" onClick={close} tabIndex={open ? 0 : -1}>
+                </a>
+                <a href={`${PORTAL_URL}/signup`} className="nb-signup" onClick={close} tabIndex={open ? 0 : -1}>
                   Signup
-                </Link>
+                </a>
               </div>
             </div>
 

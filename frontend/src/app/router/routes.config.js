@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import PublicLayout from "@/app/layouts/PublicLayout";
 import HomePage from "@/pages/Home/HomePage/HomePage";
 import AboutPage from "@/pages/About/AboutPage/AboutPage";
@@ -14,13 +14,31 @@ import ContactPage from "@/pages/Contact/ContactPage/ContactPage";
 import Terms from "@/pages/Terms/Terms";
 import PrivacyandPolicy from "@/pages/PrivacyandPolicy/PrivacyandPolicy";
 
-import Login from "@/pages/Login/Login";
-import Signup from "@/pages/Signup/Signup";
-
 import NotFound from "@/pages/NotFound/NotFound";
 
+const PORTAL_URL =
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:5174"
+    : "https://portal.digiamplify.com";
+
+const LoginRedirect = () => {
+  useEffect(() => {
+    window.location.replace(`${PORTAL_URL}/login`);
+  }, []);
+  return null;
+};
+
+const SignupRedirect = () => {
+  useEffect(() => {
+    window.location.replace(`${PORTAL_URL}/signup`);
+  }, []);
+  return null;
+};
+
 const DashboardRedirect = () => {
-  window.location.replace("http://localhost:5174/dashboard");
+  useEffect(() => {
+    window.location.replace(`${PORTAL_URL}/dashboard`);
+  }, []);
   return null;
 };
 
@@ -38,7 +56,6 @@ const routesConfig = [
       { path: "projects/overview/:overview", element: React.createElement(ProjectOverviewDetails) },
       { path: "blog", element: React.createElement(BlogPage) },
       { path: "blog/:slug", element: React.createElement(BlogDetailsPage) },
-      { path: "blog/:slug", element: React.createElement(BlogDetailsPage) },
       { path: "contact", element: React.createElement(ContactPage) },
 
       { path: "terms", element: React.createElement(Terms) },
@@ -55,5 +72,5 @@ const routesConfig = [
   }
 ];
 
-export { routesConfig };
+export { routesConfig, LoginRedirect, SignupRedirect, DashboardRedirect };
 export default routesConfig;
