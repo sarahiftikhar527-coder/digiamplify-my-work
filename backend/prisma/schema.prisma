@@ -39,8 +39,6 @@ model User {
   createdCalendarEvents   Calendar[]              @relation("CreatedCalendar")
   reviewedCalendarEvents  Calendar[]              @relation("ReviewedCalendar")
   createdChats            Chat[]                  @relation("CreatedChats")
-  chatMemberships         ChatMember[]
-  sentMessages            ChatMessage[]
   finances                Finance[]               @relation("EmployeeFinances")
   createdFinances         Finance[]               @relation("CreatedFinances")
   updatedFinances         Finance[]               @relation("UpdatedFinances")
@@ -48,7 +46,6 @@ model User {
   sentNotifications       Notification[]          @relation("SentNotifications")
   notificationPreferences NotificationPreference[]
   createdAnnouncements    Announcement[]          @relation("CreatedAnnouncements")
-  announcementRecipients  AnnouncementRecipient[]
   progressReports         ProgressReport[]        @relation("EmployeeProgressReports")
   reviewedProgressReports ProgressReport[]        @relation("ReviewedProgressReports")
 
@@ -102,33 +99,11 @@ model Profile {
   weeklyOff           String   @default("Sunday") @db.VarChar(50)
   noticePeriod        String   @default("") @db.VarChar(50)
   avatarUrl           String   @default("") @db.Text
+  documents           Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  documents ProfileDocument[]
-
   @@map("profiles")
-}
-
-model ProfileDocument {
-  id           String   @id @default(uuid())
-  profileId    String
-  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  documentId   String   @db.VarChar(100)
-  label        String   @default("") @db.VarChar(191)
-  kind         String   @default("file") @db.VarChar(50)
-  fileName     String   @default("") @db.VarChar(255)
-  url          String   @default("") @db.Text
-  backFileName String   @default("") @db.VarChar(255)
-  backUrl      String   @default("") @db.Text
-  uploadedOn   String   @default("") @db.VarChar(50)
-  status       String   @default("missing") @db.VarChar(50)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([profileId])
-  @@index([fileName])
-  @@map("profile_documents")
 }
 
 model RefreshToken {
@@ -264,62 +239,14 @@ model Chat {
   createdBy       User          @relation("CreatedChats", fields: [createdById], references: [id], onDelete: Cascade)
   lastMessageAt   DateTime      @default(now())
   lastMessageText String        @default("") @db.Text
+  members         Json?
+  messages        Json?
+  admins          Json?
+  clearedFor      Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  members    ChatMember[]
-  messages   ChatMessage[]
-  clearedFor ChatCleared[]
-
   @@map("chats")
-}
-
-model ChatMember {
-  id         String    @id @default(uuid())
-  chatId     String
-  chat       Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isAdmin    Boolean   @default(false)
-  lastReadAt DateTime?
-  joinedAt   DateTime  @default(now())
-
-  @@unique([chatId, userId])
-  @@index([userId])
-  @@map("chat_members")
-}
-
-model ChatMessage {
-  id            String   @id @default(uuid())
-  chatId        String
-  chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  senderId      String
-  sender        User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  text          String   @default("") @db.Text
-  attachments   Json?
-  mentions      Json?
-  replyTo       String?  @db.VarChar(100)
-  forwardedFrom String?  @db.VarChar(100)
-  reactions     Json?
-  pinned        Boolean  @default(false)
-  deleted       Boolean  @default(false)
-  readBy        Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([chatId, createdAt])
-  @@map("chat_messages")
-}
-
-model ChatCleared {
-  id        String   @id @default(uuid())
-  chatId    String
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  userId    String
-  clearedAt DateTime
-
-  @@unique([chatId, userId])
-  @@map("chat_cleared")
 }
 
 model Finance {
@@ -413,6 +340,7 @@ model Announcement {
   title       String   @db.VarChar(150)
   message     String   @db.Text
   audience    String   @default("all") @db.VarChar(50)
+  employeeIds Json?
   priority    String   @default("normal") @db.VarChar(50)
   status      String   @default("published") @db.VarChar(50)
   createdById String
@@ -420,21 +348,8 @@ model Announcement {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  recipients AnnouncementRecipient[]
-
   @@index([status, createdAt])
   @@map("announcements")
-}
-
-model AnnouncementRecipient {
-  id             String       @id @default(uuid())
-  announcementId String
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  employeeId     String
-  employee       User         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@unique([announcementId, employeeId])
-  @@map("announcement_recipients")
 }
 
 model ProgressReport {
@@ -459,4 +374,3 @@ model ProgressReport {
   @@index([status])
   @@map("progress_reports")
 }
-

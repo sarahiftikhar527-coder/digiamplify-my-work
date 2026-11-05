@@ -69,31 +69,11 @@ CREATE TABLE `profiles` (
     `weeklyOff` VARCHAR(50) NOT NULL DEFAULT 'Sunday',
     `noticePeriod` VARCHAR(50) NOT NULL DEFAULT '',
     `avatarUrl` TEXT NOT NULL DEFAULT '',
+    `documents` JSON NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `profiles_userId_key`(`userId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `profile_documents` (
-    `id` VARCHAR(191) NOT NULL,
-    `profileId` VARCHAR(191) NOT NULL,
-    `documentId` VARCHAR(100) NOT NULL,
-    `label` VARCHAR(191) NOT NULL DEFAULT '',
-    `kind` VARCHAR(50) NOT NULL DEFAULT 'file',
-    `fileName` VARCHAR(255) NOT NULL DEFAULT '',
-    `url` TEXT NOT NULL DEFAULT '',
-    `backFileName` VARCHAR(255) NOT NULL DEFAULT '',
-    `backUrl` TEXT NOT NULL DEFAULT '',
-    `uploadedOn` VARCHAR(50) NOT NULL DEFAULT '',
-    `status` VARCHAR(50) NOT NULL DEFAULT 'missing',
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
-
-    INDEX `profile_documents_profileId_idx`(`profileId`),
-    INDEX `profile_documents_fileName_idx`(`fileName`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -226,55 +206,13 @@ CREATE TABLE `chats` (
     `createdById` VARCHAR(191) NOT NULL,
     `lastMessageAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `lastMessageText` TEXT NOT NULL DEFAULT '',
+    `members` JSON NULL,
+    `messages` JSON NULL,
+    `admins` JSON NULL,
+    `clearedFor` JSON NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `chat_members` (
-    `id` VARCHAR(191) NOT NULL,
-    `chatId` VARCHAR(191) NOT NULL,
-    `userId` VARCHAR(191) NOT NULL,
-    `isAdmin` BOOLEAN NOT NULL DEFAULT false,
-    `lastReadAt` DATETIME(3) NULL,
-    `joinedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    INDEX `chat_members_userId_idx`(`userId`),
-    UNIQUE INDEX `chat_members_chatId_userId_key`(`chatId`, `userId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `chat_messages` (
-    `id` VARCHAR(191) NOT NULL,
-    `chatId` VARCHAR(191) NOT NULL,
-    `senderId` VARCHAR(191) NOT NULL,
-    `text` TEXT NOT NULL DEFAULT '',
-    `attachments` JSON NULL,
-    `mentions` JSON NULL,
-    `replyTo` VARCHAR(100) NULL,
-    `forwardedFrom` VARCHAR(100) NULL,
-    `reactions` JSON NULL,
-    `pinned` BOOLEAN NOT NULL DEFAULT false,
-    `deleted` BOOLEAN NOT NULL DEFAULT false,
-    `readBy` JSON NULL,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
-
-    INDEX `chat_messages_chatId_createdAt_idx`(`chatId`, `createdAt`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `chat_cleared` (
-    `id` VARCHAR(191) NOT NULL,
-    `chatId` VARCHAR(191) NOT NULL,
-    `userId` VARCHAR(191) NOT NULL,
-    `clearedAt` DATETIME(3) NOT NULL,
-
-    UNIQUE INDEX `chat_cleared_chatId_userId_key`(`chatId`, `userId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -370,6 +308,7 @@ CREATE TABLE `announcements` (
     `title` VARCHAR(150) NOT NULL,
     `message` TEXT NOT NULL,
     `audience` VARCHAR(50) NOT NULL DEFAULT 'all',
+    `employeeIds` JSON NULL,
     `priority` VARCHAR(50) NOT NULL DEFAULT 'normal',
     `status` VARCHAR(50) NOT NULL DEFAULT 'published',
     `createdById` VARCHAR(191) NOT NULL,
@@ -377,16 +316,6 @@ CREATE TABLE `announcements` (
     `updatedAt` DATETIME(3) NOT NULL,
 
     INDEX `announcements_status_createdAt_idx`(`status`, `createdAt`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `announcement_recipients` (
-    `id` VARCHAR(191) NOT NULL,
-    `announcementId` VARCHAR(191) NOT NULL,
-    `employeeId` VARCHAR(191) NOT NULL,
-
-    UNIQUE INDEX `announcement_recipients_announcementId_employeeId_key`(`announcementId`, `employeeId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -414,9 +343,6 @@ CREATE TABLE `progress_reports` (
 
 -- AddForeignKey
 ALTER TABLE `profiles` ADD CONSTRAINT `profiles_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `profile_documents` ADD CONSTRAINT `profile_documents_profileId_fkey` FOREIGN KEY (`profileId`) REFERENCES `profiles`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `refresh_tokens` ADD CONSTRAINT `refresh_tokens_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -455,21 +381,6 @@ ALTER TABLE `calendars` ADD CONSTRAINT `calendars_reviewedById_fkey` FOREIGN KEY
 ALTER TABLE `chats` ADD CONSTRAINT `chats_createdById_fkey` FOREIGN KEY (`createdById`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `chat_members` ADD CONSTRAINT `chat_members_chatId_fkey` FOREIGN KEY (`chatId`) REFERENCES `chats`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `chat_members` ADD CONSTRAINT `chat_members_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `chat_messages` ADD CONSTRAINT `chat_messages_chatId_fkey` FOREIGN KEY (`chatId`) REFERENCES `chats`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `chat_messages` ADD CONSTRAINT `chat_messages_senderId_fkey` FOREIGN KEY (`senderId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `chat_cleared` ADD CONSTRAINT `chat_cleared_chatId_fkey` FOREIGN KEY (`chatId`) REFERENCES `chats`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `finances` ADD CONSTRAINT `finances_employeeId_fkey` FOREIGN KEY (`employeeId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -489,12 +400,6 @@ ALTER TABLE `notification_preferences` ADD CONSTRAINT `notification_preferences_
 
 -- AddForeignKey
 ALTER TABLE `announcements` ADD CONSTRAINT `announcements_createdById_fkey` FOREIGN KEY (`createdById`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `announcement_recipients` ADD CONSTRAINT `announcement_recipients_announcementId_fkey` FOREIGN KEY (`announcementId`) REFERENCES `announcements`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `announcement_recipients` ADD CONSTRAINT `announcement_recipients_employeeId_fkey` FOREIGN KEY (`employeeId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `progress_reports` ADD CONSTRAINT `progress_reports_employeeId_fkey` FOREIGN KEY (`employeeId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

@@ -28,13 +28,13 @@ export function translateValue(val) {
         if (k === "$in") out.in = Array.isArray(v) ? v.map(cleanId) : [cleanId(v)];
         else if (k === "$nin") out.notIn = Array.isArray(v) ? v.map(cleanId) : [cleanId(v)];
         else if (k === "$ne") out.not = cleanId(v);
-        else if (k === "$gt") out.gt = v instanceof Date ? v : v;
-        else if (k === "$gte") out.gte = v instanceof Date ? v : v;
-        else if (k === "$lt") out.lt = v instanceof Date ? v : v;
-        else if (k === "$lte") out.lte = v instanceof Date ? v : v;
+        else if (k === "$gt") out.gt = v;
+        else if (k === "$gte") out.gte = v;
+        else if (k === "$lt") out.lt = v;
+        else if (k === "$lte") out.lte = v;
         else if (k === "$regex") out.contains = String(v);
-        else if (k === "$options") {
-          // MySQL is case-insensitive by default in utf8mb4_unicode_ci
+        else if (k === "$exists") {
+          return v ? { not: null } : null;
         }
       }
       return out;
@@ -61,6 +61,12 @@ export function translateWhere(filter = {}, fieldMap = {}) {
     let targetField = key;
     if (key === "_id") targetField = "id";
     if (fieldMap[key]) targetField = fieldMap[key];
+
+    // Handle MongoDB style sub-properties like 'documents.url'
+    if (targetField.includes(".")) {
+      const rootField = targetField.split(".")[0];
+      targetField = fieldMap[rootField] || rootField;
+    }
 
     where[targetField] = translateValue(value);
   }
@@ -94,6 +100,18 @@ export function translateOrderBy(sortSpec) {
   return orderBy.length > 0 ? orderBy : undefined;
 }
 
+function makeSubdocArray(arr) {
+  if (!Array.isArray(arr)) return arr;
+  const enhancedArr = [...arr];
+
+  enhancedArr.id = function (subId) {
+    const target = String(subId);
+    return this.find((item) => String(item.id || item._id) === target) || null;
+  };
+
+  return enhancedArr;
+}
+
 export function wrapDoc(doc, delegate, fieldMap = {}) {
   if (!doc || typeof doc !== "object") return doc;
 
@@ -112,11 +130,40 @@ export function wrapDoc(doc, delegate, fieldMap = {}) {
     }
   }
 
+  // Handle embedded JSON arrays if present
+  if (Array.isArray(enhanced.messages)) {
+    enhanced.messages = makeSubdocArray(enhanced.messages);
+  }
+  if (Array.isArray(enhanced.members)) {
+    enhanced.members = enhanced.members.map((m) => {
+      if (m && typeof m === "object") {
+        return {
+          ...m,
+          user: {
+            id: String(m.user?._id || m.user?.id || m.user),
+            _id: String(m.user?._id || m.user?.id || m.user),
+            equals: (other) =>
+              String(m.user?._id || m.user?.id || m.user) ===
+              String(other?._id || other?.id || other),
+          },
+        };
+      }
+      return m;
+    });
+  }
+
   enhanced.save = async function () {
     const { id, _id, save, toJSON, toObject, ...dataToUpdate } = this;
+    const cleanPayload = {};
+
+    for (const [k, v] of Object.entries(dataToUpdate)) {
+      if (typeof v === "function") continue;
+      cleanPayload[k] = v;
+    }
+
     const updated = await prisma[delegate].update({
       where: { id: this.id },
-      data: dataToUpdate,
+      data: cleanPayload,
     });
     Object.assign(this, updated);
     this.id = updated.id;
@@ -140,18 +187,34 @@ export function wrapDoc(doc, delegate, fieldMap = {}) {
 class QueryChain {
   constructor(delegate, operation, queryParams, fieldMap = {}) {
     this.delegate = delegate;
-    this.operation = operation; // 'findMany', 'findFirst', 'count', etc.
+    this.operation = operation;
     this.queryParams = queryParams || {};
     this.fieldMap = fieldMap;
     this._selectFields = null;
     this._sort = null;
     this._skip = null;
     this._take = null;
+    this._includes = {};
   }
 
   select(fields) {
-    // fields can be string "name email -passwordHash" or object
     this._selectFields = fields;
+    return this;
+  }
+
+  populate(field, selectStr) {
+    if (field) {
+      const rootField = String(field).split(".")[0];
+      if (selectStr && typeof selectStr === "string") {
+        const selectObj = {};
+        selectStr.split(/\s+/).forEach((f) => {
+          if (f) selectObj[f] = true;
+        });
+        this._includes[rootField] = { select: selectObj };
+      } else {
+        this._includes[rootField] = true;
+      }
+    }
     return this;
   }
 
@@ -187,6 +250,14 @@ class QueryChain {
       args.take = this._take;
     }
 
+    if (Object.keys(this._includes).length > 0) {
+      try {
+        args.include = this._includes;
+      } catch {
+        // Fall back gracefully if relations not present in schema
+      }
+    }
+
     const result = await prisma[this.delegate][this.operation](args);
 
     if (Array.isArray(result)) {
@@ -205,7 +276,7 @@ class QueryChain {
 }
 
 export function createPrismaModel(delegate, fieldMap = {}) {
-  return {
+  const model = {
     find(filter = {}) {
       const where = translateWhere(filter, fieldMap);
       return new QueryChain(delegate, "findMany", { where }, fieldMap);
@@ -223,6 +294,15 @@ export function createPrismaModel(delegate, fieldMap = {}) {
         { where: { id: cleanId(id) } },
         fieldMap
       );
+    },
+
+    async exists(filter = {}) {
+      const where = translateWhere(filter, fieldMap);
+      const found = await prisma[delegate].findFirst({
+        where,
+        select: { id: true },
+      });
+      return found ? { id: found.id, _id: found.id } : null;
     },
 
     async countDocuments(filter = {}) {
@@ -284,9 +364,76 @@ export function createPrismaModel(delegate, fieldMap = {}) {
     async findOneAndUpdate(filter = {}, update = {}, options = {}) {
       const where = translateWhere(filter, fieldMap);
       const existing = await prisma[delegate].findFirst({ where });
-      if (!existing) return null;
+      if (!existing) {
+        if (options && options.upsert) {
+          const rawPayload = {
+            ...filter,
+            ...(update.$setOnInsert || {}),
+            ...(update.$set || update),
+          };
+          const payload = {};
+          for (const [k, v] of Object.entries(rawPayload)) {
+            if (k.startsWith("$") || k === "_id" || k === "id") continue;
+            const target = fieldMap[k] || k;
+            payload[target] = v;
+          }
+          return this.create(payload);
+        }
+        return null;
+      }
 
       return this.findByIdAndUpdate(existing.id, update, options);
+    },
+
+    async updateOne(filter = {}, update = {}, options = {}) {
+      const where = translateWhere(filter, fieldMap);
+      const existing = await prisma[delegate].findFirst({
+        where,
+        select: { id: true },
+      });
+      if (!existing) {
+        if (options?.upsert) {
+          const rawPayload = {
+            ...filter,
+            ...(update.$setOnInsert || {}),
+            ...(update.$set || update),
+          };
+          const payload = {};
+          for (const [k, v] of Object.entries(rawPayload)) {
+            if (k.startsWith("$") || k === "_id" || k === "id") continue;
+            const target = fieldMap[k] || k;
+            payload[target] = v;
+          }
+          const created = await this.create(payload);
+          return { acknowledged: true, modifiedCount: 0, upsertedId: created.id };
+        }
+        return { acknowledged: true, modifiedCount: 0 };
+      }
+
+      const dataToSet = update.$set ? { ...update.$set } : { ...update };
+      const payload = {};
+      for (const [k, v] of Object.entries(dataToSet)) {
+        if (k === "_id" || k === "id" || k.startsWith("$")) continue;
+        const target = fieldMap[k] || k;
+        payload[target] = v;
+      }
+
+      await prisma[delegate].update({ where: { id: existing.id }, data: payload });
+      return { acknowledged: true, modifiedCount: 1 };
+    },
+
+    async updateMany(filter = {}, update = {}) {
+      const where = translateWhere(filter, fieldMap);
+      const dataToSet = update.$set ? { ...update.$set } : { ...update };
+      const payload = {};
+      for (const [k, v] of Object.entries(dataToSet)) {
+        if (k === "_id" || k === "id" || k.startsWith("$")) continue;
+        const target = fieldMap[k] || k;
+        payload[target] = v;
+      }
+
+      const result = await prisma[delegate].updateMany({ where, data: payload });
+      return { acknowledged: true, modifiedCount: result.count };
     },
 
     async deleteOne(filter = {}) {
@@ -313,5 +460,33 @@ export function createPrismaModel(delegate, fieldMap = {}) {
         return null;
       }
     },
+
+    async aggregate(pipeline = []) {
+      if (delegate === "task") {
+        const matchStage = pipeline.find((p) => p.$match)?.$match || {};
+        const where = translateWhere(matchStage, fieldMap);
+        const tasks = await prisma.task.findMany({
+          where,
+          select: { completedAt: true },
+        });
+
+        const dayCounts = {};
+        for (const t of tasks) {
+          if (t.completedAt) {
+            const day = new Date(t.completedAt).getUTCDate();
+            dayCounts[day] = (dayCounts[day] || 0) + 1;
+          }
+        }
+        return Object.entries(dayCounts)
+          .map(([day, count]) => ({
+            _id: Number(day),
+            count,
+          }))
+          .sort((a, b) => a._id - b._id);
+      }
+      return [];
+    },
   };
+
+  return model;
 }

@@ -33,3 +33,4 @@ export const mongoose = {
 };
 
 export default mongoose;
+
