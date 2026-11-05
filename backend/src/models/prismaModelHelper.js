@@ -120,6 +120,60 @@ function makeSubdocArray(arr) {
   return enhancedArr;
 }
 
+const JSON_COLUMNS = new Set([
+  "workingDays",
+  "documents",
+  "members",
+  "messages",
+  "admins",
+  "clearedFor",
+  "employeeIds",
+]);
+
+export function sanitizePayloadForPrisma(rawPayload = {}, fieldMap = {}) {
+  const payload = {};
+
+  for (const [k, v] of Object.entries(rawPayload)) {
+    if (typeof v === "function") continue;
+    if (
+      k === "_id" ||
+      k === "id" ||
+      k === "save" ||
+      k === "toJSON" ||
+      k === "toObject" ||
+      k.startsWith("$")
+    ) {
+      continue;
+    }
+    payload[k] = v;
+  }
+
+  // Reverse mapping for fieldMap: if schema expects `userId` and input has `user`,
+  // extract `userId` and remove `user`.
+  for (const [mKey, pKey] of Object.entries(fieldMap)) {
+    if (payload[mKey] !== undefined) {
+      const val = payload[mKey];
+      if (val && typeof val === "object" && !Array.isArray(val) && !(val instanceof Date)) {
+        payload[pKey] = cleanId(val.id || val._id || val);
+      } else if (payload[pKey] === undefined) {
+        payload[pKey] = cleanId(val);
+      }
+      delete payload[mKey];
+    }
+  }
+
+  // Strip populated objects or relations from scalar columns
+  for (const [k, v] of Object.entries(payload)) {
+    if (JSON_COLUMNS.has(k)) continue;
+    if (v instanceof Date) continue;
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      delete payload[k];
+    }
+  }
+
+  return payload;
+}
+
 export function wrapDoc(doc, delegate, fieldMap = {}) {
   if (!doc || typeof doc !== "object") return doc;
 
@@ -162,12 +216,7 @@ export function wrapDoc(doc, delegate, fieldMap = {}) {
 
   enhanced.save = async function () {
     const { id, _id, save, toJSON, toObject, ...dataToUpdate } = this;
-    const cleanPayload = {};
-
-    for (const [k, v] of Object.entries(dataToUpdate)) {
-      if (typeof v === "function") continue;
-      cleanPayload[k] = v;
-    }
+    const cleanPayload = sanitizePayloadForPrisma(dataToUpdate, fieldMap);
 
     const updated = await prisma[delegate].update({
       where: { id: this.id },
@@ -354,31 +403,65 @@ class QueryChain {
       }
     }
 
+    let chatTargetUser = null;
+    if (this.delegate === "chat") {
+      delete args.include;
+      if (args.where?.members) {
+        chatTargetUser = String(
+          args.where.members.string_contains || args.where.members
+        );
+        delete args.where.members;
+      }
+      if (args.where && Object.keys(args.where).length === 0) {
+        delete args.where;
+      }
+    }
+
     let result;
     try {
-      result = await prisma[this.delegate][this.operation](args);
+      if (this.delegate === "chat" && chatTargetUser) {
+        const allChats = await prisma.chat.findMany(args);
+        const filtered = allChats.filter((c) => {
+          const rawMembers = Array.isArray(c.members) ? c.members : [];
+          return rawMembers.some(
+            (m) =>
+              String(m?.user?._id || m?.user?.id || m?.user) === chatTargetUser
+          );
+        });
+        result =
+          this.operation === "findFirst" || this.operation === "findUnique"
+            ? filtered[0] || null
+            : filtered;
+      } else {
+        result = await prisma[this.delegate][this.operation](args);
+      }
     } catch (err) {
       if (this.delegate === "chat") {
         const fallbackArgs = { ...args };
         delete fallbackArgs.where;
         delete fallbackArgs.include;
         const allChats = await prisma[this.delegate].findMany(fallbackArgs);
-        const targetUserId = String(
-          this.queryParams?.where?.members?.string_contains ||
-            this.queryParams?.where?.members ||
-            ""
-        );
+        const targetUserId =
+          chatTargetUser ||
+          String(
+            this.queryParams?.where?.members?.string_contains ||
+              this.queryParams?.where?.members ||
+              ""
+          );
+        let filtered = allChats;
         if (targetUserId) {
-          result = allChats.filter((c) => {
+          filtered = allChats.filter((c) => {
             const rawMembers = Array.isArray(c.members) ? c.members : [];
             return rawMembers.some(
               (m) =>
                 String(m?.user?._id || m?.user?.id || m?.user) === targetUserId
             );
           });
-        } else {
-          result = allChats;
         }
+        result =
+          this.operation === "findFirst" || this.operation === "findUnique"
+            ? filtered[0] || null
+            : filtered;
       } else {
         throw err;
       }
@@ -452,26 +535,13 @@ export function createPrismaModel(delegate, fieldMap = {}) {
     },
 
     async create(data = {}) {
-      const payload = {};
-      for (const [k, v] of Object.entries(data)) {
-        if (k === "_id") continue;
-        const target = fieldMap[k] || k;
-        payload[target] = v;
-      }
+      const payload = sanitizePayloadForPrisma(data, fieldMap);
       const created = await prisma[delegate].create({ data: payload });
       return wrapDoc(created, delegate, fieldMap);
     },
 
     async createMany(items = []) {
-      const data = items.map((item) => {
-        const payload = {};
-        for (const [k, v] of Object.entries(item)) {
-          if (k === "_id") continue;
-          const target = fieldMap[k] || k;
-          payload[target] = v;
-        }
-        return payload;
-      });
+      const data = items.map((item) => sanitizePayloadForPrisma(item, fieldMap));
       return prisma[delegate].createMany({ data });
     },
 
@@ -482,13 +552,7 @@ export function createPrismaModel(delegate, fieldMap = {}) {
     async findByIdAndUpdate(id, update = {}, options = {}) {
       const clean = cleanId(id);
       const dataToSet = update.$set ? { ...update.$set } : { ...update };
-      const payload = {};
-
-      for (const [k, v] of Object.entries(dataToSet)) {
-        if (k === "_id" || k === "id") continue;
-        const target = fieldMap[k] || k;
-        payload[target] = v;
-      }
+      const payload = sanitizePayloadForPrisma(dataToSet, fieldMap);
 
       const updated = await prisma[delegate].update({
         where: { id: clean },
@@ -507,12 +571,7 @@ export function createPrismaModel(delegate, fieldMap = {}) {
             ...(update.$setOnInsert || {}),
             ...(update.$set || update),
           };
-          const payload = {};
-          for (const [k, v] of Object.entries(rawPayload)) {
-            if (k.startsWith("$") || k === "_id" || k === "id") continue;
-            const target = fieldMap[k] || k;
-            payload[target] = v;
-          }
+          const payload = sanitizePayloadForPrisma(rawPayload, fieldMap);
           return this.create(payload);
         }
         return null;
@@ -534,12 +593,7 @@ export function createPrismaModel(delegate, fieldMap = {}) {
             ...(update.$setOnInsert || {}),
             ...(update.$set || update),
           };
-          const payload = {};
-          for (const [k, v] of Object.entries(rawPayload)) {
-            if (k.startsWith("$") || k === "_id" || k === "id") continue;
-            const target = fieldMap[k] || k;
-            payload[target] = v;
-          }
+          const payload = sanitizePayloadForPrisma(rawPayload, fieldMap);
           const created = await this.create(payload);
           return { acknowledged: true, modifiedCount: 0, upsertedId: created.id };
         }
@@ -547,12 +601,7 @@ export function createPrismaModel(delegate, fieldMap = {}) {
       }
 
       const dataToSet = update.$set ? { ...update.$set } : { ...update };
-      const payload = {};
-      for (const [k, v] of Object.entries(dataToSet)) {
-        if (k === "_id" || k === "id" || k.startsWith("$")) continue;
-        const target = fieldMap[k] || k;
-        payload[target] = v;
-      }
+      const payload = sanitizePayloadForPrisma(dataToSet, fieldMap);
 
       await prisma[delegate].update({ where: { id: existing.id }, data: payload });
       return { acknowledged: true, modifiedCount: 1 };
@@ -561,12 +610,7 @@ export function createPrismaModel(delegate, fieldMap = {}) {
     async updateMany(filter = {}, update = {}) {
       const where = translateWhere(filter, fieldMap);
       const dataToSet = update.$set ? { ...update.$set } : { ...update };
-      const payload = {};
-      for (const [k, v] of Object.entries(dataToSet)) {
-        if (k === "_id" || k === "id" || k.startsWith("$")) continue;
-        const target = fieldMap[k] || k;
-        payload[target] = v;
-      }
+      const payload = sanitizePayloadForPrisma(dataToSet, fieldMap);
 
       const result = await prisma[delegate].updateMany({ where, data: payload });
       return { acknowledged: true, modifiedCount: result.count };

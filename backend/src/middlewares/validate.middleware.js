@@ -1,13 +1,22 @@
 import ApiError from '../utils/ApiError.js'
 
+function getBaseShape(schema) {
+  let curr = schema
+  while (curr && curr._def && curr._def.schema) {
+    curr = curr._def.schema
+  }
+  return curr?.shape || null
+}
+
 // Schema shape: z.object({ body, query, params })
 export const validate = (schema) => (req, res, next) => {
+  const shape = getBaseShape(schema)
   const input = {}
 
-  if (schema?.shape) {
-    if ('body' in schema.shape) input.body = req.body ?? {}
-    if ('query' in schema.shape) input.query = req.query ?? {}
-    if ('params' in schema.shape) input.params = req.params ?? {}
+  if (shape) {
+    if ('body' in shape) input.body = req.body ?? {}
+    if ('query' in shape) input.query = req.query ?? {}
+    if ('params' in shape) input.params = req.params ?? {}
   } else {
     input.body = req.body ?? {}
     input.query = req.query ?? {}
