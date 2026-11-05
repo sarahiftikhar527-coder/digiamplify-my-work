@@ -36,6 +36,7 @@ export const pinForgotEmailLimiter = rateLimit({
   windowMs: pinResetWindowMs,
   limit: pinResetLimit,
   message: pinResetLimitMessage,
+  validate: { keyGeneratorIpFallback: false },
   keyGenerator: (req) => {
     const email = String(
       req.validated?.body?.email ?? req.body?.email ?? ''
@@ -78,6 +79,7 @@ export const newsletterSubscribeEmailLimiter = rateLimit({
   windowMs: pinResetWindowMs,
   limit: pinResetLimit,
   message: pinResetLimitMessage,
+  validate: { keyGeneratorIpFallback: false },
   keyGenerator: (req) => {
     const email = String(
       req.validated?.body?.email ?? req.body?.email ?? ''

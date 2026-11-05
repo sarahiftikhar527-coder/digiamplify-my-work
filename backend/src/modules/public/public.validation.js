@@ -45,3 +45,9 @@ export const newsletterUnsubscribeSchema = z
 
 export const GENERIC_CONTACT_RESPONSE =
   "Thank you. Your message has been received.";
+
+export const GENERIC_NEWSLETTER_SUBSCRIBE_RESPONSE =
+  "Thank you. If this address is eligible, you will receive updates from us.";
+
+export const GENERIC_NEWSLETTER_UNSUBSCRIBE_RESPONSE =
+  "You have been unsubscribed from marketing emails.";
