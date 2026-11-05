@@ -58,6 +58,14 @@ export function translateWhere(filter = {}, fieldMap = {}) {
       continue;
     }
 
+    if (key === "members.user" || key.startsWith("members.")) {
+      const targetUser = String(value?._id || value?.id || value);
+      where.members = {
+        string_contains: targetUser,
+      };
+      continue;
+    }
+
     let targetField = key;
     if (key === "_id") targetField = "id";
     if (fieldMap[key]) targetField = fieldMap[key];
@@ -184,6 +192,87 @@ export function wrapDoc(doc, delegate, fieldMap = {}) {
   return enhanced;
 }
 
+async function populateChatUsers(chatDocs) {
+  if (!chatDocs || chatDocs.length === 0) return;
+  const userIds = new Set();
+  for (const chat of chatDocs) {
+    if (Array.isArray(chat.members)) {
+      for (const m of chat.members) {
+        const uid = String(m?.user?._id || m?.user?.id || m?.user || "");
+        if (uid && uid !== "undefined") userIds.add(uid);
+      }
+    }
+    if (Array.isArray(chat.admins)) {
+      for (const a of chat.admins) {
+        const uid = String(a?._id || a?.id || a || "");
+        if (uid && uid !== "undefined") userIds.add(uid);
+      }
+    }
+    if (Array.isArray(chat.messages)) {
+      for (const msg of chat.messages) {
+        const senderId = String(
+          msg?.sender?._id || msg?.sender?.id || msg?.sender || ""
+        );
+        if (senderId && senderId !== "undefined") userIds.add(senderId);
+      }
+    }
+  }
+
+  if (userIds.size === 0) return;
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: [...userIds] } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatarUrl: true,
+      status: true,
+    },
+  });
+
+  const userMap = new Map();
+  for (const u of users) {
+    userMap.set(u.id, {
+      ...u,
+      _id: u.id,
+      equals: (other) => u.id === String(other?._id || other?.id || other),
+    });
+  }
+
+  for (const chat of chatDocs) {
+    if (Array.isArray(chat.members)) {
+      chat.members = chat.members.map((m) => {
+        const uid = String(m?.user?._id || m?.user?.id || m?.user || "");
+        const populated = userMap.get(uid);
+        if (populated) {
+          return { ...m, user: populated };
+        }
+        return m;
+      });
+    }
+    if (Array.isArray(chat.admins)) {
+      chat.admins = chat.admins.map((a) => {
+        const uid = String(a?._id || a?.id || a || "");
+        return userMap.get(uid) || a;
+      });
+    }
+    if (Array.isArray(chat.messages)) {
+      chat.messages = chat.messages.map((msg) => {
+        const senderId = String(
+          msg?.sender?._id || msg?.sender?.id || msg?.sender || ""
+        );
+        const populated = userMap.get(senderId);
+        if (populated) {
+          return { ...msg, sender: populated };
+        }
+        return msg;
+      });
+    }
+  }
+}
+
 class QueryChain {
   constructor(delegate, operation, queryParams, fieldMap = {}) {
     this.delegate = delegate;
@@ -205,6 +294,13 @@ class QueryChain {
   populate(field, selectStr) {
     if (field) {
       const rootField = String(field).split(".")[0];
+      // Skip non-relational JSON fields (such as 'members', 'admins', 'messages' on Chat)
+      if (
+        this.delegate === "chat" &&
+        ["members", "admins", "messages", "clearedFor"].includes(rootField)
+      ) {
+        return this;
+      }
       if (selectStr && typeof selectStr === "string") {
         const selectObj = {};
         selectStr.split(/\s+/).forEach((f) => {
@@ -258,12 +354,52 @@ class QueryChain {
       }
     }
 
-    const result = await prisma[this.delegate][this.operation](args);
+    let result;
+    try {
+      result = await prisma[this.delegate][this.operation](args);
+    } catch (err) {
+      if (this.delegate === "chat") {
+        const fallbackArgs = { ...args };
+        delete fallbackArgs.where;
+        delete fallbackArgs.include;
+        const allChats = await prisma[this.delegate].findMany(fallbackArgs);
+        const targetUserId = String(
+          this.queryParams?.where?.members?.string_contains ||
+            this.queryParams?.where?.members ||
+            ""
+        );
+        if (targetUserId) {
+          result = allChats.filter((c) => {
+            const rawMembers = Array.isArray(c.members) ? c.members : [];
+            return rawMembers.some(
+              (m) =>
+                String(m?.user?._id || m?.user?.id || m?.user) === targetUserId
+            );
+          });
+        } else {
+          result = allChats;
+        }
+      } else {
+        throw err;
+      }
+    }
 
     if (Array.isArray(result)) {
-      return result.map((row) => wrapDoc(row, this.delegate, this.fieldMap));
+      const docs = result.map((row) =>
+        wrapDoc(row, this.delegate, this.fieldMap)
+      );
+      if (this.delegate === "chat") {
+        await populateChatUsers(docs);
+      }
+      return docs;
     }
-    return result ? wrapDoc(result, this.delegate, this.fieldMap) : null;
+    const single = result
+      ? wrapDoc(result, this.delegate, this.fieldMap)
+      : null;
+    if (single && this.delegate === "chat") {
+      await populateChatUsers([single]);
+    }
+    return single;
   }
 
   then(resolve, reject) {

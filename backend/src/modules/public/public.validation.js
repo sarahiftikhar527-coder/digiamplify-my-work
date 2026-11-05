@@ -15,8 +15,7 @@ export const contactSubmitSchema = z
         website: z.string().optional(),
       })
       .strict(),
-  })
-  .strict();
+  });
 
 export const newsletterSubscribeSchema = z
   .object({
@@ -28,8 +27,7 @@ export const newsletterSubscribeSchema = z
         }),
       })
       .strict(),
-  })
-  .strict();
+  });
 
 const unsubscribeTokenSchema = z
   .string()
@@ -43,14 +41,7 @@ export const newsletterUnsubscribeSchema = z
         token: unsubscribeTokenSchema,
       })
       .strict(),
-  })
-  .strict();
+  });
 
 export const GENERIC_CONTACT_RESPONSE =
   "Thank you. Your message has been received.";
-
-export const GENERIC_NEWSLETTER_SUBSCRIBE_RESPONSE =
-  "Thank you. If this address is eligible, you will receive updates from us.";
-
-export const GENERIC_NEWSLETTER_UNSUBSCRIBE_RESPONSE =
-  "You have been unsubscribed from marketing emails.";

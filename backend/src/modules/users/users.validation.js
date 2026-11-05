@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ROLES } from '../../constants/roles.js'
 
-const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id')
+const objectId = z.string().trim().min(1, 'Invalid id')
 
 export const idSchema = z.object({ params: z.object({ id: objectId }) })
 

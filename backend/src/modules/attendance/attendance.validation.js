@@ -3,12 +3,13 @@ import { z } from "zod";
 const pinSchema = z
   .string()
   .trim()
-  .regex(/^\d{4}$/, "Enter your 4-digit PIN.");
+  .regex(/^\d{4}$/, "PIN must be exactly 4 digits.");
 
 const resetTokenSchema = z
   .string()
   .trim()
-  .regex(/^[a-f0-9]{64}$/i, "Reset link is invalid or expired.");
+  .min(16, "Reset token is invalid or missing.")
+  .max(256, "Reset token is invalid.");
 
 export const pinForgotSchema = z
   .object({
@@ -19,10 +20,8 @@ export const pinForgotSchema = z
           .trim()
           .min(1, "Email is required.")
           .email("Enter a valid email address."),
-      })
-      .strict(),
-  })
-  .strict();
+      }),
+  });
 
 export const pinResetSchema = z
   .object({
@@ -30,9 +29,7 @@ export const pinResetSchema = z
       .object({
         token: resetTokenSchema,
         newPin: pinSchema,
-      })
-      .strict(),
-  })
-  .strict();
+      }),
+  });
 
 export { pinSchema, resetTokenSchema };

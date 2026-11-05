@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
+const objectId = z.string().trim().min(1, "Invalid id");
 
 const eventTypeEnum = z.enum(["holiday", "leave", "shift", "attendance"]);
 
@@ -18,25 +18,31 @@ const leaveTypeEnum = z.enum(["Sick", "Casual", "Annual", "Unpaid"]);
 
 const MAX_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
 
-const parseDate = (value) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date;
-};
-
-const dateField = z.string().trim().min(1).max(64);
+const dateField = z
+  .union([z.string(), z.date()])
+  .transform((val) => (typeof val === "string" ? new Date(val) : val))
+  .refine((d) => !Number.isNaN(d.getTime()), {
+    message: "Invalid date format",
+  });
 
 const validateDateRange = (from, to, ctx) => {
-  const start = parseDate(from);
-  const end = parseDate(to);
+  const start = from instanceof Date ? from : new Date(from);
+  const end = to instanceof Date ? to : new Date(to);
 
-  if (!start || !end) {
+  if (Number.isNaN(start.getTime())) {
     ctx.addIssue({
       code: "custom",
-      message: "Valid from and to dates are required.",
+      message: "Invalid from date format.",
       path: ["from"],
     });
-    return;
+  }
+
+  if (Number.isNaN(end.getTime())) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Invalid to date format.",
+      path: ["to"],
+    });
   }
 
   if (start > end) {
@@ -72,14 +78,12 @@ export const listEventsSchema = z
           validateDateRange(query.from, query.to, ctx);
         }
       }),
-  })
-  .strict();
+  });
 
 export const idParamSchema = z
   .object({
-    params: z.object({ id: objectId }).strict(),
-  })
-  .strict();
+    params: z.object({ id: objectId }),
+  });
 
 export const approversQuerySchema = z
   .object({
@@ -88,8 +92,7 @@ export const approversQuerySchema = z
         q: z.string().trim().max(100).optional(),
       })
       .strict(),
-  })
-  .strict();
+  });
 
 const attachmentSchema = z.record(z.string(), z.unknown()).or(z.any());
 
@@ -113,47 +116,54 @@ const createBodyBase = z
     attachments: z.union([z.array(attachmentSchema).max(20), z.any()]).optional(),
     employeeId: objectId.optional(),
   })
-  .strict()
   .superRefine((body, ctx) => {
     validateDateRange(body.from, body.to, ctx);
 
     if (body.eventType === "leave") {
-      const title = (body.title || body.subject || "").trim();
-
-      if (!title) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Leave subject is required.",
-          path: ["title"],
-        });
-      }
-
-      if (!(body.description || "").trim()) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Leave description is required.",
-          path: ["description"],
-        });
-      }
-
       if (!body.leaveType) {
         ctx.addIssue({
           code: "custom",
-          message: "Leave type is required.",
+          message: "leaveType is required for leave events.",
           path: ["leaveType"],
         });
       }
 
-      const hasApprovers =
-        (Array.isArray(body.approverIds) && body.approverIds.length > 0) ||
-        (typeof body.approverIds === "string" &&
-          body.approverIds.trim().length > 0);
+      const approvers = Array.isArray(body.approverIds)
+        ? body.approverIds
+        : typeof body.approverIds === "string" && body.approverIds.trim()
+        ? body.approverIds.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
 
-      if (!hasApprovers) {
+      if (approvers.length === 0) {
         ctx.addIssue({
           code: "custom",
-          message: "At least one approver is required.",
+          message: "At least one approver is required for leave requests.",
           path: ["approverIds"],
+        });
+      }
+    }
+
+    if (body.eventType === "holiday" && !body.title && !body.subject) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Title or subject is required for holidays.",
+        path: ["title"],
+      });
+    }
+
+    if (body.eventType === "shift") {
+      if (!body.startTime) {
+        ctx.addIssue({
+          code: "custom",
+          message: "startTime is required for shift events.",
+          path: ["startTime"],
+        });
+      }
+      if (!body.endTime) {
+        ctx.addIssue({
+          code: "custom",
+          message: "endTime is required for shift events.",
+          path: ["endTime"],
         });
       }
     }
@@ -162,12 +172,11 @@ const createBodyBase = z
 export const createEventSchema = z
   .object({
     body: createBodyBase,
-  })
-  .strict();
+  });
 
 export const updateEventSchema = z
   .object({
-    params: z.object({ id: objectId }).strict(),
+    params: z.object({ id: objectId }),
     body: z
       .object({
         title: z.string().trim().max(200).optional(),
@@ -182,22 +191,18 @@ export const updateEventSchema = z
         role: z.string().trim().max(50).optional(),
         employeeId: objectId.optional(),
       })
-      .strict()
       .superRefine((body, ctx) => {
         if (body.from && body.to) {
           validateDateRange(body.from, body.to, ctx);
         }
       }),
-  })
-  .strict();
+  });
 
 export const updateStatusSchema = z
   .object({
-    params: z.object({ id: objectId }).strict(),
+    params: z.object({ id: objectId }),
     body: z
       .object({
         status: z.enum(["approved", "rejected"]),
-      })
-      .strict(),
-  })
-  .strict();
+      }),
+  });

@@ -1,12 +1,20 @@
 import ApiError from '../utils/ApiError.js'
 
-// Schema ka shape: z.object({ body, query, params })
+// Schema shape: z.object({ body, query, params })
 export const validate = (schema) => (req, res, next) => {
-  const result = schema.safeParse({
-    body: req.body ?? {},
-    query: req.query ?? {},
-    params: req.params ?? {},
-  })
+  const input = {}
+
+  if (schema?.shape) {
+    if ('body' in schema.shape) input.body = req.body ?? {}
+    if ('query' in schema.shape) input.query = req.query ?? {}
+    if ('params' in schema.shape) input.params = req.params ?? {}
+  } else {
+    input.body = req.body ?? {}
+    input.query = req.query ?? {}
+    input.params = req.params ?? {}
+  }
+
+  const result = schema.safeParse(input)
 
   if (!result.success) {
     const errors = result.error.issues.map((i) => ({
@@ -19,3 +27,5 @@ export const validate = (schema) => (req, res, next) => {
   req.validated = result.data
   next()
 }
+
+export default validate
