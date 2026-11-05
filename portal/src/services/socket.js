@@ -8,7 +8,7 @@ let retrying = false
 export function getSocket() {
   if (socket) return socket
 
-  socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+  socket = io(import.meta.env.VITE_SOCKET_URL || (typeof window !== "undefined" && window.location.hostname.includes("digiamplify.com") ? "https://api.digiamplify.com" : "http://localhost:5000"), {
     withCredentials: true,
     auth: (cb) => cb({ token: tokenStore.get() }), // har reconnect par taza token
   })

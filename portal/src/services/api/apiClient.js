@@ -2,8 +2,12 @@
 import axios from "axios";
 import { tokenStore } from "./tokenStore";
 
-const baseURL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const defaultBaseURL =
+  typeof window !== "undefined" && window.location.hostname.includes("digiamplify.com")
+    ? "https://api.digiamplify.com/api/v1"
+    : "http://localhost:5000/api/v1";
+
+const baseURL = import.meta.env.VITE_API_URL || defaultBaseURL;
 
 const apiClient = axios.create({
   baseURL,

@@ -40,7 +40,7 @@ const MIME_BY_EXTENSION = {
 };
 
 const API_URL = (
-  import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'
+  import.meta.env.VITE_API_URL || (typeof window !== "undefined" && window.location.hostname.includes("digiamplify.com") ? "https://api.digiamplify.com/api/v1" : "http://localhost:5000/api/v1")
 ).replace(/\/+$/, '');
 
 const API_ORIGIN = new URL(API_URL, window.location.origin).origin;
