@@ -39,6 +39,11 @@ router.patch(
   ctrl.markAllRead
 );
 
+router.patch(
+  "/read-type/:type",
+  ctrl.markTypeRead
+);
+
 router.get(
   "/preferences",
   ctrl.getPreferences

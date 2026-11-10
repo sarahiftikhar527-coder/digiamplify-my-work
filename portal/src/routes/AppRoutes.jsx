@@ -20,7 +20,7 @@ import FinancePage from "@/modules/employee/finance/pages/FinancePage";
 import CalendarPage from "@/modules/employee/calendar/pages/CalendarPage";
 import ChatPage from "@/modules/employee/chat/pages/ChatPage";
 import ClockInPage from "@/modules/employee/clockIn/pages/ClockInPage";
-import TeamLivePage from "@/modules/employee/teamLive/pages/TeamLivePage/TeamLivePage.jsx";
+import EmployeeHierarchyPage from "@/modules/employee/hierarchy/pages/EmployeeHierarchyPage/EmployeeHierarchyPage.jsx";
 import HelpSupportPage from "@/modules/employee/helpSupport/pages/HelpSupportPage";
 
 import { AdminApprovalsPage as ApprovalsHubPage } from "@/modules/admin/approvals";
@@ -250,7 +250,8 @@ export default function AppRoutes() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/clock-in" element={<ClockInPage />} />
-            <Route path="/team-live" element={<TeamLivePage />} />
+            <Route path="/hierarchy" element={<EmployeeHierarchyPage />} />
+            <Route path="/team-live" element={<Navigate to="/hierarchy" replace />} />
             <Route path="/help-support" element={<HelpSupportPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
           </Route>

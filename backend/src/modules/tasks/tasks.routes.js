@@ -7,6 +7,7 @@ import {
   employeeTaskStats,
   employeeTasks,
   employeeWorkspace,
+  employeeTeamTasks,
   updateTaskStatus,
   employeeDailyUpdate,
   employeeCreatePersonalTask,
@@ -29,6 +30,7 @@ router.use(authenticate);
 /* Employee */
 router.get("/employee/stats", allowRoles(ROLES.EMPLOYEE), employeeTaskStats);
 router.get("/employee/workspace", allowRoles(ROLES.EMPLOYEE), employeeWorkspace);
+router.get("/employee/team", allowRoles(ROLES.EMPLOYEE), employeeTeamTasks);
 router.get("/employee", allowRoles(ROLES.EMPLOYEE), employeeTasks);
 
 router.post(

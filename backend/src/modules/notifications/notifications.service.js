@@ -76,6 +76,13 @@ export const markAllRead = (userId) =>
     { read: true }
   );
 
+// Marks every unread notification of one type (for example "task") as read.
+export const markTypeRead = (userId, type) =>
+  Notification.updateMany(
+    { to: userId, type: String(type), read: false },
+    { read: true }
+  );
+
 export async function remove(userId, id) {
   const result = await Notification.deleteOne({
     _id: id,

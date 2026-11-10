@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import apiClient, { unwrap } from "../../../services/api/apiClient.js";
 import { useAuth } from "../../../context/AuthContext/AuthContext/AuthContext.jsx";
+import { getSocket } from "../../../services/socket.js";
 
 const ICONS = {
   employee: UserPlus,
@@ -122,6 +123,24 @@ export function useNotificationEmployees() {
   useEffect(() => {
     refreshEmployees();
   }, [refreshEmployees]);
+
+    // Update the bell live when a new notification arrives, or when another part
+  // of the app marked notifications as read.
+  useEffect(() => {
+    if (!authenticatedId) return undefined;
+
+    const socket = getSocket();
+    const reload = () => refresh();
+
+    socket.on("notification:new", reload);
+    window.addEventListener("notifications:changed", reload);
+
+    return () => {
+      socket.off("notification:new", reload);
+      window.removeEventListener("notifications:changed", reload);
+    };
+  }, [authenticatedId, refresh]);
+  
 
   return {
     employees,

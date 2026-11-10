@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, X } from "lucide-react";
-import NavGroup, { linkCls } from "../shared/NavGroup";
+import NavGroup, { NavItem } from "../shared/NavGroup";
 import { getNavigationByRole } from "@/constants/navigation";
 import { getChangeRequestCount } from "@/services/api/profileService";
 import { Avatar } from "@/shared/components/ui";
@@ -119,13 +119,13 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
               title="Close sidebar"
               className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
             >
-              <X size={20} />
+              <X size={18} strokeWidth={1.5} />
             </button>
           </div>
 
           <nav
             aria-label="Admin navigation"
-            className="flex flex-col gap-3 px-3"
+            className="flex flex-col gap-1 px-3"
           >
             {navigation.map((item) => {
               if (item.children?.length) {
@@ -139,25 +139,14 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
                 );
               }
 
-              const { label, path, icon: Icon } = item;
-
               return (
-                <NavLink
-                  key={path}
-                  to={path}
-                  end={path === "/"}
-                  onClick={onClose}
-                  className={({ isActive }) => linkCls(isActive)}
-                >
-                  {Icon && (
-                    <Icon
-                      size={19}
-                      strokeWidth={1.75}
-                      className="shrink-0"
-                    />
-                  )}
-                  <span className="truncate">{label}</span>
-                </NavLink>
+                <NavItem
+                  key={item.path}
+                  item={item}
+                  counts={counts}
+                  end={item.path === "/"}
+                  onNavigate={onClose}
+                />
               );
             })}
           </nav>
@@ -179,11 +168,11 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded-md p-2 text-gray-400 transition hover:bg-white/10 hover:text-white"
+              className="rounded-md p-2 text-gray-400 transition hover:bg-[#F0202F]/10 hover:text-white"
               aria-label="Logout"
               title="Logout"
             >
-              <LogOut size={16} />
+              <LogOut size={17} strokeWidth={1.5} />
             </button>
           </div>
         </div>

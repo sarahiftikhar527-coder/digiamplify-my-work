@@ -56,9 +56,9 @@ const UserCard = () => {
         onClick={handleLogout}
         aria-label="Logout"
         title="Logout"
-        className="shrink-0 rounded-md p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-[#F0202F]"
+        className="shrink-0 rounded-md p-1 text-white/70 transition-colors hover:bg-[#F0202F]/10 hover:text-[#F0202F]"
       >
-        <LogOut size={19} strokeWidth={1.75} />
+        <LogOut size={17} strokeWidth={1.5} />
       </button>
     </div>
   )

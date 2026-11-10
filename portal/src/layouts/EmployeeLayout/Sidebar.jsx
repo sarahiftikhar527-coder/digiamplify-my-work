@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { navigation } from '@/constants'
-import NavGroup, { linkCls } from '../shared/NavGroup'
+import NavGroup, { NavItem } from '../shared/NavGroup'
 import UserCard from './UserCard'
 
 const Logo = () => (
@@ -18,7 +18,7 @@ const Logo = () => (
   </div>
 )
 
-const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
+const Sidebar = ({ isOpen = false, onClose = () => {}, counts = {} }) => {
   const { pathname } = useLocation()
 
   useEffect(() => {
@@ -72,32 +72,33 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
               title="Close sidebar"
               className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
             >
-              <X size={20} />
+              <X size={18} strokeWidth={1.5} />
             </button>
           </div>
 
           <nav
             aria-label="Main navigation"
-            className="flex flex-col gap-3 px-3"
+            className="flex flex-col gap-1 px-3"
           >
             {navigation.map((item) => {
               if (item.children?.length) {
                 return (
-                  <NavGroup key={item.path} item={item} onNavigate={onClose} />
+                  <NavGroup
+                    key={item.path}
+                    item={item}
+                    counts={counts}
+                    onNavigate={onClose}
+                  />
                 )
               }
 
-              const { label, path, icon: Icon } = item
-
               return (
-                <NavLink
-                  key={path}
-                  to={path}
-                  className={({ isActive }) => linkCls(isActive)}
-                >
-                  <Icon size={19} strokeWidth={1.75} className="shrink-0" />
-                  <span className="truncate">{label}</span>
-                </NavLink>
+                <NavItem
+                  key={item.path}
+                  item={item}
+                  counts={counts}
+                  onNavigate={onClose}
+                />
               )
             })}
           </nav>

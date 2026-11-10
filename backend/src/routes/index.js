@@ -16,6 +16,7 @@ import announcementsRoutes from "../modules/announcements/announcements.routes.j
 import chatRoutes from "../modules/chat/chat.routes.js";
 import filesRoutes from "../modules/files/files.routes.js";
 import publicRoutes from "../modules/public/public.routes.js";
+import hierarchyRoutes from "../modules/hierarchy/hierarchy.routes.js";
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use("/announcements", announcementsRoutes);
 router.use("/chat", chatRoutes);
 router.use("/files", filesRoutes);
 router.use("/public", publicRoutes);
+router.use("/hierarchy", hierarchyRoutes);
 
 export default router;

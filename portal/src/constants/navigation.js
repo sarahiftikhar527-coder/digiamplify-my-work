@@ -31,7 +31,19 @@ export const employeeNavigation = [
       { label: "Leave & Updates", path: "/dashboard?view=updates", icon: Megaphone },
     ],
   },
-  { label: "Task", path: "/task", icon: ClipboardList },
+
+  {
+    label: "Task",
+    path: "/task",
+    icon: ClipboardList,
+    badgeKey: "newTasks",
+    children: [
+      { label: "Assigned to me", path: "/task?view=assigned", icon: UserCheck },
+      { label: "Today & Overdue", path: "/task?view=today", icon: CalendarClock },
+      { label: "Personal List", path: "/task?view=personal", icon: User },
+      { label: "Team Tasks", path: "/task?view=team", icon: Users },
+    ],
+  },
   { label: "Profile", path: "/profile", icon: User },
   { label: "Finance", path: "/finance", icon: TrendingUp },
   { label: "Calendar", path: "/calendar", icon: Calendar },
@@ -67,7 +79,15 @@ export const adminNavigation = [
       },
     ],
   },
-  { label: "Task", path: "/admin/task", icon: ClipboardList },
+  {
+    label: "Task",
+    path: "/admin/task",
+    icon: ClipboardList,
+    children: [
+      { label: "Task Board", path: "/admin/task?view=board", icon: LayoutDashboard },
+      { label: "Employee Activity", path: "/admin/task?view=activity", icon: Activity },
+    ],
+  },
   { label: "Profile", path: "/admin/profile", icon: User },
   { label: "Finance", path: "/admin/finance", icon: TrendingUp },
   { label: "Calendar", path: "/admin/calendar", icon: Calendar },

@@ -26,6 +26,10 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+    managerId               String?                 @db.VarChar(191)
+  manager                 User?                   @relation("UserHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
+  reports                 User[]                  @relation("UserHierarchy")
+
   profile                 Profile?
   refreshTokens           RefreshToken[]
   attendances             Attendance[]
@@ -55,6 +59,7 @@ model User {
 
   @@index([role])
   @@index([isDeleted])
+    @@index([managerId])
   @@map("users")
 }
 

@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import useHideOnScroll from "@/hooks/useHideOnScroll";
+import useTaskAlerts from "@/hooks/useTaskAlerts";
 
 const EmployeeLayout = () => {
   // The sidebar is closed by default. It opens when the mouse hovers over the
   // menu icon in the top bar and closes when the mouse leaves the sidebar.
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Number of new tasks the admin assigned (shown as a badge on "Task").
+  // This also plays the alert sound when a new task arrives.
+  const { newTasks } = useTaskAlerts()
+
+  // The page scrolls inside <main>. The top bar hides while scrolling down
+  // and comes back as soon as the user scrolls up a little.
+  const scrollRef = useRef(null)
+  const topbarHidden = useHideOnScroll(scrollRef)
 
   const openSidebar = () => {
     setSidebarOpen(true)
@@ -25,16 +36,21 @@ const EmployeeLayout = () => {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={closeSidebar}
+        counts={{ newTasks }}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <Topbar
           sidebarOpen={sidebarOpen}
           onMenuClick={toggleSidebar}
           onMenuHover={openSidebar}
+          hidden={topbarHidden}
         />
 
-        <main className="min-w-0 flex-1 overflow-y-auto px-4 pb-8 sm:px-6 lg:px-9">
+        <main
+          ref={scrollRef}
+          className="min-w-0 flex-1 overflow-y-auto px-4 pb-8 pt-[72px] sm:px-6 lg:px-9"
+        >
           <Outlet />
         </main>
       </div>

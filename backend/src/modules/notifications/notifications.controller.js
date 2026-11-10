@@ -53,6 +53,14 @@ export const markAllRead = asyncHandler(async (req, res) => {
   return ok(res, null);
 });
 
+export const markTypeRead = asyncHandler(async (req, res) => {
+  await service.markTypeRead(
+    req.user.id || req.user._id,
+    req.params.type
+  );
+  return ok(res, null);
+});
+
 export const remove = asyncHandler(async (req, res) => {
   await service.remove(
     req.user.id || req.user._id,

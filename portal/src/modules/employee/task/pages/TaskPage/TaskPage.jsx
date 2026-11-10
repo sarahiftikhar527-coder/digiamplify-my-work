@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import apiClient from '@/services/api/apiClient.js';
+import TeamTasks from '../../components/TeamTasks/TeamTasks.jsx';
 
 const VIEWS = {
   assigned: {
@@ -29,6 +30,10 @@ const VIEWS = {
   personal: {
     title: 'Personal List',
     hint: 'Your own tasks. Only you can see these',
+  },
+  team: {
+    title: 'Team Tasks',
+    hint: 'Tasks of every employee. You can view them but not change them',
   },
 };
 
@@ -695,6 +700,12 @@ const TaskPage = () => {
 
   const load = useCallback(
     async (silent = false) => {
+      // Team Tasks loads its own data.
+      if (view === 'team') {
+        setLoading(false);
+        return;
+      }
+
       if (!silent) setLoading(true);
       setError('');
 
@@ -716,6 +727,13 @@ const TaskPage = () => {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+    // A new task was just assigned by the admin: refresh the list quietly.
+  useEffect(() => {
+    const refresh = () => load(true);
+    window.addEventListener('tasks:changed', refresh);
+    return () => window.removeEventListener('tasks:changed', refresh);
   }, [load]);
 
   const openTask = useMemo(
@@ -815,6 +833,10 @@ const TaskPage = () => {
   const others = tasks.filter((task) => task.taskType !== 'daily');
 
   const renderBody = () => {
+    if (view === 'team') {
+      return <TeamTasks />;
+    }
+
     if (loading) {
       return (
         <p className="py-16 text-center text-sm text-gray-500">
@@ -895,25 +917,29 @@ const TaskPage = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {counts.pendingDailyUpdates > 0 && view !== 'personal' && (
+          {counts.pendingDailyUpdates > 0 &&
+            view !== 'personal' &&
+            view !== 'team' && (
             <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs text-amber-400">
               {counts.pendingDailyUpdates} daily update
               {counts.pendingDailyUpdates > 1 ? 's' : ''} pending
             </span>
           )}
-          {counts.overdue > 0 && (
+          {counts.overdue > 0 && view !== 'team' && (
             <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs text-red-400">
               {counts.overdue} overdue
             </span>
           )}
-          <button
-            type="button"
-            onClick={() => load()}
-            className="rounded-md border border-[#262626] p-2 text-gray-400 hover:text-white"
-            title="Refresh"
-          >
-            <RefreshCw size={16} />
-          </button>
+          {view !== 'team' && (
+            <button
+              type="button"
+              onClick={() => load()}
+              className="rounded-md border border-[#262626] p-2 text-gray-400 hover:text-white"
+              title="Refresh"
+            >
+              <RefreshCw size={16} />
+            </button>
+          )}
         </div>
       </header>
 

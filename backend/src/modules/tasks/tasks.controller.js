@@ -10,13 +10,14 @@ import {
   createPersonalTask,
   updatePersonalTask,
   deletePersonalTask,
-  getAllTasksForAdmin,
   updateAdminTask,
   updateAdminTaskStatus,
   deleteAdminTask,
   getAdminDailyUpdates,
   getAdminActivity,
 } from "./tasks.service.js";
+import { getAllTasksForAdmin, getTeamTasks } from "./tasks.team.service.js";
+import { notifyUsers } from "../notifications/notifications.events.js";
 
 const VALID_STATUSES = [
   "pending",
@@ -46,6 +47,15 @@ export const employeeTaskStats = asyncHandler(async (req, res) => {
 export const employeeTasks = asyncHandler(async (req, res) => {
   const tasks = await getEmployeeTasks(req.user.id);
   res.json({ success: true, tasks });
+});
+
+// Read-only list of every employee's tasks (personal tasks are not included).
+export const employeeTeamTasks = asyncHandler(async (req, res) => {
+  const result = await getTeamTasks(req.user.id, {
+    timeZone: req.user.timeZone,
+  });
+
+  res.json({ success: true, ...result });
 });
 
 export const employeeWorkspace = asyncHandler(async (req, res) => {
@@ -251,6 +261,29 @@ export const adminCreateTask = asyncHandler(async (req, res) => {
       })
     )
   );
+
+  // Tell every assigned employee right away. The notification is pushed over
+  // the socket ("notification:new"), so the employee hears a sound and sees a
+  // badge on the Task menu without refreshing the page.
+  try {
+    await Promise.all(
+      tasks.map((task) =>
+        notifyUsers([String(task.assignedToId || task.assignedTo)], {
+          from: req.user.id,
+          type: "task",
+          tag: "Tasks",
+          title: "New task assigned",
+          message: `New task: ${task.title}`,
+          details: task.description || "",
+          link: "/task",
+          linkLabel: "Open Tasks",
+        })
+      )
+    );
+  } catch (error) {
+    // A failed notification must never block the task from being created.
+    console.error("Task notification failed:", error.message);
+  }
 
   res.status(201).json({
     success: true,

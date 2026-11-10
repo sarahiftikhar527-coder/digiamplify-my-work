@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import apiClient from "@/services/api/apiClient.js";
 import TaskBoardHeader from "../../components/Taskboardheader/Taskboardheader.jsx";
 import TaskColumn from "../../components/Taskcolumn/Taskcolumn.jsx";
@@ -156,6 +157,7 @@ const normalizeTask = (task) => {
             employee.id ||
             employee.userId ||
             employee.user?._id ||
+            (typeof task.assignedToId === "string" ? task.assignedToId : "") ||
             ""
         ),
         name:
@@ -188,9 +190,10 @@ const normalizeTask = (task) => {
             assignedTo._id ||
               assignedTo.id ||
               assignedTo.userId ||
+              (typeof task.assignedToId === "string" ? task.assignedToId : "") ||
               ""
           )
-        : String(assignedTo || ""),
+        : String(assignedTo || task.assignedToId || ""),
     assignedByName:
       assignedBy && typeof assignedBy === "object"
         ? assignedBy.name || assignedBy.fullName || ""
@@ -208,7 +211,13 @@ const getTaskId = (taskOrId) => {
 };
 
 function AdminTaskPage() {
-  const [tab, setTab] = useState("board");
+  // The tab lives in the address (?view=board | activity) so the sidebar can open it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("view") === "activity" ? "activity" : "board";
+  const setTab = useCallback(
+    (id) => setSearchParams({ view: id }, { replace: true }),
+    [setSearchParams]
+  );
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -21,29 +21,69 @@ export function isChildActive(childPath, location) {
   return childUsesViews ? wantedView === currentView : true;
 }
 
+/*
+  Main menu item.
+  - Thin, light icon in a muted colour (the icon turns red only when active).
+  - Hover: a light red shade, so you can see where the mouse is.
+  - Active: a soft red tint with a thin red bar on the left. No heavy gradient.
+*/
 export const linkCls = (isActive) =>
   [
-    "flex items-center gap-3 rounded-lg px-3 py-3 text-[14px] transition-all duration-200",
+    "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] transition-colors duration-150",
     isActive
-      ? "bg-gradient-to-r from-[#F0202F] to-[#9B0E18] font-medium text-white shadow-[0_6px_20px_rgba(193,18,31,0.22)]"
-      : "text-white/90 hover:bg-white/5 hover:text-white",
+      ? "bg-[#F0202F]/[0.14] font-medium text-white"
+      : "text-white/70 hover:bg-[#F0202F]/10 hover:text-white",
   ].join(" ");
 
-const subLinkCls = (active) =>
-  [
-    "group/sub relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors duration-200",
-    active
-      ? "bg-white/10 font-medium text-white"
-      : "text-white/65 hover:bg-white/5 hover:text-white",
-  ].join(" ");
+export const iconCls = (isActive) =>
+  `shrink-0 transition-colors duration-150 ${
+    isActive ? "text-[#F0202F]" : "text-white/50 group-hover:text-[#F0202F]"
+  }`;
 
 export function CountBadge({ count }) {
   return count > 0 ? (
-    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold tabular-nums text-white">
+    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#F0202F] px-1.5 text-[10px] font-semibold tabular-nums text-white">
       {count > 99 ? "99+" : count}
     </span>
   ) : null;
 }
+
+/* A single menu link (no children). Supports a count badge. */
+export function NavItem({ item, counts = {}, onNavigate, end = false }) {
+  const { label, path, icon: Icon, badgeKey } = item;
+
+  return (
+    <NavLink
+      to={path}
+      end={end}
+      onClick={onNavigate}
+      className={({ isActive }) => linkCls(isActive)}
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#F0202F]" />
+          )}
+          {Icon && <Icon size={18} strokeWidth={1.5} className={iconCls(isActive)} />}
+          <span className="truncate">{label}</span>
+          <CountBadge count={counts[badgeKey] || 0} />
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+/*
+  Nested items: text only, no icons, so the list stays calm.
+  A thin guide line runs on the left; the active item gets a red section of it.
+*/
+const subLinkCls = (active) =>
+  [
+    "relative flex items-center gap-2 rounded-md py-1.5 pl-4 pr-3 text-[13px] transition-colors duration-150",
+    active
+      ? "font-medium text-white"
+      : "text-white/55 hover:bg-[#F0202F]/10 hover:text-white",
+  ].join(" ");
 
 export default function NavGroup({ item, counts = {}, onNavigate }) {
   const location = useLocation();
@@ -54,7 +94,10 @@ export default function NavGroup({ item, counts = {}, onNavigate }) {
   const { label, path, icon: Icon, children = [] } = item;
 
   const parentActive = location.pathname === path.split("?")[0];
-  const expanded = hovered || focused || pinned;
+
+  // The nested list opens when the mouse is over the group (no click needed).
+  // It also opens with keyboard focus, or when pinned with the small arrow.
+  const open = hovered || focused || pinned;
 
   const groupBadge = children.reduce(
     (sum, child) => sum + (counts[child.badgeKey] || 0),
@@ -79,36 +122,37 @@ export default function NavGroup({ item, counts = {}, onNavigate }) {
           onClick={onNavigate}
           className={() => `${linkCls(parentActive)} pr-10`}
         >
-          {Icon && <Icon size={19} strokeWidth={1.75} className="shrink-0" />}
+          {parentActive && (
+            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#F0202F]" />
+          )}
+          {Icon && <Icon size={18} strokeWidth={1.5} className={iconCls(parentActive)} />}
           <span className="truncate">{label}</span>
-          <CountBadge count={groupBadge} />
+          {!open && <CountBadge count={groupBadge} />}
         </NavLink>
 
         <button
           type="button"
-          aria-label={`${expanded ? "Collapse" : "Expand"} ${label} menu`}
-          aria-expanded={expanded}
+          aria-label={`${open ? "Collapse" : "Expand"} ${label} menu`}
+          aria-expanded={open}
           onClick={() => setPinned((value) => !value)}
-          className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-[#F0202F]/15 hover:text-white"
         >
           <ChevronDown
-            size={15}
-            className={`transition-transform duration-200 ${
-              expanded ? "rotate-180" : ""
-            }`}
+            size={14}
+            strokeWidth={1.5}
+            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           />
         </button>
       </div>
 
       <div
-        className={`grid transition-all duration-200 ease-in-out ${
-          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
       >
         <div className="overflow-hidden">
-          <div className="ml-6 mt-1 flex flex-col gap-0.5 border-l border-white/10 pl-2">
+          <div className="ml-[21px] mt-1 flex flex-col border-l border-white/10 pb-1">
             {children.map((child) => {
-              const ChildIcon = child.icon;
               const active = isChildActive(child.path, location);
 
               return (
@@ -116,18 +160,11 @@ export default function NavGroup({ item, counts = {}, onNavigate }) {
                   key={child.path}
                   to={child.path}
                   onClick={onNavigate}
-                  tabIndex={expanded ? 0 : -1}
+                  tabIndex={open ? 0 : -1}
                   className={() => subLinkCls(active)}
                 >
                   {active && (
-                    <span className="absolute -left-[9px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-primary-light" />
-                  )}
-                  {ChildIcon && (
-                    <ChildIcon
-                      size={16}
-                      strokeWidth={1.75}
-                      className="shrink-0"
-                    />
+                    <span className="absolute -left-px top-1/2 h-4 w-px -translate-y-1/2 bg-[#F0202F]" />
                   )}
                   <span className="truncate">{child.label}</span>
                   <CountBadge count={counts[child.badgeKey] || 0} />

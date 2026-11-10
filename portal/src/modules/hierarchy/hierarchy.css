@@ -1,0 +1,94 @@
+.hx {
+  --hx-line: rgba(255, 255, 255, 0.16);
+}
+
+.hx-scroll {
+  overflow-x: auto;
+  padding-bottom: 28px;
+}
+
+.hx-root,
+.hx-children {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hx-root {
+  gap: 36px;
+  width: max-content;
+  min-width: 100%;
+  margin: 0 auto;
+}
+
+.hx-root li,
+.hx-children li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 26px 10px 0;
+  list-style: none;
+}
+
+.hx-root > li {
+  padding-top: 0;
+}
+
+/* vertical line from a parent down to its row of children */
+.hx-children {
+  position: relative;
+  padding-top: 26px;
+}
+
+.hx-children::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 26px;
+  border-left: 1px solid var(--hx-line);
+}
+
+/* horizontal bar + drop lines for every child */
+.hx-children > li::before,
+.hx-children > li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 26px;
+  border-top: 1px solid var(--hx-line);
+}
+
+.hx-children > li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1px solid var(--hx-line);
+}
+
+.hx-children > li:only-child {
+  padding-top: 0;
+}
+
+.hx-children > li:only-child::before,
+.hx-children > li:only-child::after {
+  display: none;
+}
+
+.hx-children > li:first-child::before,
+.hx-children > li:last-child::after {
+  border: 0 none;
+}
+
+.hx-children > li:last-child::before {
+  border-right: 1px solid var(--hx-line);
+  border-radius: 0 8px 0 0;
+}
+
+.hx-children > li:first-child::after {
+  border-radius: 8px 0 0 0;
+}
