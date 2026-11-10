@@ -1,4 +1,3 @@
-
 import { useRef, useState } from 'react';
 import {
   Eye,
@@ -181,6 +180,9 @@ function normalizeDocuments(documents) {
   return [];
 }
 
+const isBlobUrl = (url) =>
+  typeof url === 'string' && url.startsWith('blob:');
+
 function openUrl(url) {
   const link = document.createElement('a');
 
@@ -294,6 +296,9 @@ export default function DocumentsTab({
           size: result.size || file.size,
           uploadedOn: result.uploadedOn || new Date().toISOString(),
           status: 'pending',
+          // Local only: lets the employee preview the file before sending.
+          previewUrl: URL.createObjectURL(file),
+          isNew: true,
         });
       }
 
@@ -311,6 +316,11 @@ export default function DocumentsTab({
 
   const handleOpen = async (url, name) => {
     setError('');
+
+    if (isBlobUrl(url)) {
+      openUrl(url);
+      return;
+    }
 
     if (needsAuthenticatedFetch(url)) {
       try {
@@ -335,6 +345,11 @@ export default function DocumentsTab({
 
   const handleDownload = async (url, name) => {
     setError('');
+
+    if (isBlobUrl(url)) {
+      downloadUrl(url, name);
+      return;
+    }
 
     if (needsAuthenticatedFetch(url)) {
       try {
@@ -370,8 +385,11 @@ export default function DocumentsTab({
     size,
     removable = false,
     onRemove,
+    previewUrl = '',
+    isNew = false,
   }) => {
-    const permanentUrl = resolveDocumentUrl(url);
+    const permanentUrl = previewUrl || resolveDocumentUrl(url);
+    const openTarget = previewUrl || url;
 
     return (
       <article
@@ -393,6 +411,12 @@ export default function DocumentsTab({
               {size ? ` · ${formatSize(size)}` : ''}
             </p>
 
+            {isNew && (
+              <p className="mt-1 text-xs text-amber-300">
+                New document. It is saved after the admin approves.
+              </p>
+            )}
+
             {!permanentUrl && (
               <p className="mt-1 text-xs text-amber-300">
                 Permanent file URL unavailable. Re-upload required.
@@ -404,7 +428,7 @@ export default function DocumentsTab({
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <button
             type="button"
-            onClick={() => handleOpen(url, name)}
+            onClick={() => handleOpen(openTarget, name)}
             disabled={!permanentUrl}
             title="View document"
             className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm text-white/85 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
@@ -416,7 +440,7 @@ export default function DocumentsTab({
 
           <button
             type="button"
-            onClick={() => handleDownload(url, name)}
+            onClick={() => handleDownload(openTarget, name)}
             disabled={!permanentUrl}
             title="Download document"
             aria-label={`Download ${name}`}
@@ -448,7 +472,9 @@ export default function DocumentsTab({
           <h2 className="text-lg font-semibold">Employee Documents</h2>
 
           <p className="mt-1 text-sm text-white/60">
-            Documents saved to this employee profile.
+            {editable
+              ? 'You can add or remove documents. Your changes are sent to the admin for approval.'
+              : 'Documents saved to your profile. Documents are uploaded by the admin.'}
           </p>
         </div>
 
@@ -496,7 +522,7 @@ export default function DocumentsTab({
 
           <p className="mt-1 text-sm text-white/45">
             {editable
-              ? 'Upload the document, then save the employee profile.'
+              ? 'Upload a document, then select Send for Approval.'
               : 'No documents have been added to this profile yet.'}
           </p>
         </div>
@@ -512,6 +538,8 @@ export default function DocumentsTab({
                 size: doc.size,
                 removable: editable,
                 onRemove: () => removeDocument(doc.id),
+                previewUrl: doc.previewUrl || '',
+                isNew: Boolean(doc.isNew),
               })}
 
               {doc.backFileName && (
@@ -530,9 +558,8 @@ export default function DocumentsTab({
 
       {editable && (
         <p className="mt-4 text-xs leading-5 text-white/40">
-          Files are uploaded to the backend. Save the profile after
-          uploading or removing documents so the document details are
-          saved to the employee record.
+          Uploading or removing a document does not change your record
+          yet. Select Send for Approval, and the admin will review it.
         </p>
       )}
     </section>

@@ -1,3 +1,114 @@
+/* =========================================================
+   LAYOUT HELPERS
+   ---------------------------------------------------------
+   Ye 4 classes JSX mein use ho rahi thin lekin kahin define
+   nahi thin:
+     .container-main   .container-shell
+     .section-container  .section-space
+   Isi wajah se bari screens par sections edge-to-edge phail
+   jate the aur kuch sections mobile par side padding ke bina
+   the. Poori site ka width yahan ke numbers se control hota
+   hai:
+     --layout-max-wide    -> zyada tar sections (1920px design)
+     --layout-max-content -> Hero / AboutIntro / ImageShowcase
+     --gutter             -> side padding (screen ke hisab se)
+   ========================================================= */
+:root {
+  --layout-max-wide: 1920px;
+  --layout-max-content: 1440px;
+  --gutter: 16px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --gutter: 40px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --gutter: 56px;
+  }
+}
+
+/* 2K / 4K screens par content thora bara ho jaye */
+@media (min-width: 2200px) {
+  :root {
+    --layout-max-content: 1600px;
+  }
+}
+
+.container-main,
+.container-shell {
+  width: 100%;
+  max-width: var(--layout-max-wide);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+.section-container {
+  width: 100%;
+  max-width: var(--layout-max-content);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+@media (max-width: 1024px) {
+  .section-container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .section-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Tailwind ki pt-/pb- classes isko override kar deti hain */
+.section-space {
+  padding-top: clamp(64px, 8vw, 112px);
+  padding-bottom: clamp(64px, 8vw, 112px);
+}
+
+/* =========================================================
+   LARGE SCREENS (1921px se upar)
+   Projects pages apna CSS component ke andar rakhte hain
+   (padding 5.2% + aspect-ratio hero), is liye bari screens
+   par content ko yahan se center + limit kiya gaya hai.
+   ========================================================= */
+@media (min-width: 1921px) {
+  section.pw,
+  section.po:not(.po--bare),
+  main.pdp,
+  main.cp {
+    padding-left: max(5.2%, calc((100% - 1760px) / 2));
+    padding-right: max(5.2%, calc((100% - 1760px) / 2));
+  }
+
+  /* hero ki height aspect-ratio se banti hai, isliye width limit karna zaroori hai */
+  section.ph {
+    max-width: 1920px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* =========================================================
+   EXISTING HELPERS (pehle jaise)
+   ========================================================= */
 .container-digi {
   width: min(92%, var(--container-width));
   margin-inline: auto;

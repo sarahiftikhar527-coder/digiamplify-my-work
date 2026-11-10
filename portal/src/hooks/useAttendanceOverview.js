@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx-js-style";
 import api from "../services/api/apiClient";
+import { getBreakLabel } from "../utils/attendanceSessions";
 
 const INITIAL_DATA = {
   date: "",
@@ -10,6 +11,8 @@ const INITIAL_DATA = {
     absent: 0,
     incomplete: 0,
     leave: 0,
+    working: 0,
+    onBreak: 0,
   },
   rows: [],
 };
@@ -20,12 +23,35 @@ const HEADERS = [
   "Department",
   "Designation",
   "Date",
-  "Clock In",
-  "Clock Out",
+  "First Clock In",
+  "Last Clock Out",
+  "Clock Ins",
+  "Clock Outs",
+  "Breaks",
+  "Break Time",
   "Worked Time",
   "Status",
+  "Sessions",
+  "Break Details",
   "Description",
 ];
+
+// PDF mein jagah kam hoti hai, is liye chhota set
+const PDF_HEADERS = [
+  "Employee",
+  "Department",
+  "Date",
+  "First Clock In",
+  "Last Clock Out",
+  "Clock Ins",
+  "Breaks",
+  "Break Time",
+  "Worked Time",
+  "Status",
+  "Sessions",
+];
+
+const STATUS_COLUMN = HEADERS.indexOf("Status");
 
 const COLORS = {
   black: "080808",
@@ -136,25 +162,52 @@ const getMonthDates = (month) => {
   });
 };
 
-const makeRows = (rows, fallbackDate) =>
-  rows.map((row) => ({
-    Employee: getName(row),
-    Email: getEmail(row),
-    Department: getDepartment(row),
-    Designation: getDesignation(row),
-    Date: formatDate(row?.dateKey || row?.date || fallbackDate || ""),
-    "Clock In": formatTime(row?.clockInAt),
-    "Clock Out": formatTime(row?.clockOutAt),
-    "Worked Time": formatWorkedTime(row?.workedMinutes),
-    Status: getStatus(row),
-    Description: row?.description || "",
-  }));
+const describeSessions = (sessions = []) =>
+  sessions
+    .map(
+      (session) =>
+        `${formatTime(session.clockInAt)} - ${
+          session.clockOutAt ? formatTime(session.clockOutAt) : "working"
+        }`
+    )
+    .join("; ");
 
-const createCell = (value, style) => ({
-  t: "s",
-  v: String(value ?? ""),
-  s: style,
-});
+const describeBreaks = (sessions = []) =>
+  sessions
+    .flatMap((session) => session.breaks || [])
+    .map(
+      (item) =>
+        `${getBreakLabel(item.type)} ${formatTime(item.startAt)} - ${
+          item.endAt ? formatTime(item.endAt) : "ongoing"
+        } (${item.minutes}m)`
+    )
+    .join("; ");
+
+const makeRows = (rows, fallbackDate) =>
+  rows.map((row) => {
+    const sessions = Array.isArray(row?.sessions) ? row.sessions : [];
+
+    return {
+      Employee: getName(row),
+      Email: getEmail(row),
+      Department: getDepartment(row),
+      Designation: getDesignation(row),
+      Date: formatDate(row?.dateKey || row?.date || fallbackDate || ""),
+      "First Clock In": formatTime(row?.clockInAt),
+      "Last Clock Out": formatTime(row?.clockOutAt),
+      "Clock Ins": row?.clockInAt ? row?.clockInCount ?? 1 : 0,
+      "Clock Outs": row?.clockInAt
+        ? row?.clockOutCount ?? (row?.clockOutAt ? 1 : 0)
+        : 0,
+      Breaks: row?.breakCount ?? 0,
+      "Break Time": formatWorkedTime(row?.breakMinutes),
+      "Worked Time": formatWorkedTime(row?.workedMinutes),
+      Status: getStatus(row),
+      Sessions: describeSessions(sessions),
+      "Break Details": describeBreaks(sessions),
+      Description: row?.description || "",
+    };
+  });
 
 const downloadExcel = ({ reportRows, periodLabel, fileName }) => {
   const sheetData = [
@@ -170,6 +223,7 @@ const downloadExcel = ({ reportRows, periodLabel, fileName }) => {
 
   const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
   const columnCount = HEADERS.length;
+  const lastColumn = XLSX.utils.encode_col(columnCount - 1);
 
   worksheet["!cols"] = [
     { wch: 24 },
@@ -177,10 +231,16 @@ const downloadExcel = ({ reportRows, periodLabel, fileName }) => {
     { wch: 20 },
     { wch: 22 },
     { wch: 16 },
-    { wch: 14 },
+    { wch: 15 },
+    { wch: 15 },
+    { wch: 11 },
+    { wch: 11 },
+    { wch: 9 },
+    { wch: 13 },
     { wch: 14 },
     { wch: 16 },
-    { wch: 18 },
+    { wch: 40 },
+    { wch: 55 },
     { wch: 36 },
   ];
 
@@ -190,7 +250,7 @@ const downloadExcel = ({ reportRows, periodLabel, fileName }) => {
   }));
 
   worksheet["!autofilter"] = {
-    ref: `A7:J${Math.max(7, reportRows.length + 7)}`,
+    ref: `A7:${lastColumn}${Math.max(7, reportRows.length + 7)}`,
   };
 
   worksheet["!freeze"] = {
@@ -206,7 +266,7 @@ const downloadExcel = ({ reportRows, periodLabel, fileName }) => {
     { hpt: 22 },
     { hpt: 9 },
     { hpt: 30 },
-    ...reportRows.map(() => ({ hpt: 25 })),
+    ...reportRows.map(() => ({ hpt: 32 })),
   ];
 
   const titleStyle = {
@@ -345,7 +405,7 @@ const downloadExcel = ({ reportRows, periodLabel, fileName }) => {
         border: cellBorder,
       };
 
-      if (col === 8) {
+      if (col === STATUS_COLUMN) {
         const status = String(cell.v || "").toLowerCase();
 
         if (status.includes("absent")) {
@@ -385,7 +445,7 @@ const createPdfDocument = ({
     .map(
       (row) => `
         <tr>
-          ${HEADERS.map(
+          ${PDF_HEADERS.map(
             (header) => `<td>${escapeHtml(row[header])}</td>`
           ).join("")}
         </tr>
@@ -511,12 +571,12 @@ tbody tr {
 </div>
 <table>
   <thead>
-    <tr>${HEADERS.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+    <tr>${PDF_HEADERS.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
   </thead>
   <tbody>
     ${
       tableRows ||
-      `<tr><td colspan="${HEADERS.length}">No attendance records found.</td></tr>`
+      `<tr><td colspan="${PDF_HEADERS.length}">No attendance records found.</td></tr>`
     }
   </tbody>
 </table>

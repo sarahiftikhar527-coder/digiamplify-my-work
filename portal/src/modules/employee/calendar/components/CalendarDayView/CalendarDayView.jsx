@@ -68,6 +68,8 @@ export default function CalendarDayView({
   onBack,
   onPrev,
   onNext,
+  onOpenMeeting,
+  onScheduleMeeting,
 }) {
   const items = Array.isArray(schedule?.items)
     ? schedule.items
@@ -131,6 +133,18 @@ export default function CalendarDayView({
             {formatLong(date)}
           </h2>
         </div>
+
+        {onScheduleMeeting && (
+          <div className="cal-day__actions">
+            <button
+              type="button"
+              className="cal-btn"
+              onClick={onScheduleMeeting}
+            >
+              + Schedule meeting
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="cal-info-grid">
@@ -265,14 +279,22 @@ export default function CalendarDayView({
               />
             )}
 
-            {items.map((item, index) => (
-              <div
+            {items.map((item, index) => {
+              const clickable = Boolean(item.meeting && onOpenMeeting);
+              const Wrapper = clickable ? 'button' : 'div';
+
+              return (
+              <Wrapper
                 key={
                   item.id ??
                   item._id ??
                   `${item.title || 'item'}-${index}`
                 }
-                className={`cal-item cal-item--${item.type || 'event'}`}
+                type={clickable ? 'button' : undefined}
+                onClick={clickable ? () => onOpenMeeting(item.meeting) : undefined}
+                className={`cal-item cal-item--${item.type || 'event'}${
+                  clickable ? ' cal-item--clickable' : ''
+                }`}
               >
                 <span className="cal-item__icon">
                   <Icon name="calendar" size={14} />
@@ -300,8 +322,9 @@ export default function CalendarDayView({
                     )}
                   </span>
                 </div>
-              </div>
-            ))}
+              </Wrapper>
+              );
+            })}
 
             {shift && (
               <Marker

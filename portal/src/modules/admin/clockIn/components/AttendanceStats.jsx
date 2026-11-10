@@ -1,9 +1,11 @@
 
 import {
+  Coffee,
   Users,
   UserCheck,
   UserPlus,
   UserX,
+  Activity,
 } from "lucide-react";
 
 const STAT_ITEMS = [
@@ -22,12 +24,18 @@ const STAT_ITEMS = [
     bg: "bg-green-500/10",
   },
   {
-    key: "manageEmployees",
-    label: "Manage Employees",
-    icon: UserPlus,
-    color: "text-purple-400",
-    bg: "bg-purple-500/10",
-    action: true,
+    key: "working",
+    label: "Working Now",
+    icon: Activity,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+  },
+  {
+    key: "onBreak",
+    label: "On Break",
+    icon: Coffee,
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
   },
   {
     key: "absent",
@@ -35,6 +43,14 @@ const STAT_ITEMS = [
     icon: UserX,
     color: "text-red-400",
     bg: "bg-red-500/10",
+  },
+  {
+    key: "manageEmployees",
+    label: "Manage Employees",
+    icon: UserPlus,
+    color: "text-purple-400",
+    bg: "bg-purple-500/10",
+    action: true,
   },
 ];
 
@@ -46,12 +62,14 @@ const AttendanceStats = ({
   const safeStats = {
     totalEmployees: Number(stats?.totalEmployees ?? stats?.total ?? 0),
     present: Number(stats?.present ?? 0),
+    working: Number(stats?.working ?? 0),
+    onBreak: Number(stats?.onBreak ?? 0),
     manageEmployees: null,
     absent: Number(stats?.absent ?? 0),
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {STAT_ITEMS.map((item) => {
         const Icon = item.icon;
 

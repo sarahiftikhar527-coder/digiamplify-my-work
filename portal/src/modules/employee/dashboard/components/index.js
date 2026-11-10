@@ -11,3 +11,5 @@ export { default as AttendanceOverview } from './AttendanceOverview';
 export { default as AnnouncementsCard } from './AnnouncementsCard';
 export { default as LeaveBalance } from './LeaveBalance';
 export { default as QuickActions } from './QuickActions';
+
+export { FocusStrip, WorkloadForecast, StatusMix, PriorityMix } from './ProductivityInsights';

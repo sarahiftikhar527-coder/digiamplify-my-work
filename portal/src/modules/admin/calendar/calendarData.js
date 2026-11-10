@@ -108,6 +108,7 @@ export const EVENT_TYPES = [
   { id: 'weekend', label: 'Weekend', dot: 'bg-neutral-500' },
   { id: 'event', label: 'Event', dot: 'bg-purple-500' },
   { id: 'holiday', label: 'Holiday', dot: 'bg-sky-400' },
+  { id: 'meeting', label: 'Meeting', dot: 'bg-emerald-400' },
   { id: 'shift', label: 'Assigned Shift', dot: 'bg-blue-500' },
 ];
 

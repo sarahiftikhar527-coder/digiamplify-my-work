@@ -140,8 +140,9 @@ export default function RequestEditModal({
         <h3 id="pf-modal-title">Edit your profile?</h3>
 
         <p id="pf-modal-description">
-          Your details will become editable. Changes are saved only
-          when you select Save changes.
+          You can change your details, but nothing is saved right away.
+          Your changes are sent to the admin and are saved only after
+          the admin approves them.
         </p>
 
         <div className="pf-modal__actions">

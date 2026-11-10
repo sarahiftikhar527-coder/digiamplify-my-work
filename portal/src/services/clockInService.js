@@ -1,10 +1,12 @@
-
 import apiClient, { unwrap } from "./api/apiClient.js";
 
 export const clockInService = {
   getToday: () => unwrap(apiClient.get("/attendance/today")),
 
   getRecent: () => unwrap(apiClient.get("/attendance/me/recent")),
+
+  // Today's status of the whole team (everyone can read it).
+  getTeamToday: () => unwrap(apiClient.get("/attendance/team/today")),
 
   clockIn: ({ pin }) =>
     unwrap(apiClient.post("/attendance/clock-in", { pin })),
@@ -16,6 +18,11 @@ export const clockInService = {
         description,
       })
     ),
+
+  startBreak: (type = "other") =>
+    unwrap(apiClient.post("/attendance/break/start", { type })),
+
+  endBreak: () => unwrap(apiClient.post("/attendance/break/end")),
 
   setPin: ({ password, newPin }) =>
     unwrap(

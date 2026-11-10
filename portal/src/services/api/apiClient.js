@@ -1,9 +1,9 @@
-
 import axios from "axios";
 import { tokenStore } from "./tokenStore";
 
 const defaultBaseURL =
-  typeof window !== "undefined" && window.location.hostname.includes("digiamplify.com")
+  typeof window !== "undefined" &&
+  window.location.hostname.includes("digiamplify.com")
     ? "https://api.digiamplify.com/api/v1"
     : "http://localhost:5000/api/v1";
 
@@ -13,7 +13,7 @@ const apiClient = axios.create({
   baseURL,
   withCredentials: true,
   headers: {
-    "Content-Type": "application/json",
+    Accept: "application/json",
   },
 });
 
@@ -24,6 +24,9 @@ export function refreshAccessToken() {
     refreshPromise = axios
       .post(`${baseURL}/auth/refresh`, null, {
         withCredentials: true,
+        headers: {
+          Accept: "application/json",
+        },
       })
       .then((response) => {
         const token =
@@ -50,9 +53,30 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = tokenStore.get();
 
+    config.headers = config.headers || {};
+
     if (token) {
-      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const isFormData =
+      typeof FormData !== "undefined" &&
+      config.data instanceof FormData;
+
+    if (isFormData) {
+      if (typeof config.headers.delete === "function") {
+        config.headers.delete("Content-Type");
+      } else {
+        delete config.headers["Content-Type"];
+        delete config.headers["content-type"];
+      }
+    } else if (
+      config.data !== undefined &&
+      config.data !== null &&
+      !config.headers["Content-Type"] &&
+      !config.headers["content-type"]
+    ) {
+      config.headers["Content-Type"] = "application/json";
     }
 
     return config;
@@ -88,7 +112,10 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       } catch (refreshError) {
         tokenStore.clear();
-        window.dispatchEvent(new Event("auth:logout"));
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("auth:logout"));
+        }
 
         return Promise.reject(refreshError);
       }

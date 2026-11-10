@@ -3,6 +3,7 @@ import path from 'path'
 import Profile from '../../models/Profile.js'
 import Chat from '../../models/chat.js'
 import ApiError from '../../utils/ApiError.js'
+import { prisma } from '../../config/db.js'
 import {
   CHAT_ATTACHMENTS_DIR,
   PROFILE_DOCUMENTS_DIR,
@@ -125,6 +126,29 @@ function profileDocumentReferencesFileName(doc, fileName) {
   })
 }
 
+/**
+ * A document an employee added in a pending profile change request is not on
+ * the profile yet. The employee who sent it and any admin may open it so the
+ * request can be reviewed.
+ */
+async function hasPendingRequestAccess(user, fileName) {
+  const requesterId = String(user._id || user.id)
+  const admin = isAdminRole(user.role)
+
+  const pending = await prisma.profileChangeRequest.findMany({
+    where: {
+      status: 'pending',
+      ...(admin ? {} : { userId: requesterId }),
+    },
+    select: { changes: true },
+    take: 200,
+  })
+
+  return pending.some((row) =>
+    JSON.stringify(row.changes || {}).includes(fileName)
+  )
+}
+
 export async function assertProfileDocumentAccess(user, fileName) {
   sanitizeUploadFileName(fileName)
 
@@ -158,6 +182,10 @@ export async function assertProfileDocumentAccess(user, fileName) {
     )
 
     if (!matched) {
+      if (await hasPendingRequestAccess(user, fileName)) {
+        return
+      }
+
       throw new ApiError(404, 'File not found.')
     }
 

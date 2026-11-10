@@ -40,9 +40,17 @@ router.get("/me/absenteeism", controller.myAbsenteeism);
 
 router.post("/clock-in", controller.clockIn);
 router.post("/clock-out", controller.clockOut);
+router.post("/break/start", controller.startBreak);
+router.post("/break/end", controller.endBreak);
 router.post("/pin/set", controller.setPin);
 
 router.patch("/shifts/:shiftId/complete", controller.completeShift);
+
+// Everyone (admin and employees) can see the team live board.
+router.get("/team/live", controller.teamLive);
+
+// Alias for the older frontend hook that still calls /team/today.
+router.get("/team/today", controller.teamLive);
 
 router.get(
   "/admin/summary",

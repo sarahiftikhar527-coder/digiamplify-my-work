@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { clockInService } from "../services/clockInService.js";
 
@@ -7,21 +6,34 @@ export default function useMyAttendance() {
   const [shift, setShift] = useState(null);
   const [recent, setRecent] = useState([]);
   const [hasPin, setHasPin] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [state, setState] = useState("out");
+  const [backendOutdated, setBackendOutdated] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const reload = useCallback(async () => {
-    setLoading(true);
+  const reload = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
 
     try {
       const today = await clockInService.getToday();
 
+      const hasSessions = Array.isArray(today?.sessions);
+
       setRecord(today?.record ?? null);
       setShift(today?.shift ?? null);
       setHasPin(today?.hasPin ?? false);
+      setSessions(hasSessions ? today.sessions : []);
+      setBackendOutdated(!hasSessions);
+      setState(
+        today?.state ||
+          (today?.record?.clockInAt && !today?.record?.clockOutAt
+            ? "in"
+            : "out")
+      );
 
       try {
         const history = await clockInService.getRecent();
@@ -63,7 +75,7 @@ export default function useMyAttendance() {
 
       try {
         await action();
-        await reload();
+        await reload(true);
 
         return { ok: true };
       } catch (err) {
@@ -77,6 +89,7 @@ export default function useMyAttendance() {
         return {
           ok: false,
           error: message,
+          invalidPin: err?.response?.data?.code === "INVALID_PIN",
         };
       } finally {
         setSubmitting(false);
@@ -99,16 +112,31 @@ export default function useMyAttendance() {
     [perform]
   );
 
+  const startBreak = useCallback(
+    (type) => perform(() => clockInService.startBreak(type)),
+    [perform]
+  );
+
+  const endBreak = useCallback(
+    () => perform(() => clockInService.endBreak()),
+    [perform]
+  );
+
   return {
     record,
     shift,
     recent,
     hasPin,
+    sessions,
+    state,
+    backendOutdated,
     loading,
     submitting,
     error,
     reload,
     clockIn,
     clockOut,
+    startBreak,
+    endBreak,
   };
 }

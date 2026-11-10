@@ -9,10 +9,11 @@ export const EVENT_TYPES = {
   absent: { label: 'Absent' },
   weekend: { label: 'Weekend' },
   event: { label: 'Event' },
+  meeting: { label: 'Meeting' },
   holiday: { label: 'Holiday' },
 };
 export const LEGEND_ORDER = Object.keys(EVENT_TYPES);
-export const ALL_VISIBLE = { task: true, absent: true, weekend: true, event: true, holiday: true };
+export const ALL_VISIBLE = { task: true, absent: true, weekend: true, event: true, meeting: true, holiday: true };
 
 const pad = (n) => String(n).padStart(2, '0');
 const mon3 = (d) => MONTHS[d.getMonth()].slice(0, 3);

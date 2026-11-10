@@ -4,6 +4,7 @@ import TaskBoardHeader from "../../components/Taskboardheader/Taskboardheader.js
 import TaskColumn from "../../components/Taskcolumn/Taskcolumn.jsx";
 import AdminAddTaskModal from "../../components/Adminaddtaskmodal/Adminaddtaskmodal.jsx";
 import TaskDetailDrawer from "../../components/Taskdetaildrawer/Taskdetaildrawer.jsx";
+import AdminTaskActivity from "../../components/Admintaskactivity/Admintaskactivity.jsx";
 
 const BOARD_STATUSES = [
   { id: "todo", key: "todo", value: "todo", label: "To Do" },
@@ -19,6 +20,11 @@ const BOARD_STATUSES = [
     value: "completed",
     label: "Completed",
   },
+];
+
+const TABS = [
+  { id: "board", label: "Task Board" },
+  { id: "activity", label: "Employee Activity" },
 ];
 
 const getPayload = (response) => response?.data ?? response ?? {};
@@ -167,6 +173,7 @@ const normalizeTask = (task) => {
   return {
     ...task,
     id: String(task._id || task.id || ""),
+    taskType: task.taskType || "extra",
     title: task.title || "",
     subtitle: task.subtitle || "",
     description: task.description || "",
@@ -201,6 +208,7 @@ const getTaskId = (taskOrId) => {
 };
 
 function AdminTaskPage() {
+  const [tab, setTab] = useState("board");
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -213,6 +221,7 @@ function AdminTaskPage() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [activityKey, setActivityKey] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -230,7 +239,7 @@ function AdminTaskPage() {
 
       if (tasksResult.status === "fulfilled") {
         const taskList = getArray(tasksResult.value, ["tasks"]);
-        // FIX: drop null entries returned by normalizeTask
+        // Drop null entries returned by normalizeTask
         setTasks(taskList.map(normalizeTask).filter(Boolean));
       } else {
         setTasks([]);
@@ -302,12 +311,19 @@ function AdminTaskPage() {
     [employees]
   );
 
+  // The board only shows extra tasks. Fixed daily tasks are managed in
+  // "Employee Activity", and employees' personal tasks stay private.
+  const boardTasks = useMemo(
+    () => tasks.filter((task) => task.taskType === "extra"),
+    [tasks]
+  );
+
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) return tasks;
+    if (!query) return boardTasks;
 
-    return tasks.filter((task) => {
+    return boardTasks.filter((task) => {
       const assigneeNames = (task.assignees || [])
         .map((assignee) => {
           if (typeof assignee === "string") {
@@ -330,7 +346,7 @@ function AdminTaskPage() {
         .toLowerCase()
         .includes(query);
     });
-  }, [tasks, search, employeesById]);
+  }, [boardTasks, search, employeesById]);
 
   const selectedTask = useMemo(
     () => tasks.find((task) => task.id === selectedTaskId) || null,
@@ -348,12 +364,14 @@ function AdminTaskPage() {
           .filter(Boolean)
       : [];
 
+    const taskType = formData.taskType === "daily" ? "daily" : "extra";
+
     if (!formData.title?.trim()) {
       setNotice("Please enter a task title.");
       return;
     }
 
-    if (!formData.dueDate) {
+    if (taskType === "extra" && !formData.dueDate) {
       setNotice("Please select a due date.");
       return;
     }
@@ -368,16 +386,28 @@ function AdminTaskPage() {
 
     try {
       await apiClient.post("/tasks", {
+        taskType,
         title: formData.title.trim(),
         subtitle: formData.subtitle?.trim() || "",
         description: formData.description?.trim() || "",
         priority: formData.priority || "Medium",
-        dueDate: formData.dueDate,
+        startDate: formData.startDate || undefined,
+        dueDate: formData.dueDate || undefined,
         assignees: [...new Set(assignees.map(String))],
       });
 
       setAddOpen(false);
-      setNotice("Task assigned successfully.");
+      setNotice(
+        taskType === "daily"
+          ? "Fixed daily task assigned successfully."
+          : "Task assigned successfully."
+      );
+
+      if (taskType === "daily") {
+        setTab("activity");
+        setActivityKey((value) => value + 1);
+      }
+
       await loadData();
     } catch (requestError) {
       setNotice(
@@ -580,8 +610,25 @@ function AdminTaskPage() {
           }}
           assignees={employees}
           lastUpdated={lastUpdated}
-          tasks={tasks}
+          tasks={boardTasks}
         />
+
+        <div className="mb-5 flex gap-1 border-b border-white/10">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTab(item.id)}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                tab === item.id
+                  ? "border-[#c1121f] text-white"
+                  : "border-transparent text-gray-400 hover:text-white"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         {notice && (
           <div
@@ -624,51 +671,61 @@ function AdminTaskPage() {
           </div>
         )}
 
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-gray-400">
-            {loading
-              ? "Loading tasks..."
-              : `${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}`}
-            {" · "}
-            {employeesLoading
-              ? "Loading employees..."
-              : `${employees.length} active employee${employees.length === 1 ? "" : "s"}`}
-          </div>
-
-          <button
-            type="button"
-            onClick={loadData}
-            disabled={loading || employeesLoading || submitting}
-            className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:border-[#c1121f] hover:bg-[#c1121f]/10 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading || employeesLoading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="rounded-xl border border-white/10 bg-[#0d0d0d] px-5 py-12 text-center text-sm text-gray-400">
-            Loading task board...
-          </div>
+        {tab === "activity" ? (
+          <AdminTaskActivity
+            key={activityKey}
+            employees={employees}
+            onNotice={setNotice}
+          />
         ) : (
-          <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-3">
-            {BOARD_STATUSES.map((status) => {
-              const columnTasks = filteredTasks.filter(
-                (task) => task.status === status.id
-              );
+          <>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-gray-400">
+                {loading
+                  ? "Loading tasks..."
+                  : `${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}`}
+                {" · "}
+                {employeesLoading
+                  ? "Loading employees..."
+                  : `${employees.length} active employee${employees.length === 1 ? "" : "s"}`}
+              </div>
 
-              return (
-                <TaskColumn
-                  key={status.id}
-                  status={status}
-                  tasks={columnTasks}
-                  employeesById={employeesById}
-                  onView={openTaskDetails}
-                  onDelete={deleteTask}
-                  onMove={moveTask}
-                />
-              );
-            })}
-          </div>
+              <button
+                type="button"
+                onClick={loadData}
+                disabled={loading || employeesLoading || submitting}
+                className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:border-[#c1121f] hover:bg-[#c1121f]/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading || employeesLoading ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="rounded-xl border border-white/10 bg-[#0d0d0d] px-5 py-12 text-center text-sm text-gray-400">
+                Loading task board...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-3">
+                {BOARD_STATUSES.map((status) => {
+                  const columnTasks = filteredTasks.filter(
+                    (task) => task.status === status.id
+                  );
+
+                  return (
+                    <TaskColumn
+                      key={status.id}
+                      status={status}
+                      tasks={columnTasks}
+                      employeesById={employeesById}
+                      onView={openTaskDetails}
+                      onDelete={deleteTask}
+                      onMove={moveTask}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -682,10 +739,9 @@ function AdminTaskPage() {
       />
 
       {/*
-        FIX: TaskDetailDrawer crashed because it was rendered with task={null}
-        (when no task is selected) and its getAssigneeIds(task) reads
-        task.assignedTo. Only mount it when a task is actually selected.
-        The key resets its internal form state when a different task is opened.
+        TaskDetailDrawer crashed when rendered with task={null}, so it is only
+        mounted when a task is selected. The key resets its internal form state
+        when a different task is opened.
       */}
       {selectedTask && (
         <TaskDetailDrawer

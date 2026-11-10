@@ -1,4 +1,5 @@
 import { prisma } from "../config/db.js";
+import { MockObjectId } from "../utils/mongooseCompat.js";
 
 function cleanId(val) {
   if (val === null || val === undefined) return val;
@@ -13,6 +14,10 @@ function cleanId(val) {
 
 export function translateValue(val) {
   if (val === null || val === undefined) return val;
+
+  // new mongoose.Types.ObjectId(id) is a MockObjectId ({ value }) here.
+  // Prisma needs the plain id string, otherwise it rejects the unknown "value" argument.
+  if (val instanceof MockObjectId) return val.toString();
 
   if (Array.isArray(val)) {
     return val.map(translateValue);
@@ -74,6 +79,23 @@ export function translateWhere(filter = {}, fieldMap = {}) {
     if (targetField.includes(".")) {
       const rootField = targetField.split(".")[0];
       targetField = fieldMap[rootField] || rootField;
+    }
+
+    // "employeeIds" is a JSON array column. Mongo's { employeeIds: id } ("array contains id")
+    // must become a Prisma JSON filter.
+    if (
+      targetField === "employeeIds" &&
+      value !== null &&
+      value !== undefined &&
+      !Array.isArray(value) &&
+      !(
+        typeof value === "object" &&
+        !(value instanceof MockObjectId) &&
+        Object.keys(value).some((k) => k.startsWith("$"))
+      )
+    ) {
+      where[targetField] = { array_contains: [cleanId(value)] };
+      continue;
     }
 
     where[targetField] = translateValue(value);

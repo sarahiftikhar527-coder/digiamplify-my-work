@@ -1,0 +1,1 @@
+export { default as AdminApprovalsPage } from "./pages/AdminApprovalsPage/AdminApprovalsPage.jsx";

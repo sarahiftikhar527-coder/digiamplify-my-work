@@ -1,5 +1,6 @@
-
 import apiClient, { unwrap } from './api/apiClient';
+import meetingsService from './meetingsService';
+import { meetingToCalendarEvent, meetingToDayItem } from '../modules/meetings/utils';
 
 const getRows = (response) => {
   if (Array.isArray(response)) return response;
@@ -158,6 +159,19 @@ const isCancelled = (status) =>
     String(status || '').toLowerCase()
   );
 
+// Meetings must never break the rest of the calendar if that request fails.
+const getMeetingsSafely = async (from, to) => {
+  try {
+    const params = { scope: 'mine' };
+    if (from) params.from = new Date(`${from}T00:00:00`).toISOString();
+    if (to) params.to = new Date(`${to}T23:59:59`).toISOString();
+    return await meetingsService.list(params);
+  } catch (error) {
+    console.warn('Unable to load meetings:', error?.message || error);
+    return [];
+  }
+};
+
 export const calendarService = {
   async getEvents({ from, to } = {}) {
     const params = {};
@@ -165,7 +179,12 @@ export const calendarService = {
     if (from) params.from = from;
     if (to) params.to = to;
 
-    return getCalendarRecords(params);
+    const [records, meetings] = await Promise.all([
+      getCalendarRecords(params),
+      getMeetingsSafely(from, to),
+    ]);
+
+    return [...records, ...meetings.map(meetingToCalendarEvent)];
   },
 
   async getDaySchedule(date) {
@@ -173,10 +192,10 @@ export const calendarService = {
       throw new Error('A date is required to load the daily schedule.');
     }
 
-    const records = await getCalendarRecords({
-      from: date,
-      to: date,
-    });
+    const [records, meetings] = await Promise.all([
+      getCalendarRecords({ from: date, to: date }),
+      getMeetingsSafely(date, date),
+    ]);
 
     const shifts = records.filter(
       (record) =>
@@ -191,10 +210,10 @@ export const calendarService = {
         record.from === date
     );
 
-    const items = records
+    const taskItems = records
       .filter(
         (record) =>
-          ['meeting', 'task'].includes(record.type) &&
+          record.type === 'task' &&
           overlapsDate(record, date) &&
           !isCancelled(record.status)
       )
@@ -207,6 +226,14 @@ export const calendarService = {
         place: record.description || '',
         attendees: null,
       }));
+
+    const meetingItems = meetings
+      .filter((meeting) => !isCancelled(meeting.status))
+      .map(meetingToDayItem);
+
+    const items = [...taskItems, ...meetingItems]
+      .filter((item) => item.start)
+      .sort((a, b) => a.start.localeCompare(b.start));
 
     const shift = shifts[0];
 

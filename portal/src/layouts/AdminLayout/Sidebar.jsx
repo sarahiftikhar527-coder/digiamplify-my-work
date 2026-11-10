@@ -1,9 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, X } from "lucide-react";
+import NavGroup, { linkCls } from "../shared/NavGroup";
 import { getNavigationByRole } from "@/constants/navigation";
+import { getChangeRequestCount } from "@/services/api/profileService";
 import { Avatar } from "@/shared/components/ui";
 import { useAuth } from "@/context";
+import { usersService } from "@/services/usersService";
 
 const Logo = () => (
   <div className="flex items-end whitespace-nowrap text-[23px] font-semibold leading-none tracking-tight text-white">
@@ -24,6 +27,41 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
   const { pathname } = useLocation();
 
   const navigation = getNavigationByRole(user?.role) || [];
+  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
+
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [pendingProfileApprovals, setPendingProfileApprovals] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getChangeRequestCount()
+      .then((res) => {
+        if (!cancelled) setPendingProfileApprovals(Number(res?.data?.count || 0));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+
+    let cancelled = false;
+
+    usersService
+      .pending()
+      .then((items) => {
+        if (!cancelled) setPendingApprovals(Array.isArray(items) ? items.length : 0);
+      })
+      .catch(() => {
+        // Badge is optional: ignore errors silently.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, pathname]);
+
+  const counts = { pendingApprovals: pendingApprovals + pendingProfileApprovals };
 
   useEffect(() => {
     if (window.innerWidth < 1024 && open) {
@@ -61,10 +99,14 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
         />
       )}
 
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      <div
+        className={`fixed left-0 top-0 z-50 h-screen shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out lg:sticky ${
+          open ? "w-[225px]" : "w-0"
         }`}
+      >
+      <aside
+        className="flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)]"
+        onMouseLeave={onClose}
       >
         <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between gap-2 px-4 pb-9 pt-8">
@@ -75,7 +117,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
               onClick={onClose}
               aria-label="Close sidebar"
               title="Close sidebar"
-              className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+              className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
             >
               <X size={20} />
             </button>
@@ -85,31 +127,39 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
             aria-label="Admin navigation"
             className="flex flex-col gap-3 px-3"
           >
-            {navigation.map(({ label, path, icon: Icon }) => (
-              <NavLink
-                key={path}
-                to={path}
-                end={path === "/"}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  [
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-[14px] transition-all duration-200",
-                    isActive
-                      ? "bg-gradient-to-r from-[#F0202F] to-[#9B0E18] font-medium text-white shadow-[0_6px_20px_rgba(193,18,31,0.22)]"
-                      : "text-white/90 hover:bg-white/5 hover:text-white",
-                  ].join(" ")
-                }
-              >
-                {Icon && (
-                  <Icon
-                    size={19}
-                    strokeWidth={1.75}
-                    className="shrink-0"
+            {navigation.map((item) => {
+              if (item.children?.length) {
+                return (
+                  <NavGroup
+                    key={item.path}
+                    item={item}
+                    counts={counts}
+                    onNavigate={onClose}
                   />
-                )}
-                <span className="truncate">{label}</span>
-              </NavLink>
-            ))}
+                );
+              }
+
+              const { label, path, icon: Icon } = item;
+
+              return (
+                <NavLink
+                  key={path}
+                  to={path}
+                  end={path === "/"}
+                  onClick={onClose}
+                  className={({ isActive }) => linkCls(isActive)}
+                >
+                  {Icon && (
+                    <Icon
+                      size={19}
+                      strokeWidth={1.75}
+                      className="shrink-0"
+                    />
+                  )}
+                  <span className="truncate">{label}</span>
+                </NavLink>
+              );
+            })}
           </nav>
         </div>
 
@@ -138,6 +188,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
           </div>
         </div>
       </aside>
+      </div>
     </>
   );
 }

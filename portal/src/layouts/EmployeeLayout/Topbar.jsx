@@ -10,6 +10,7 @@ import NotificationBell from '@/modules/notifications/components/NotificationBel
 
 const Topbar = ({
   onMenuClick = () => {},
+  onMenuHover = () => {},
   sidebarOpen = true,
 }) => {
   const { pathname } = useLocation()
@@ -34,6 +35,7 @@ const Topbar = ({
         <button
           type="button"
           onClick={onMenuClick}
+          onMouseEnter={onMenuHover}
           aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           className="relative z-10 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 hover:text-[#F0202F]"

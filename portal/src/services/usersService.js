@@ -6,4 +6,12 @@ export const usersService = {
   create: (body) => unwrap(apiClient.post('/users', body)),
   update: (id, body) => unwrap(apiClient.patch(`/users/${id}`, body)),
   remove: (id) => unwrap(apiClient.delete(`/users/${id}`)),
+
+  // Signup approval flow (admin only)
+  pending: () => unwrap(apiClient.get('/users/pending')).then((d) => d?.requests || []),
+  approve: (id) => unwrap(apiClient.patch(`/users/${id}/approve`)),
+  reject: (id) => unwrap(apiClient.patch(`/users/${id}/reject`)),
+
+  // Live clock-in status of all employees (admin only)
+  liveStatus: () => unwrap(apiClient.get('/users/live-status')).then((d) => d?.employees || []),
 }

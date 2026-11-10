@@ -6,7 +6,22 @@ import {
   initials,
 } from "./attendanceUtils";
 
-const HEADERS = ["Employee", "Department", "Clock In", "Clock Out", "Hours", "Status", ""];
+const HEADERS = [
+  "Employee",
+  "Department",
+  "First In",
+  "Last Out",
+  "Clock Ins",
+  "Breaks",
+  "Hours",
+  "Status",
+  "",
+];
+
+const STATE_CHIP = {
+  in: { label: "Working", cls: "border-green-500/40 bg-green-500/10 text-green-400" },
+  break: { label: "On Break", cls: "border-amber-500/40 bg-amber-500/10 text-amber-400" },
+};
 
 const Message = ({ children }) => (
   <tr>
@@ -19,7 +34,7 @@ const Message = ({ children }) => (
 export default function AttendanceTable({ rows = [], loading = false, onView = () => {} }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-left text-[13px]">
+      <table className="w-full min-w-[980px] text-left text-[13px]">
         <thead>
           <tr className="border-y border-white/10 text-[12px] text-white/60">
             {HEADERS.map((heading, index) => (
@@ -36,51 +51,79 @@ export default function AttendanceTable({ rows = [], loading = false, onView = (
           ) : rows.length === 0 ? (
             <Message> No Employee Attendance Record Found</Message>
           ) : (
-            rows.map((employee, index) => (
-              <tr
-                key={employee.userId || employee._id || index}
-                className="border-b border-white/5 last:border-0"
-              >
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/30 bg-red-600/15 text-[11px] font-bold text-red-400">
-                      {initials(employee.name || "Employee")}
-                    </span>
-                    <span className="font-semibold text-white">{employee.name || "Unknown"}</span>
-                  </div>
-                </td>
+            rows.map((employee, index) => {
+              const chip = STATE_CHIP[employee.state];
 
-                <td className="px-5 py-3 text-white/70">{employee.department || "—"}</td>
+              return (
+                <tr
+                  key={employee.userId || employee._id || index}
+                  className="border-b border-white/5 last:border-0"
+                >
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/30 bg-red-600/15 text-[11px] font-bold text-red-400">
+                        {initials(employee.name || "Employee")}
+                      </span>
+                      <span className="font-semibold text-white">{employee.name || "Unknown"}</span>
+                    </div>
+                  </td>
 
-                <td className="px-5 py-3 font-medium text-white">{formatTime(employee.clockInAt)}</td>
+                  <td className="px-5 py-3 text-white/70">{employee.department || "—"}</td>
 
-                <td className="px-5 py-3 text-white/60">{formatTime(employee.clockOutAt)}</td>
+                  <td className="px-5 py-3 font-medium text-white">{formatTime(employee.clockInAt)}</td>
 
-                <td className="px-5 py-3 text-white/80">
-                  {employee.clockInAt ? formatHours(employee.workedMinutes || 0) : "—"}
-                </td>
+                  <td className="px-5 py-3 text-white/60">
+                    {employee.state === "in" || employee.state === "break"
+                      ? "Still working"
+                      : formatTime(employee.clockOutAt)}
+                  </td>
 
-                <td className="px-5 py-3">
-                  <span
-                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
-                      BADGE[employee.status] || "border-white/20 text-white/70"
-                    }`}
-                  >
-                    {BADGE_LABEL[employee.status] || employee.status || "—"}
-                  </span>
-                </td>
+                  <td className="px-5 py-3 text-white/80">
+                    {employee.clockInAt
+                      ? `${employee.clockInCount ?? 1} in / ${employee.clockOutCount ?? (employee.clockOutAt ? 1 : 0)} out`
+                      : "—"}
+                  </td>
 
-                <td className="px-5 py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onView(employee)}
-                    className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-white hover:bg-white/10"
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))
+                  <td className="px-5 py-3 text-white/80">
+                    {employee.clockInAt
+                      ? `${employee.breakCount ?? 0} · ${formatHours(employee.breakMinutes || 0)}`
+                      : "—"}
+                  </td>
+
+                  <td className="px-5 py-3 text-white/80">
+                    {employee.clockInAt ? formatHours(employee.workedMinutes || 0) : "—"}
+                  </td>
+
+                  <td className="px-5 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                          BADGE[employee.status] || "border-white/20 text-white/70"
+                        }`}
+                      >
+                        {BADGE_LABEL[employee.status] || employee.status || "—"}
+                      </span>
+
+                      {chip && (
+                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${chip.cls}`}>
+                          {chip.label}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="px-5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onView(employee)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-white hover:bg-white/10"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

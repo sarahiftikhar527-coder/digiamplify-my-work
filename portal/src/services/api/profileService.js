@@ -1,14 +1,59 @@
-
 import apiClient from './apiClient';
 
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+
+function getApiErrorMessage(error, fallback) {
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    fallback
+  );
+}
+
+function encodeId(id) {
+  return encodeURIComponent(String(id));
+}
+
+function buildImageForm(file) {
+  if (!file) {
+    throw new Error('Please select a photo.');
+  }
+
+  if (!file.type?.startsWith('image/')) {
+    throw new Error('Please select a valid image file.');
+  }
+
+  if (file.size > MAX_AVATAR_SIZE) {
+    throw new Error('Image size must not exceed 2 MB.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return formData;
+}
+
 export async function getMyProfile() {
-  const response = await apiClient.get('/profile/me');
-  return response.data;
+  try {
+    const response = await apiClient.get('/profile/me');
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to load your profile.')
+    );
+  }
 }
 
 export async function getEmployees() {
-  const response = await apiClient.get('/profile/employees');
-  return response.data;
+  try {
+    const response = await apiClient.get('/profile/employees');
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to load employees.')
+    );
+  }
 }
 
 export async function getEmployeeProfile(userId) {
@@ -16,16 +61,32 @@ export async function getEmployeeProfile(userId) {
     throw new Error('Please select an employee.');
   }
 
-  const response = await apiClient.get(
-    `/profile/employees/${encodeURIComponent(userId)}`
-  );
+  try {
+    const response = await apiClient.get(
+      `/profile/employees/${encodeId(userId)}`
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to load employee profile.')
+    );
+  }
 }
 
 export async function updateMyProfile(profileData) {
-  const response = await apiClient.patch('/profile/me', profileData);
-  return response.data;
+  try {
+    const response = await apiClient.patch(
+      '/profile/me',
+      profileData
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to update your profile.')
+    );
+  }
 }
 
 export async function updateEmployeeProfile(userId, profileData) {
@@ -33,10 +94,137 @@ export async function updateEmployeeProfile(userId, profileData) {
     throw new Error('Please select an employee before saving.');
   }
 
-  const response = await apiClient.patch(
-    `/profile/employees/${encodeURIComponent(userId)}`,
-    profileData
-  );
+  try {
+    const response = await apiClient.patch(
+      `/profile/employees/${encodeId(userId)}`,
+      profileData
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to update employee profile.')
+    );
+  }
+}
+
+export async function uploadMyAvatar(file) {
+  const formData = buildImageForm(file);
+
+  try {
+    const response = await apiClient.post(
+      '/profile/me/avatar',
+      formData
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to upload your profile photo.')
+    );
+  }
+}
+
+export async function uploadEmployeeAvatar(userId, file) {
+  if (!userId) {
+    throw new Error('Please select an employee before uploading a photo.');
+  }
+
+  const formData = buildImageForm(file);
+
+  try {
+    const response = await apiClient.post(
+      `/profile/employees/${encodeId(userId)}/avatar`,
+      formData
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to upload employee profile photo.')
+    );
+  }
+}
+
+export async function getMyChangeRequest() {
+  try {
+    const response = await apiClient.get(
+      '/profile/me/change-request'
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to load your change request.')
+    );
+  }
+}
+
+export async function getChangeRequests(status = 'pending') {
+  try {
+    const response = await apiClient.get(
+      '/profile/change-requests',
+      {
+        params: { status },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to load profile change requests.')
+    );
+  }
+}
+
+export async function getChangeRequestCount() {
+  try {
+    const response = await apiClient.get(
+      '/profile/change-requests/count'
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to load pending request count.')
+    );
+  }
+}
+
+export async function approveChangeRequest(requestId, note = '') {
+  if (!requestId) {
+    throw new Error('Change request ID is required.');
+  }
+
+  try {
+    const response = await apiClient.patch(
+      `/profile/change-requests/${encodeId(requestId)}/approve`,
+      { note }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to approve change request.')
+    );
+  }
+}
+
+export async function rejectChangeRequest(requestId, note = '') {
+  if (!requestId) {
+    throw new Error('Change request ID is required.');
+  }
+
+  try {
+    const response = await apiClient.patch(
+      `/profile/change-requests/${encodeId(requestId)}/reject`,
+      { note }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to reject change request.')
+    );
+  }
 }

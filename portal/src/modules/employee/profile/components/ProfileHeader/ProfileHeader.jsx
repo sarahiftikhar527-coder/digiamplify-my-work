@@ -23,7 +23,7 @@ export default function ProfileHeader({
       <ProfileBanner
         avatarUrl={avatarUrl || profile?.avatarUrl || ''}
         onAvatarSelect={handleAvatarSelect}
-        canEditAvatar={canEdit}
+        canEditAvatar={canEdit && typeof onAvatarSelect === 'function'}
       />
 
       <ProfileMeta

@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
@@ -27,8 +26,18 @@ router.use(allowRoles(ROLES.ADMIN));
 // Get employees/users with pagination and search.
 router.get("/", validate(listSchema), ctrl.list);
 
+// Signup requests waiting for approval (must stay above "/:id").
+router.get("/pending", ctrl.listPending);
+
+// Live clock-in status of all employees (must stay above "/:id").
+router.get("/live-status", ctrl.liveStatus);
+
 // Create a new employee.
 router.post("/", validate(createSchema), ctrl.create);
+
+// Approve / decline a signup request.
+router.patch("/:id/approve", validate(idSchema), ctrl.approve);
+router.patch("/:id/reject", validate(idSchema), ctrl.reject);
 
 // Get a single employee by ID.
 router.get("/:id", validate(idSchema), ctrl.getById);

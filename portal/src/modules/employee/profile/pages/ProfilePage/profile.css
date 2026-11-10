@@ -300,3 +300,31 @@ button.pf-day:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .pf-grid-2--wide { gap: 12px; }
   .pf-doc__icon { margin: 0 14px 0 16px; }
 }
+
+/* Status messages and loading state */
+.pf-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--pf-outline);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.pf-alert button {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.pf-alert--error { border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.1); color: #fecaca; }
+.pf-alert--success { border-color: rgba(34, 197, 94, 0.5); background: rgba(34, 197, 94, 0.1); color: #bbf7d0; }
+.pf-alert--warning { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.1); color: #fde68a; }
+.pf-directory-state { padding: 40px 16px; text-align: center; font-size: 12px; color: var(--pf-muted); }
+.pf-meta__error { margin: 10px 0 0; font-size: 11px; color: #fecaca; }
+.pf-btn:disabled { opacity: 0.55; cursor: not-allowed; }

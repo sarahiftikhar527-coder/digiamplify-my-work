@@ -1,6 +1,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import apiClient, { unwrap } from "@/services/api/apiClient";
+import { useAuth } from "@/context";
+import meetingsService from "@/services/meetingsService";
+import {
+  AdminMeetingsBoard,
+  useMeetingModals,
+  toDateKey as meetingDateKey,
+} from "../../../../meetings";
 
 import CalendarToolbar from "../../components/CalendarToolbar.jsx";
 import CalendarGrid from "../../components/CalendarGrid.jsx";
@@ -220,6 +227,9 @@ const getErrorMessage = (error, fallback) =>
 const getEventId = (event) => event?._id || event?.id || "";
 
 export default function AdminCalendarPage() {
+  const { user } = useAuth();
+  const currentUserId = String(user?.id || user?._id || "");
+
   const [cursor, setCursor] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   );
@@ -232,12 +242,14 @@ export default function AdminCalendarPage() {
     weekend: true,
     event: true,
     holiday: true,
+    meeting: true,
   });
 
   const [holidays, setHolidays] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [shifts, setShifts] = useState([]);
+  const [meetings, setMeetings] = useState([]);
 
   const [selectedKey, setSelectedKey] = useState(null);
   const [selectedShift, setSelectedShift] = useState(null);
@@ -342,14 +354,30 @@ export default function AdminCalendarPage() {
     return map;
   }, [attendanceRecords]);
 
+  const meetingsByDate = useMemo(() => {
+    const map = {};
+
+    meetings
+      .filter((meeting) => meeting.status !== "cancelled")
+      .forEach((meeting) => {
+        const key = meetingDateKey(meeting.startAt);
+
+        if (!map[key]) map[key] = [];
+        map[key].push(meeting);
+      });
+
+    return map;
+  }, [meetings]);
+
   const calendarData = useMemo(
     () => ({
       holidays: holidaysByDate,
       leaveByDate,
       shiftsByDate,
       attendanceByDate,
+      meetingsByDate,
     }),
-    [holidaysByDate, leaveByDate, shiftsByDate, attendanceByDate]
+    [holidaysByDate, leaveByDate, shiftsByDate, attendanceByDate, meetingsByDate]
   );
 
   const loadCalendar = useCallback(
@@ -395,6 +423,21 @@ export default function AdminCalendarPage() {
 
         if (signal?.aborted) return;
 
+        // Meetings must never break the rest of the calendar if they fail.
+        let meetingRows = [];
+
+        try {
+          meetingRows = await meetingsService.list({
+            from: new Date(`${visibleRange.from}T00:00:00`).toISOString(),
+            to: new Date(`${visibleRange.to}T23:59:59`).toISOString(),
+            scope: "all",
+          });
+        } catch (meetingError) {
+          console.warn("Unable to load meetings:", meetingError?.message || meetingError);
+        }
+
+        if (signal?.aborted) return;
+
         const [
           holidayResponse,
           leaveResponse,
@@ -419,6 +462,8 @@ export default function AdminCalendarPage() {
         setAttendanceRecords(
           getResponseRows(attendanceResponse).map(normalizeEvent)
         );
+
+        setMeetings(meetingRows);
       } catch (err) {
         if (
           signal?.aborted ||
@@ -786,6 +831,12 @@ export default function AdminCalendarPage() {
     [selectedShift, deletingShift, refreshCalendar]
   );
 
+  const meetingModals = useMeetingModals({
+    currentUserId,
+    onToast: setToast,
+    onChanged: refreshCalendar,
+  });
+
   const todayAttendance = useMemo(
     () =>
       attendanceRecords.map((record) => ({
@@ -865,6 +916,7 @@ export default function AdminCalendarPage() {
               selectedKey={selectedKey}
               onSelect={setSelectedKey}
               onShiftSelect={openShiftDetails}
+              onMeetingSelect={meetingModals.openDetails}
             />
           )}
         </section>
@@ -890,6 +942,18 @@ export default function AdminCalendarPage() {
       <section className="mt-4">
         <TodaysAttendance records={todayAttendance} loading={loading} />
       </section>
+
+      <section className="mt-4">
+        <AdminMeetingsBoard
+          refreshKey={reloadKey}
+          onOpen={meetingModals.openDetails}
+          onSchedule={() =>
+            meetingModals.openCreate(selectedKey || formatKey(cursor))
+          }
+        />
+      </section>
+
+      {meetingModals.modals}
 
       {modalOpen && (
         <AssignShiftModal

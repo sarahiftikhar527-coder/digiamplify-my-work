@@ -1,5 +1,8 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { CalendarClock, LayoutDashboard, Megaphone, Target } from "lucide-react";
+import useDashboardView from "../../../../../hooks/useDashboardView";
+import DashboardViewTabs from "../../../../../layouts/shared/DashboardViewTabs";
 import {
   WelcomeHeader,
   TaskStatsCards,
@@ -12,9 +15,20 @@ import {
   AnnouncementsCard,
   LeaveBalance,
   QuickActions,
+  FocusStrip,
+  WorkloadForecast,
+  StatusMix,
+  PriorityMix,
 } from "../../components";
 import { mockDashboard } from "./mockData";
 import apiClient from "../../../../../services/api/apiClient";
+
+const VIEWS = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "tasks", label: "Tasks & Schedule", icon: CalendarClock },
+  { id: "performance", label: "Performance", icon: Target },
+  { id: "updates", label: "Leave & Updates", icon: Megaphone },
+];
 
 const PAGE_SIZE = 4;
 const TABS = ["All", "Today", "Upcoming", "Completed"];
@@ -192,6 +206,7 @@ const card =
 
 const DashboardPage = () => {
   const data = mockDashboard;
+  const [view, setView] = useDashboardView(VIEWS);
 
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -470,6 +485,171 @@ const DashboardPage = () => {
     overdue: overdueCount,
   };
 
+  const myTasksCard = (
+    <div className={card}>
+      <h3 className="text-xs font-medium text-white">My Tasks</h3>
+
+      <div className="mt-3">
+        <TaskFilterTabs tabs={TABS} active={tab} onChange={changeTab} />
+      </div>
+
+      {!loading && !pageError && pageItems.length === 0 && (
+        <p className="py-8 text-center text-sm text-neutral-500">
+          No tasks found in this section.
+        </p>
+      )}
+
+      <div
+        className={
+          updatingTaskId !== null ? "pointer-events-none opacity-60" : ""
+        }
+      >
+        <TaskTable tasks={pageItems} onToggleComplete={toggleComplete} />
+      </div>
+
+      <TaskPagination
+        page={currentPage}
+        totalPages={totalPages}
+        onChange={setPage}
+      />
+    </div>
+  );
+
+  const performanceCard = (
+    <div className="min-w-0 [&>*]:h-full">
+      <PerformanceOverview
+        fetcher={loadPerformance}
+        initialRange="Month"
+        pollMs={60000}
+      />
+    </div>
+  );
+
+  const calendarCard = (
+    <div className="min-w-0 [&>*]:h-full">
+      <UpcomingTasksCalendar tasks={tasks} loading={loading} />
+    </div>
+  );
+
+  const announcementsBlock = (
+    <div className="min-w-0">
+      {announcementError && (
+        <div
+          role="alert"
+          className="mb-3 rounded-md border border-red-900 bg-red-950/30 p-3 text-xs text-red-300"
+        >
+          <p>{announcementError}</p>
+          <button
+            type="button"
+            onClick={loadAnnouncements}
+            className="mt-2 underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      <AnnouncementsCard
+        announcements={announcements}
+        loading={announcementLoading}
+      />
+    </div>
+  );
+
+  const leaveBlock = (
+    <div className="min-w-0">
+      {leaveError && (
+        <div
+          role="alert"
+          className="mb-3 rounded-md border border-red-900 bg-red-950/30 p-3 text-xs text-red-300"
+        >
+          <p>{leaveError}</p>
+          <button
+            type="button"
+            onClick={loadLeaveData}
+            className="mt-2 underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className={leaveActionLoading ? "opacity-80" : ""}>
+        <LeaveBalance
+          leaves={leaves}
+          leaveTypes={leaveTypes}
+          loading={leaveLoading}
+          onRequest={handleRequestLeave}
+          onCancel={handleCancelLeave}
+        />
+      </div>
+    </div>
+  );
+
+  const views = {
+    overview: (
+      <div className="space-y-5">
+        <FocusStrip tasks={tasks} today={today} onJump={setView} />
+
+        <TaskStatsCards {...taskStats} loading={loading} />
+
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(260px,1.1fr)_minmax(0,1.9fr)_minmax(0,1.6fr)]">
+          {myTasksCard}
+          {performanceCard}
+          <div className="lg:col-span-2 xl:col-span-1 [&>*]:h-full">
+            {calendarCard}
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
+          <AttendanceOverview weeks={data.attendance} />
+          {announcementsBlock}
+          {leaveBlock}
+        </div>
+
+        <QuickActions onAction={() => {}} />
+      </div>
+    ),
+
+    tasks: (
+      <div className="space-y-5">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+          {myTasksCard}
+          {calendarCard}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <WorkloadForecast tasks={tasks} />
+          <StatusMix tasks={tasks} />
+          <PriorityMix tasks={tasks} />
+        </div>
+      </div>
+    ),
+
+    performance: (
+      <div className="space-y-5">
+        <TaskStatsCards {...taskStats} loading={loading} />
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          {performanceCard}
+          <div className="grid content-start gap-4">
+            <StatusMix tasks={tasks} />
+            <PriorityMix tasks={tasks} />
+          </div>
+        </div>
+
+        <AttendanceOverview weeks={data.attendance} />
+      </div>
+    ),
+
+    updates: (
+      <div className="grid gap-4 lg:grid-cols-2">
+        {leaveBlock}
+        {announcementsBlock}
+      </div>
+    ),
+  };
+
   return (
     <div className="w-full min-w-0 space-y-5 bg-black px-4 pb-8 pt-2 font-[Poppins,ui-sans-serif,system-ui,sans-serif] text-white md:px-1">
       <WelcomeHeader
@@ -478,9 +658,7 @@ const DashboardPage = () => {
       />
 
       {loading && (
-        <p className="text-sm text-neutral-400">
-          Loading your dashboard...
-        </p>
+        <p className="text-sm text-neutral-400">Loading your dashboard...</p>
       )}
 
       {pageError && (
@@ -510,115 +688,24 @@ const DashboardPage = () => {
         </div>
       )}
 
-      <TaskStatsCards {...taskStats} loading={loading} />
+      <DashboardViewTabs
+        views={VIEWS}
+        active={view}
+        onChange={setView}
+        layoutId="employee-dashboard-tab"
+      />
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(260px,1.1fr)_minmax(0,1.9fr)_minmax(0,1.6fr)]">
-        <div className={card}>
-          <h3 className="text-xs font-medium text-white">My Tasks</h3>
-
-          <div className="mt-3">
-            <TaskFilterTabs
-              tabs={TABS}
-              active={tab}
-              onChange={changeTab}
-            />
-          </div>
-
-          {!loading && !pageError && pageItems.length === 0 && (
-            <p className="py-8 text-center text-sm text-neutral-500">
-              No tasks found in this section.
-            </p>
-          )}
-
-          <div
-            className={
-              updatingTaskId !== null
-                ? "pointer-events-none opacity-60"
-                : ""
-            }
-          >
-            <TaskTable
-              tasks={pageItems}
-              onToggleComplete={toggleComplete}
-            />
-          </div>
-
-          <TaskPagination
-            page={currentPage}
-            totalPages={totalPages}
-            onChange={setPage}
-          />
-        </div>
-
-        <div className="min-w-0 [&>*]:h-full">
-          <PerformanceOverview
-            fetcher={loadPerformance}
-            initialRange="Month"
-            pollMs={60000}
-          />
-        </div>
-
-        <div className="min-w-0 lg:col-span-2 xl:col-span-1 [&>*]:h-full">
-          <UpcomingTasksCalendar tasks={tasks} loading={loading} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
-        <AttendanceOverview weeks={data.attendance} />
-
-        <div className="min-w-0">
-          {announcementError && (
-            <div
-              role="alert"
-              className="mb-3 rounded-md border border-red-900 bg-red-950/30 p-3 text-xs text-red-300"
-            >
-              <p>{announcementError}</p>
-              <button
-                type="button"
-                onClick={loadAnnouncements}
-                className="mt-2 underline"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          <AnnouncementsCard
-            announcements={announcements}
-            loading={announcementLoading}
-          />
-        </div>
-
-        <div className="min-w-0">
-          {leaveError && (
-            <div
-              role="alert"
-              className="mb-3 rounded-md border border-red-900 bg-red-950/30 p-3 text-xs text-red-300"
-            >
-              <p>{leaveError}</p>
-              <button
-                type="button"
-                onClick={loadLeaveData}
-                className="mt-2 underline"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          <div className={leaveActionLoading ? "opacity-80" : ""}>
-            <LeaveBalance
-              leaves={leaves}
-              leaveTypes={leaveTypes}
-              loading={leaveLoading}
-              onRequest={handleRequestLeave}
-              onCancel={handleCancelLeave}
-            />
-          </div>
-        </div>
-      </div>
-
-      <QuickActions onAction={() => {}} />
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={view}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.18 }}
+        >
+          {views[view]}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };

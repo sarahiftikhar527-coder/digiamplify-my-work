@@ -48,6 +48,10 @@ model User {
   createdAnnouncements    Announcement[]          @relation("CreatedAnnouncements")
   progressReports         ProgressReport[]        @relation("EmployeeProgressReports")
   reviewedProgressReports ProgressReport[]        @relation("ReviewedProgressReports")
+  profileChangeRequests   ProfileChangeRequest[]  @relation("RequestedProfileChanges")
+  reviewedProfileChanges  ProfileChangeRequest[]  @relation("ReviewedProfileChanges")
+  organizedMeetings       Meeting[]               @relation("MeetingOrganizer")
+  meetingAttendances      MeetingAttendee[]       @relation("MeetingAttendee")
 
   @@index([role])
   @@index([isDeleted])
@@ -104,6 +108,26 @@ model Profile {
   updatedAt           DateTime @updatedAt
 
   @@map("profiles")
+}
+
+// Employee profile edits wait here until an admin approves them.
+model ProfileChangeRequest {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation("RequestedProfileChanges", fields: [userId], references: [id], onDelete: Cascade)
+  changes      Json
+  previous     Json?
+  status       String    @default("pending") @db.VarChar(20)
+  reviewedById String?
+  reviewedBy   User?     @relation("ReviewedProfileChanges", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  reviewNote   String    @default("") @db.VarChar(500)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("profile_change_requests")
 }
 
 model RefreshToken {
@@ -182,24 +206,49 @@ model Leave {
 }
 
 model Task {
-  id           String    @id @default(uuid())
-  title        String    @db.VarChar(200)
-  subtitle     String    @default("") @db.VarChar(200)
-  description  String    @default("") @db.Text
-  priority     String    @default("Medium") @db.VarChar(50)
-  assignedToId String
-  assignedTo   User      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
-  assignedById String
-  assignedBy   User      @relation("CreatedTasks", fields: [assignedById], references: [id], onDelete: Cascade)
-  status       String    @default("pending") @db.VarChar(50)
-  dueDate      DateTime
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  title            String    @db.VarChar(200)
+  subtitle         String    @default("") @db.VarChar(200)
+  description      String    @default("") @db.Text
+  priority         String    @default("Medium") @db.VarChar(50)
+  taskType         String    @default("extra") @db.VarChar(20)
+  startDate        DateTime?
+  isActive         Boolean   @default(true)
+  assignedToId     String
+  assignedTo       User      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedById     String
+  assignedBy       User      @relation("CreatedTasks", fields: [assignedById], references: [id], onDelete: Cascade)
+  status           String    @default("pending") @db.VarChar(50)
+  dueDate          DateTime
+  startedAt        DateTime?
+  completedAt      DateTime?
+  timeSpentMinutes Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  dailyUpdates     TaskDailyUpdate[]
 
   @@index([assignedToId, status, dueDate])
+  @@index([taskType, isActive])
   @@map("tasks")
 }
+
+model TaskDailyUpdate {
+  id               String   @id @default(uuid())
+  taskId           String
+  task             Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId       String
+  updateDate       String   @db.VarChar(10)
+  description      String   @default("") @db.Text
+  status           String   @default("in-progress") @db.VarChar(30)
+  timeSpentMinutes Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([taskId, updateDate])
+  @@index([employeeId, updateDate])
+  @@map("task_daily_updates")
+}
+
 
 model Calendar {
   id           String    @id @default(uuid())
@@ -264,6 +313,7 @@ model Finance {
   periodYear  Int
   status      String    @default("Pending") @db.VarChar(50)
   notes       String    @default("") @db.Text
+  receiptMeta Json?
   createdById String?
   createdBy   User?     @relation("CreatedFinances", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById String?
@@ -373,4 +423,89 @@ model ProgressReport {
   @@unique([employeeId, periodStart])
   @@index([status])
   @@map("progress_reports")
+}
+
+model AttendanceSession {
+  id            String    @id @default(uuid())
+  userId        String
+  dateKey       String    @db.VarChar(50)
+  clockInAt     DateTime
+  clockOutAt    DateTime?
+  workedMinutes Int       @default(0)
+  breakMinutes  Int       @default(0)
+  description   String    @default("") @db.VarChar(500)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  breaks AttendanceBreak[]
+
+  @@index([userId, dateKey])
+  @@index([dateKey])
+  @@map("attendance_sessions")
+}
+
+model AttendanceBreak {
+  id        String            @id @default(uuid())
+  sessionId String
+  session   AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  dateKey   String            @db.VarChar(50)
+  type      String            @default("other") @db.VarChar(30)
+  startAt   DateTime
+  endAt     DateTime?
+  minutes   Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([userId, dateKey])
+  @@index([sessionId])
+  @@map("attendance_breaks")
+}
+
+model Meeting {
+  id              String            @id @default(uuid())
+  title           String            @db.VarChar(200)
+  description     String?           @db.Text
+  agenda          String?           @db.Text
+  notes           String?           @db.Text
+  meetingType     String            @default("online") @db.VarChar(20)
+  category        String            @default("general") @db.VarChar(30)
+  priority        String            @default("normal") @db.VarChar(20)
+  location        String            @default("") @db.VarChar(255)
+  meetingLink     String            @default("") @db.VarChar(500)
+  startAt         DateTime
+  endAt           DateTime
+  tzOffset        Int               @default(0)
+  recurrence      String            @default("none") @db.VarChar(20)
+  recurrenceUntil DateTime?
+  skippedDates    Json?
+  reminderMinutes Int               @default(15)
+  lastReminderFor DateTime?
+  status          String            @default("scheduled") @db.VarChar(20)
+  cancelReason    String            @default("") @db.VarChar(500)
+  organizerId     String
+  organizer       User              @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  attendees       MeetingAttendee[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([startAt, endAt])
+  @@index([organizerId, startAt])
+  @@index([status, startAt])
+  @@map("meetings")
+}
+
+model MeetingAttendee {
+  id          String    @id @default(uuid())
+  meetingId   String
+  meeting     Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId      String
+  user        User      @relation("MeetingAttendee", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  rsvp        String    @default("pending") @db.VarChar(20)
+  respondedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([meetingId, userId])
+  @@index([userId])
+  @@map("meeting_attendees")
 }

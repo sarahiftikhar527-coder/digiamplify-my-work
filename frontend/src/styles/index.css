@@ -13,6 +13,9 @@
 html {
   scroll-behavior: smooth;
   background: #000;
+  /* iPhone landscape mein font khud bara ho jata hai, usko roka gaya hai */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -23,6 +26,28 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* lambe words / links screen se bahar na jayen */
+  overflow-wrap: break-word;
+  /* side-scroll band. hidden purane browsers ke liye, clip naye ke liye
+     (clip se sticky sidebar kharab nahi hota) */
+  overflow-x: hidden;
+}
+
+@supports (overflow: clip) {
+  body {
+    overflow-x: clip;
+  }
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+@supports (min-height: 100dvh) {
+  #root {
+    min-height: 100dvh;
+  }
 }
 
 button,
@@ -46,6 +71,11 @@ img {
   display: block;
 }
 
+video,
+iframe {
+  max-width: 100%;
+}
+
 ::selection {
   background: rgba(217, 0, 18, 0.8);
   color: #fff;
@@ -66,6 +96,16 @@ img {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #d90012;
+}
+
+/* iPhone / iPad Safari: input ka font 16px se chhota ho to focus par
+   poora page zoom ho jata hai. Touch devices par 16px force kiya gaya. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='submit']):not([type='button']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

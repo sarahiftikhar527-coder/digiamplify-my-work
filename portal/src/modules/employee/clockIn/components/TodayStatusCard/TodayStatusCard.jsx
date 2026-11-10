@@ -10,10 +10,18 @@ const Row = ({ label, children, last }) => (
   </div>
 );
 
-const TodayStatusCard = ({ status, record, worked, loading }) => {
+const STATE = {
+  in: { label: "Working", cls: "border-green-500/40 bg-green-500/10 text-green-400" },
+  break: { label: "On Break", cls: "border-amber-500/40 bg-amber-500/10 text-amber-400" },
+  out: { label: "Clocked Out", cls: "border-white/15 bg-white/5 text-white/60" },
+};
+
+const TodayStatusCard = ({ status, record, totals, state = "out", loading }) => {
   const clockIn = record?.clockInAt;
   const clockOut = record?.clockOutAt;
   const muted = "font-medium tabular-nums text-white/50";
+  const current = STATE[state] || STATE.out;
+  const hasData = Boolean(clockIn);
 
   return (
     <Card icon={CalendarCheck} title="Today's Status">
@@ -21,18 +29,32 @@ const TodayStatusCard = ({ status, record, worked, loading }) => {
         <Row label="Status">
           <StatusBadge status={status} withDot={false} />
         </Row>
-        <Row label="Clock In">
+        <Row label="Right Now">
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-medium ${current.cls}`}>
+            {current.label}
+          </span>
+        </Row>
+        <Row label="First Clock In">
           <span className={clockIn ? "font-semibold tabular-nums text-green-400" : muted}>{formatTime(clockIn)}</span>
         </Row>
-        <Row label="Clock Out">
+        <Row label="Last Clock Out">
           <span className={clockOut ? "font-semibold tabular-nums text-green-400" : muted}>{formatTime(clockOut)}</span>
         </Row>
-        <Row label="Worked Hours">
-          <span className={worked != null ? "font-semibold tabular-nums text-white" : muted}>{formatDuration(worked)}</span>
+        <Row label="Clock Ins / Outs">
+          <span className={hasData ? "font-semibold tabular-nums text-white" : muted}>
+            {hasData ? `${totals?.clockIns ?? 0} / ${totals?.clockOuts ?? 0}` : "-- / --"}
+          </span>
         </Row>
-        <Row label="Break Hours" last>
-          <span className={record?.breakMinutes != null ? "font-semibold tabular-nums text-white" : muted}>
-            {formatDuration(record?.breakMinutes)}
+        <Row label="Breaks">
+          <span className={hasData ? "font-semibold tabular-nums text-white" : muted}>
+            {hasData
+              ? `${totals?.breakCount ?? 0} · ${formatDuration(totals?.breakMinutes ?? 0)}`
+              : "--"}
+          </span>
+        </Row>
+        <Row label="Worked Hours" last>
+          <span className={hasData ? "font-semibold tabular-nums text-white" : muted}>
+            {hasData ? formatDuration(totals?.workedMinutes ?? 0) : formatDuration(null)}
           </span>
         </Row>
       </div>

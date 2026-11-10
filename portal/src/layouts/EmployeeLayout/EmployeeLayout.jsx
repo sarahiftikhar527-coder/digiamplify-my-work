@@ -4,33 +4,34 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
 const EmployeeLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  // The sidebar is closed by default. It opens when the mouse hovers over the
+  // menu icon in the top bar and closes when the mouse leaves the sidebar.
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const toggleSidebar = () => {
-    setSidebarOpen((previous) => !previous)
+  const openSidebar = () => {
+    setSidebarOpen(true)
   }
 
   const closeSidebar = () => {
     setSidebarOpen(false)
   }
 
+  const toggleSidebar = () => {
+    setSidebarOpen((previous) => !previous)
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-black">
-      <div
-        className={`relative z-50 h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${
-          sidebarOpen ? 'w-[225px]' : 'w-0'
-        }`}
-      >
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={closeSidebar}
-        />
-      </div>
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={closeSidebar}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           sidebarOpen={sidebarOpen}
           onMenuClick={toggleSidebar}
+          onMenuHover={openSidebar}
         />
 
         <main className="min-w-0 flex-1 overflow-y-auto px-4 pb-8 sm:px-6 lg:px-9">

@@ -1,12 +1,18 @@
-
 import { useEffect, useState } from "react";
 
 import ClockInHeader from "./ClockInHeader";
 import ClockPanel from "./ClockPanel";
 import PinPanel from "./PinPanel";
+import BreakCard from "../../../employee/clockIn/components/BreakCard/BreakCard";
+import SessionsCard from "../../../employee/clockIn/components/SessionsCard/SessionsCard";
+import WorkTimerCard from "../../../employee/clockIn/components/WorkTimerCard/WorkTimerCard";
 
 import useMyAttendance from "../../../../hooks/useMyAttendance";
 import { clockInService } from "../../../../services/clockInService.js";
+import {
+  getDayTotals,
+  getOpenBreak,
+} from "../../../../utils/attendanceSessions";
 
 const useTicker = () => {
   const [now, setNow] = useState(new Date());
@@ -41,6 +47,8 @@ const MyClockIn = ({ onViewAttendance }) => {
     record,
     shift,
     recent,
+    sessions,
+    state,
     loading,
     submitting,
     error,
@@ -48,27 +56,13 @@ const MyClockIn = ({ onViewAttendance }) => {
     hasPin,
   } = a;
 
-  const mode = hasPin === false
-    ? "setup"
-    : !record?.clockInAt
-      ? "in"
-      : !record?.clockOutAt
-        ? "out"
-        : "done";
+  // out = clock in, in/break = clock out
+  const mode = hasPin === false ? "setup" : state === "out" ? "in" : "out";
+  const onBreak = state === "break";
 
-  const worked = record?.clockInAt
-    ? Math.max(
-        0,
-        Math.floor(
-          (
-            (record.clockOutAt
-              ? new Date(record.clockOutAt)
-              : now).getTime() -
-            new Date(record.clockInAt).getTime()
-          ) / 60000
-        )
-      )
-    : 0;
+  const totals = getDayTotals(sessions, now);
+  const worked = totals.workedMinutes;
+  const openBreak = getOpenBreak(sessions);
 
   const handleSubmit = async (pin) => {
     if (!/^\d{4}$/.test(String(pin ?? ""))) {
@@ -76,12 +70,12 @@ const MyClockIn = ({ onViewAttendance }) => {
     }
 
     if (mode === "in") return a.clockIn(pin);
-    if (mode === "out") return a.clockOut(pin, description.trim());
 
-    return {
-      ok: false,
-      error: "You have already completed attendance for today.",
-    };
+    const result = await a.clockOut(pin, description.trim());
+
+    if (result?.ok) setDescription("");
+
+    return result;
   };
 
   const handleSetPin = async (password, newPin) => {
@@ -113,18 +107,36 @@ const MyClockIn = ({ onViewAttendance }) => {
     const escapeCsv = (value) =>
       `"${String(value ?? "").replace(/"/g, '""')}"`;
 
+    const statusText =
+      state === "break"
+        ? "On break"
+        : state === "in"
+          ? "Working"
+          : record?.clockInAt
+            ? "Completed"
+            : "Not clocked in";
+
     const rows = [
-      ["Date", "Clock In", "Clock Out", "Worked Minutes", "Status", "Description"],
+      [
+        "Date",
+        "First Clock In",
+        "Last Clock Out",
+        "Clock Ins",
+        "Breaks",
+        "Break Minutes",
+        "Worked Minutes",
+        "Status",
+        "Description",
+      ],
       [
         record?.dateKey || date,
         record?.clockInAt ? new Date(record.clockInAt).toLocaleString() : "",
         record?.clockOutAt ? new Date(record.clockOutAt).toLocaleString() : "",
+        totals.clockIns,
+        totals.breakCount,
+        totals.breakMinutes,
         worked,
-        mode === "done"
-          ? "Completed"
-          : mode === "out"
-            ? "Working"
-            : "Not clocked in",
+        statusText,
         record?.description || description,
       ],
     ];
@@ -176,6 +188,13 @@ const MyClockIn = ({ onViewAttendance }) => {
         </div>
       )}
 
+      {!error && !loading && a.backendOutdated && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-[12px] text-amber-300">
+          Backend update missing: breaks and multiple clock-ins need the
+          updated backend. Run the database migration, then restart the backend.
+        </div>
+      )}
+
       {mode === "setup" ? (
         <div className="mx-auto max-w-md">
           <PinPanel
@@ -197,16 +216,35 @@ const MyClockIn = ({ onViewAttendance }) => {
             loading={loading}
           />
 
-          <PinPanel
-            mode={mode}
-            worked={worked}
-            disabled={loading || submitting || !!error}
-            submitting={submitting}
-            keyboard
-            onSubmit={handleSubmit}
-            description={description}
-            onDescription={setDescription}
-          />
+          <div className="flex min-w-0 flex-col gap-4">
+            <PinPanel
+              key={`${mode}-${onBreak}`}
+              mode={mode}
+              worked={worked}
+              disabled={loading || submitting || !!error || onBreak}
+              submitting={submitting}
+              keyboard={!onBreak}
+              onSubmit={handleSubmit}
+              description={description}
+              onDescription={setDescription}
+            />
+
+            <WorkTimerCard sessions={sessions} state={state} now={now} />
+
+            {state !== "out" && (
+              <BreakCard
+                state={state}
+                openBreak={openBreak}
+                now={now}
+                busy={submitting}
+                error=""
+                onStart={a.startBreak}
+                onEnd={a.endBreak}
+              />
+            )}
+
+            <SessionsCard sessions={sessions} now={now} loading={loading} />
+          </div>
         </div>
       )}
     </div>

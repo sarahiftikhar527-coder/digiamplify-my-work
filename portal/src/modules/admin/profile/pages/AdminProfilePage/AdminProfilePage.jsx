@@ -21,6 +21,7 @@ import {
   getEmployees,
   getEmployeeProfile,
   updateEmployeeProfile,
+  uploadEmployeeAvatar,
 } from '@/services/api/profileService';
 import './profile.css';
 
@@ -80,7 +81,10 @@ function normalizeDocuments(documents) {
         doc?.originalName ||
         doc?.label ||
         `Document ${index + 1}`,
+      // viewUrl comes from the server and always points to the current
+      // file address, so it is preferred for opening a document.
       url:
+        doc?.viewUrl ||
         doc?.url ||
         doc?.secure_url ||
         doc?.dataUrl ||
@@ -114,6 +118,7 @@ function normalizeDocuments(documents) {
           key ||
           `Document ${index + 1}`,
         url:
+          doc.viewUrl ||
           doc.url ||
           doc.secure_url ||
           doc.dataUrl ||
@@ -383,26 +388,24 @@ export default function AdminProfilePage() {
       delete payload.updatedAt;
       delete payload.user;
 
+      // A new photo is uploaded first. The profile is then saved as plain
+      // JSON with the link of the uploaded photo (never as a multipart form).
       if (avatarFile) {
-        const formData = new FormData();
+        const uploaded = await uploadEmployeeAvatar(
+          selectedEmployeeId,
+          avatarFile
+        );
 
-        Object.entries(payload).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            formData.append(
-              key,
-              typeof value === 'object'
-                ? JSON.stringify(value)
-                : String(value)
-            );
-          }
-        });
+        const url = uploaded?.data?.url || uploaded?.url || '';
 
-        formData.append('avatar', avatarFile);
+        if (!url) {
+          throw new Error('Photo upload failed. Please try again.');
+        }
 
-        await updateEmployeeProfile(selectedEmployeeId, formData);
-      } else {
-        await updateEmployeeProfile(selectedEmployeeId, payload);
+        payload.avatarUrl = url;
       }
+
+      await updateEmployeeProfile(selectedEmployeeId, payload);
 
       const response = await getEmployeeProfile(selectedEmployeeId);
       const updated = normalizeProfile(response);

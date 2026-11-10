@@ -17,6 +17,10 @@ const TONES = {
     pill: 'bg-purple-500/15 text-purple-300',
     dot: 'bg-purple-400',
   },
+  meeting: {
+    pill: 'bg-emerald-500/15 text-emerald-300',
+    dot: 'bg-emerald-400',
+  },
 };
 
 const FILTER_OF = {
@@ -24,6 +28,7 @@ const FILTER_OF = {
   leave: 'absent',
   holiday: 'holiday',
   shift: 'event',
+  meeting: 'meeting',
 };
 
 const getCountLabel = (count, singular = 'Employee') =>
@@ -61,6 +66,18 @@ const getAttendanceDetails = (attendance) => {
   };
 };
 
+const formatMeetingTime = (value) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const hour12 = String(((hours + 11) % 12) + 1).padStart(2, '0');
+
+  return `${hour12}:${minutes} ${hours >= 12 ? 'PM' : 'AM'}`;
+};
+
 const getShiftEmployeeName = (shift) => {
   const employee = shift?.employeeId;
 
@@ -96,6 +113,7 @@ export function getDayItems(
     leaveByDate = {},
     shiftsByDate = {},
     attendanceByDate = {},
+    meetingsByDate = {},
   } = {},
   filters = {}
 ) {
@@ -105,6 +123,7 @@ export function getDayItems(
   const leave = leaveByDate[key];
   const shifts = shiftsByDate[key];
   const attendance = attendanceByDate[key];
+  const meetings = Array.isArray(meetingsByDate[key]) ? meetingsByDate[key] : [];
 
   if (holiday) {
     const holidayItems = Array.isArray(holiday) ? holiday : [holiday];
@@ -204,6 +223,20 @@ export function getDayItems(
     }
   }
 
+  meetings.forEach((meeting, index) => {
+    const time = formatMeetingTime(meeting.startAt);
+
+    items.push({
+      id: `meeting-${meeting.id}-${meeting.occurrenceKey || index}`,
+      type: 'meeting',
+      title: meeting.title || 'Meeting',
+      sub: [time, meeting.attendeeCount ? `${meeting.attendeeCount} people` : '']
+        .filter(Boolean)
+        .join(' · '),
+      meeting,
+    });
+  });
+
   return items.filter((item) => {
     const filterKey = FILTER_OF[item.type];
 
@@ -219,6 +252,7 @@ export default function CalendarGrid({
   selectedKey,
   onSelect = () => {},
   onShiftSelect = () => {},
+  onMeetingSelect = () => {},
 }) {
   const rows = view === 'week' ? getWeekRow(cursor) : getMonthMatrix(cursor);
 
@@ -242,6 +276,7 @@ export default function CalendarGrid({
   const renderItem = (item, index, compact = false) => {
     const tone = TONES[item.type] || TONES.present;
     const isClickableShift = item.type === 'shift' && item.event;
+    const isClickableMeeting = item.type === 'meeting' && item.meeting;
 
     const className = compact
       ? `w-full rounded px-2 py-1.5 text-left text-xs ${tone.pill}`
@@ -269,6 +304,24 @@ export default function CalendarGrid({
           className={`${className} cursor-pointer border border-purple-400/20 hover:border-purple-300/60 hover:bg-purple-500/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-400`}
           title={`${item.title}${item.sub ? ` — ${item.sub}` : ''}. Click to view shift details.`}
           aria-label={`View shift: ${item.title}${item.sub ? `, ${item.sub}` : ''}`}
+        >
+          {content}
+        </button>
+      );
+    }
+
+    if (isClickableMeeting) {
+      return (
+        <button
+          key={`${item.id}-${index}`}
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onMeetingSelect(item.meeting);
+          }}
+          className={`${className} cursor-pointer border border-emerald-400/20 hover:border-emerald-300/60 hover:bg-emerald-500/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400`}
+          title={`${item.title}${item.sub ? ` — ${item.sub}` : ''}. Click to view meeting details.`}
+          aria-label={`View meeting: ${item.title}${item.sub ? `, ${item.sub}` : ''}`}
         >
           {content}
         </button>
@@ -372,6 +425,22 @@ export default function CalendarGrid({
                           title="View shift details"
                           aria-label={`View shift: ${item.title}`}
                           className={`h-2.5 w-2.5 rounded-full ${tone.dot} ring-1 ring-purple-200/40`}
+                        />
+                      );
+                    }
+
+                    if (item.type === 'meeting' && item.meeting) {
+                      return (
+                        <button
+                          key={`${item.id}-${index}`}
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onMeetingSelect(item.meeting);
+                          }}
+                          title="View meeting details"
+                          aria-label={`View meeting: ${item.title}`}
+                          className={`h-2.5 w-2.5 rounded-full ${tone.dot} ring-1 ring-emerald-200/40`}
                         />
                       );
                     }

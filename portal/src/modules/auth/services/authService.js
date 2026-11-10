@@ -4,6 +4,36 @@ const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
 ).replace(/\/+$/, "");
 
+const getErrorMessage = (error, fallback) =>
+  error.response?.data?.message ||
+  error.response?.data?.error ||
+  error.message ||
+  fallback;
+
+// Public signup. The account stays "pending" until an admin approves it.
+export const register = async ({ name, email, password, pin }) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/auth/register`,
+      {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        pin,
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(error, "Unable to create account. Please try again.")
+    );
+  }
+};
+
 export const login = async ({ email, password }) => {
   try {
     const response = await axios.post(
@@ -36,12 +66,6 @@ export const login = async ({ email, password }) => {
       token,
     };
   } catch (error) {
-    const message =
-      error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      "Login failed. Please try again.";
-
-    throw new Error(message);
+    throw new Error(getErrorMessage(error, "Login failed. Please try again."));
   }
 };

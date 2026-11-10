@@ -9,7 +9,17 @@ export default function Topbar({ onMenu }) {
   return (
     <header className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-6">
       <div className="flex items-center gap-3">
-        <button onClick={onMenu} className="lg:hidden"><Menu size={20} /></button>
+        {/* Hovering over this icon opens the sidebar. Click also works (touch screens). */}
+        <button
+          type="button"
+          onMouseEnter={onMenu}
+          onClick={onMenu}
+          aria-label="Open sidebar"
+          title="Open sidebar"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 hover:text-[#F0202F]"
+        >
+          <Menu size={22} />
+        </button>
         <p className="text-xs capitalize text-gray-300">
           <Link to="/admin/dashboard" className="text-brand">Home</Link> / {page}
         </p>

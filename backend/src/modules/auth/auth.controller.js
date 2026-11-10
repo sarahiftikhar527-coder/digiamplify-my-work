@@ -18,6 +18,16 @@ const setCookie = (res, token) =>
     maxAge: env.REFRESH_TOKEN_EXPIRES_DAYS * 86400000,
   })
 
+export const register = asyncHandler(async (req, res) => {
+  await service.register(req.validated.body)
+  ok(
+    res,
+    { status: 'pending' },
+    'Signup request sent. You can log in after the admin approves your account.',
+    201
+  )
+})
+
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.validated.body
   const { user, accessToken, refreshToken } = await service.login(email, password)
@@ -38,7 +48,7 @@ export const logout = asyncHandler(async (req, res) => {
 })
 
 export const me = asyncHandler(async (req, res) => {
-  ok(res, { user: req.user })
+  ok(res, { user: service.toPublicUser(req.user) })
 })
 
 export const changePassword = asyncHandler(async (req, res) => {

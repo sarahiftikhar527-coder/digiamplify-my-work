@@ -1,22 +1,38 @@
-
 import { useEffect, useState } from "react";
 import { Avatar } from "../Avatarstack/Avatarstack";
 import { CloseIcon } from "../Icons/Icons";
 import { PRIORITIES } from "../../Constants";
 
-const EMPTY = {
+const today = () => new Date().toLocaleDateString("en-CA");
+
+const makeEmpty = () => ({
+  taskType: "extra",
   title: "",
   subtitle: "",
   description: "",
   priority: "Medium",
+  startDate: today(),
   dueDate: "",
   assignees: [],
-};
+});
 
 const field =
   "w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2 text-sm text-white outline-none focus:border-red-700 placeholder:text-neutral-600";
 
 const label = "mb-1 block text-xs text-neutral-400";
+
+const TYPES = [
+  {
+    id: "extra",
+    title: "Extra task",
+    hint: "One-off work for a specific day, like testing or designing",
+  },
+  {
+    id: "daily",
+    title: "Fixed daily task",
+    hint: "Repeats every day. The employee posts a daily update",
+  },
+];
 
 export default function AdminAddTaskModal({
   open,
@@ -25,10 +41,11 @@ export default function AdminAddTaskModal({
   task = null,
   employees = [],
 }) {
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState(makeEmpty());
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const isEdit = Boolean(task);
+  const isDaily = form.taskType === "daily";
 
   useEffect(() => {
     if (!open) return;
@@ -36,11 +53,12 @@ export default function AdminAddTaskModal({
     setForm(
       task
         ? {
-            ...EMPTY,
+            ...makeEmpty(),
             ...task,
+            taskType: task.taskType === "daily" ? "daily" : "extra",
             assignees: Array.isArray(task.assignees) ? task.assignees : [],
           }
-        : { ...EMPTY, assignees: [] }
+        : makeEmpty()
     );
     setErrors({});
     setSubmitting(false);
@@ -81,8 +99,12 @@ export default function AdminAddTaskModal({
       nextErrors.title = "Title is required";
     }
 
-    if (!form.dueDate) {
+    if (!isDaily && !form.dueDate) {
       nextErrors.dueDate = "Select a due date";
+    }
+
+    if (isDaily && form.dueDate && form.dueDate < form.startDate) {
+      nextErrors.dueDate = "End date cannot be before the start date";
     }
 
     if (!form.assignees.length) {
@@ -97,11 +119,13 @@ export default function AdminAddTaskModal({
 
     try {
       await onSubmit({
+        taskType: form.taskType,
         title: form.title.trim(),
         subtitle: form.subtitle.trim(),
         description: form.description.trim(),
         priority: form.priority,
-        dueDate: form.dueDate,
+        startDate: isDaily ? form.startDate : undefined,
+        dueDate: form.dueDate || undefined,
         assignees: form.assignees,
       });
     } finally {
@@ -123,7 +147,7 @@ export default function AdminAddTaskModal({
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">
-            {isEdit ? "Edit Task" : "Add Task"}
+            {isEdit ? "Edit Task" : "Assign Task"}
           </h2>
 
           <button
@@ -137,6 +161,35 @@ export default function AdminAddTaskModal({
           </button>
         </div>
 
+        {!isEdit && (
+          <div className="mb-5 grid gap-2 sm:grid-cols-2">
+            {TYPES.map((type) => {
+              const selected = form.taskType === type.id;
+
+              return (
+                <button
+                  type="button"
+                  key={type.id}
+                  onClick={() => set("taskType", type.id)}
+                  aria-pressed={selected}
+                  className={`rounded border px-3 py-3 text-left transition-colors ${
+                    selected
+                      ? "border-red-700 bg-red-950/40"
+                      : "border-[#2a2a2a] hover:border-neutral-600"
+                  }`}
+                >
+                  <span className="block text-sm font-medium text-white">
+                    {type.title}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-neutral-500">
+                    {type.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className={label}>Title</label>
@@ -144,7 +197,7 @@ export default function AdminAddTaskModal({
               className={field}
               value={form.title}
               onChange={(event) => set("title", event.target.value)}
-              placeholder="Development"
+              placeholder={isDaily ? "Daily social media posting" : "Testing"}
               maxLength={200}
               required
             />
@@ -171,7 +224,11 @@ export default function AdminAddTaskModal({
               className={field}
               value={form.description}
               onChange={(event) => set("description", event.target.value)}
-              placeholder="Describe the task"
+              placeholder={
+                isDaily
+                  ? "What the employee must do every day"
+                  : "Describe the task"
+              }
             />
           </div>
 
@@ -190,20 +247,53 @@ export default function AdminAddTaskModal({
             </select>
           </div>
 
-          <div>
-            <label className={label}>Due date</label>
-            <input
-              type="date"
-              className={field}
-              value={form.dueDate}
-              onChange={(event) => set("dueDate", event.target.value)}
-              min={new Date().toLocaleDateString("en-CA")}
-              required
-            />
-            {errors.dueDate && (
-              <p className="mt-1 text-xs text-red-500">{errors.dueDate}</p>
-            )}
-          </div>
+          {isDaily ? (
+            <>
+              <div>
+                <label className={label}>Starts on</label>
+                <input
+                  type="date"
+                  className={field}
+                  value={form.startDate}
+                  onChange={(event) => set("startDate", event.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className={label}>
+                  Ends on (optional, leave empty to keep it running)
+                </label>
+                <input
+                  type="date"
+                  className={field}
+                  value={form.dueDate}
+                  onChange={(event) => set("dueDate", event.target.value)}
+                  min={form.startDate}
+                />
+                {errors.dueDate && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.dueDate}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className={label}>Due date</label>
+              <input
+                type="date"
+                className={field}
+                value={form.dueDate}
+                onChange={(event) => set("dueDate", event.target.value)}
+                min={today()}
+                required
+              />
+              {errors.dueDate && (
+                <p className="mt-1 text-xs text-red-500">{errors.dueDate}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-5">
@@ -269,7 +359,11 @@ export default function AdminAddTaskModal({
             disabled={submitting || employees.length === 0}
             className="rounded bg-gradient-to-r from-red-700 to-red-600 px-5 py-2 text-xs font-semibold text-white hover:from-red-600 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Assigning..." : "Assign task"}
+            {submitting
+              ? "Assigning..."
+              : isDaily
+                ? "Assign fixed task"
+                : "Assign task"}
           </button>
         </div>
       </form>

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { navigation } from '@/constants'
+import NavGroup, { linkCls } from '../shared/NavGroup'
 import UserCard from './UserCard'
 
 const Logo = () => (
@@ -17,7 +18,7 @@ const Logo = () => (
   </div>
 )
 
-const Sidebar = ({ isOpen = true, onClose = () => {} }) => {
+const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
   const { pathname } = useLocation()
 
   useEffect(() => {
@@ -51,10 +52,14 @@ const Sidebar = ({ isOpen = true, onClose = () => {} }) => {
         />
       )}
 
-      <aside
-        className={`relative z-50 flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)] transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+      <div
+        className={`fixed left-0 top-0 z-50 h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out lg:relative ${
+          isOpen ? 'w-[225px]' : 'w-0'
         }`}
+      >
+      <aside
+        className="flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)]"
+        onMouseLeave={onClose}
       >
         <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between gap-2 px-4 pb-9 pt-8">
@@ -75,27 +80,26 @@ const Sidebar = ({ isOpen = true, onClose = () => {} }) => {
             aria-label="Main navigation"
             className="flex flex-col gap-3 px-3"
           >
-            {navigation.map(({ label, path, icon: Icon }) => (
-              <NavLink
-                key={path}
-                to={path}
-                className={({ isActive }) =>
-                  [
-                    'flex items-center gap-3 rounded-lg px-3 py-3 text-[14px] transition-all duration-200',
-                    isActive
-                      ? 'bg-gradient-to-r from-[#F0202F] to-[#9B0E18] font-medium text-white shadow-[0_6px_20px_rgba(193,18,31,0.22)]'
-                      : 'text-white/90 hover:bg-white/5 hover:text-white',
-                  ].join(' ')
-                }
-              >
-                <Icon
-                  size={19}
-                  strokeWidth={1.75}
-                  className="shrink-0"
-                />
-                <span className="truncate">{label}</span>
-              </NavLink>
-            ))}
+            {navigation.map((item) => {
+              if (item.children?.length) {
+                return (
+                  <NavGroup key={item.path} item={item} onNavigate={onClose} />
+                )
+              }
+
+              const { label, path, icon: Icon } = item
+
+              return (
+                <NavLink
+                  key={path}
+                  to={path}
+                  className={({ isActive }) => linkCls(isActive)}
+                >
+                  <Icon size={19} strokeWidth={1.75} className="shrink-0" />
+                  <span className="truncate">{label}</span>
+                </NavLink>
+              )
+            })}
           </nav>
         </div>
 
@@ -103,6 +107,7 @@ const Sidebar = ({ isOpen = true, onClose = () => {} }) => {
           <UserCard />
         </div>
       </aside>
+      </div>
     </>
   )
 }

@@ -30,7 +30,8 @@ export function initSocket(server) {
   })
 
   io.on('connection', (socket) => {
-    socket.join(`user:${socket.data.userId}`) // har user ka apna room
+    // Every user gets a private room.
+    socket.join(`user:${socket.data.userId}`)
   })
 
   return io
@@ -38,4 +39,9 @@ export function initSocket(server) {
 
 export const emitToUser = (userId, event, payload) => {
   io?.to(`user:${userId}`).emit(event, payload)
+}
+
+// Sends an event to every connected (already authenticated) user.
+export const emitToAll = (event, payload) => {
+  io?.emit(event, payload)
 }

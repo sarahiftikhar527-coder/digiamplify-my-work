@@ -5,17 +5,22 @@ import useNow from "../../../../../hooks/useNow";
 
 import {
   AssignedShiftCard,
+  BreakCard,
   ClockOutDescription,
   ForgotPinModal,
   PinPad,
+  SessionsCard,
   TaskAssignToday,
+  TeamAttendanceCard,
   TodayStatusCard,
+  WorkTimerCard,
 } from "../../components";
 
+import { getStatus } from "../../../../../utils/time";
 import {
-  getStatus,
-  getWorkedMinutes,
-} from "../../../../../utils/time";
+  getDayTotals,
+  getOpenBreak,
+} from "../../../../../utils/attendanceSessions";
 
 const ClockInPage = () => {
   const c = useClockIn();
@@ -24,18 +29,19 @@ const ClockInPage = () => {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [description, setDescription] = useState("");
 
-  const { record, shift, shifts, tasks, loading, error } = c;
+  const { record, shift, shifts, tasks, sessions, state, loading, error } = c;
 
-  // clock in nahi hua ya clock out ho chuka ho to "in", warna "out"
-  const mode =
-    !record?.clockInAt || record?.clockOutAt ? "in" : "out";
+  // "out" means the person can clock in; "in" or "break" shows the clock out pad.
+  const mode = state === "out" ? "in" : "out";
+  const onBreak = state === "break";
 
   const status = getStatus(now, shift, record);
-  const worked = getWorkedMinutes(record, now);
+  const totals = getDayTotals(sessions, now);
+  const openBreak = getOpenBreak(sessions);
 
   const ready = !loading && !error;
 
-  // result return karna zaroori hai, PinPad isi se error/invalid pin dikhata hai
+  // The result must be returned: PinPad uses it to show errors and invalid PIN.
   const handleSubmit = async (pin) => {
     if (mode === "in") {
       return c.clockIn(pin);
@@ -66,16 +72,27 @@ const ClockInPage = () => {
         </div>
       )}
 
+      {/* OUTDATED BACKEND WARNING */}
+      {!error && !loading && c.backendOutdated && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-[12px] text-amber-300">
+          Backend update missing: breaks and multiple clock-ins need the
+          updated backend. Run the database migration, then restart the backend.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
 
         {/* LEFT SIDE */}
         <div className="min-w-0 lg:sticky lg:top-4">
 
           <PinPad
-            key={mode}
+            key={`${mode}-${onBreak}`}
             mode={mode}
-            disabled={!ready}
-            keyboard={!forgotOpen}
+            disabled={!ready || onBreak}
+            keyboard={!forgotOpen && !onBreak}
+            description={
+              onBreak ? "End your break first, then clock out." : undefined
+            }
             onSubmit={handleSubmit}
             onForgot={() => setForgotOpen(true)}
           />
@@ -90,25 +107,54 @@ const ClockInPage = () => {
             loading={loading}
           />
 
+          <WorkTimerCard
+            sessions={sessions}
+            state={state}
+            now={now}
+          />
+
+          {/* BREAK (only while clocked in) */}
+          {state !== "out" && (
+            <BreakCard
+              state={state}
+              openBreak={openBreak}
+              now={now}
+              busy={c.breakBusy}
+              error={c.breakError}
+              onStart={c.startBreak}
+              onEnd={c.endBreak}
+            />
+          )}
+
           <TodayStatusCard
             status={status}
             record={record}
-            worked={worked}
+            totals={totals}
+            state={state}
             loading={loading}
           />
 
           {/* CLOCK OUT DESCRIPTION */}
-          {mode === "out" && (
+          {state === "in" && (
             <ClockOutDescription
               value={description}
               onChange={setDescription}
             />
           )}
 
+          <SessionsCard
+            sessions={sessions}
+            now={now}
+            loading={loading}
+          />
+
           <TaskAssignToday
             tasks={tasks}
             loading={loading}
           />
+
+          {/* TEAM STATUS: everyone's clock in / clock out, live */}
+          <TeamAttendanceCard />
 
         </div>
 

@@ -11,6 +11,8 @@ import LeaveRequestsList from '../../components/LeaveRequestsList';
 import RequestLeaveButton from '../../components/RequestLeaveButton';
 import RequestLeaveModal from '../../components/RequestLeaveModal';
 import SetAvailabilityModal from '../../components/SetAvailabilityModal';
+import { useAuth } from '@/context';
+import { MeetingsPanel, useMeetingModals } from '../../../../meetings';
 import { calendarService } from '../../../../../services/calendarService';
 import {
   useAbsenteeism,
@@ -39,6 +41,8 @@ const getErrorMessage = (error, fallback) =>
 
 export default function CalendarPage() {
   const today = useMemo(() => startOfDay(new Date()), []);
+  const { user } = useAuth();
+  const currentUserId = String(user?.id || user?._id || '');
 
   const [cursor, setCursor] = useState(today);
   const [view, setView] = useState('month');
@@ -99,6 +103,12 @@ export default function CalendarPage() {
         : monthMatrix(cursor.getFullYear(), cursor.getMonth()).flat(),
     [view, cursor]
   );
+
+  const meetings = useMeetingModals({
+    currentUserId,
+    onToast: setToast,
+    onChanged: () => setVersion((current) => current + 1),
+  });
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -245,6 +255,8 @@ export default function CalendarPage() {
               onBack={() => setView(backTo)}
               onPrev={() => step(-1)}
               onNext={() => step(1)}
+              onOpenMeeting={meetings.openDetails}
+              onScheduleMeeting={() => meetings.openCreate(toISO(cursor))}
             />
           ) : (
             <>
@@ -299,6 +311,13 @@ export default function CalendarPage() {
             onSelectDate={openDay}
           />
 
+          <MeetingsPanel
+            refreshKey={version}
+            onSchedule={() => meetings.openCreate(toISO(cursor))}
+            onOpen={meetings.openDetails}
+            onChanged={() => setVersion((current) => current + 1)}
+          />
+
           <UpcomingTaskList
             tasks={tasks.data}
             loading={tasks.loading}
@@ -351,6 +370,8 @@ export default function CalendarPage() {
           onSubmit={submitAvailability}
         />
       )}
+
+      {meetings.modals}
 
       {toast && (
         <div className="cal-toast" role="status">
