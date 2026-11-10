@@ -16,7 +16,7 @@ model User {
   phone              String    @default("") @db.VarChar(50)
   department         String    @default("") @db.VarChar(100)
   designation        String    @default("") @db.VarChar(100)
-  avatarUrl          String    @default("") @db.Text
+  avatarUrl          String?   @db.Text
   timeZone           String    @default("UTC") @db.VarChar(100)
   status             String    @default("active") @db.VarChar(50)
   isDeleted          Boolean   @default(false)
@@ -72,8 +72,8 @@ model Profile {
   workEmail           String   @default("") @db.VarChar(191)
   phone               String   @default("") @db.VarChar(50)
   emergencyNumber     String   @default("") @db.VarChar(50)
-  currentAddress      String   @default("") @db.Text
-  permanentAddress    String   @default("") @db.Text
+  currentAddress      String?  @db.Text
+  permanentAddress    String?  @db.Text
   country             String   @default("") @db.VarChar(100)
   city                String   @default("") @db.VarChar(100)
   education           String   @default("") @db.VarChar(191)
@@ -102,7 +102,7 @@ model Profile {
   workingDays         Json?
   weeklyOff           String   @default("Sunday") @db.VarChar(50)
   noticePeriod        String   @default("") @db.VarChar(50)
-  avatarUrl           String   @default("") @db.Text
+  avatarUrl           String?  @db.Text
   documents           Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -192,7 +192,7 @@ model Leave {
   days         Int
   reason       String    @db.Text
   status       String    @default("pending") @db.VarChar(50)
-  remarks      String    @default("") @db.Text
+  remarks      String?   @db.Text
   reviewedById String?
   reviewedBy   User?     @relation("ReviewedLeaves", fields: [reviewedById], references: [id], onDelete: SetNull)
   reviewedAt   DateTime?
@@ -209,7 +209,7 @@ model Task {
   id               String    @id @default(uuid())
   title            String    @db.VarChar(200)
   subtitle         String    @default("") @db.VarChar(200)
-  description      String    @default("") @db.Text
+  description      String?   @db.Text
   priority         String    @default("Medium") @db.VarChar(50)
   taskType         String    @default("extra") @db.VarChar(20)
   startDate        DateTime?
@@ -238,7 +238,7 @@ model TaskDailyUpdate {
   task             Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   employeeId       String
   updateDate       String   @db.VarChar(10)
-  description      String   @default("") @db.Text
+  description      String?  @db.Text
   status           String   @default("in-progress") @db.VarChar(30)
   timeSpentMinutes Int      @default(0)
   createdAt        DateTime @default(now())
@@ -266,7 +266,7 @@ model Calendar {
   clockOut     String    @default("") @db.VarChar(50)
   worked       String    @default("") @db.VarChar(50)
   status       String    @default("pending") @db.VarChar(50)
-  description  String    @default("") @db.Text
+  description  String?   @db.Text
   createdById  String?
   createdBy    User?     @relation("CreatedCalendar", fields: [createdById], references: [id], onDelete: SetNull)
   reviewedById String?
@@ -287,7 +287,7 @@ model Chat {
   createdById     String
   createdBy       User          @relation("CreatedChats", fields: [createdById], references: [id], onDelete: Cascade)
   lastMessageAt   DateTime      @default(now())
-  lastMessageText String        @default("") @db.Text
+  lastMessageText String?       @db.Text
   members         Json?
   messages        Json?
   admins          Json?
@@ -312,7 +312,7 @@ model Finance {
   periodMonth Int
   periodYear  Int
   status      String    @default("Pending") @db.VarChar(50)
-  notes       String    @default("") @db.Text
+  notes       String?   @db.Text
   receiptMeta Json?
   createdById String?
   createdBy   User?     @relation("CreatedFinances", fields: [createdById], references: [id], onDelete: SetNull)
@@ -336,8 +336,8 @@ model Notification {
   tag       String   @db.VarChar(50)
   title     String   @db.VarChar(150)
   message   String   @db.VarChar(500)
-  details   String   @default("") @db.Text
-  link      String   @default("") @db.Text
+  details   String?  @db.Text
+  link      String?  @db.Text
   linkLabel String   @default("") @db.VarChar(100)
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -409,11 +409,11 @@ model ProgressReport {
   periodStart     DateTime
   periodEnd       DateTime
   summary         String    @db.Text
-  accomplishments String    @default("") @db.Text
-  blockers        String    @default("") @db.Text
-  nextSteps       String    @default("") @db.Text
+  accomplishments String?   @db.Text
+  blockers        String?   @db.Text
+  nextSteps       String?   @db.Text
   status          String    @default("submitted") @db.VarChar(50)
-  adminFeedback   String    @default("") @db.Text
+  adminFeedback   String?   @db.Text
   reviewedById    String?
   reviewedBy      User?     @relation("ReviewedProgressReports", fields: [reviewedById], references: [id], onDelete: SetNull)
   reviewedAt      DateTime?

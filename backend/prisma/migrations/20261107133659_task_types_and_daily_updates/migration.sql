@@ -9,7 +9,7 @@ CREATE TABLE `task_daily_updates` (
     `taskId` VARCHAR(191) NOT NULL,
     `employeeId` VARCHAR(191) NOT NULL,
     `updateDate` VARCHAR(10) NOT NULL,
-    `description` TEXT NOT NULL DEFAULT '',
+    `description` TEXT NULL,
     `status` VARCHAR(30) NOT NULL DEFAULT 'in-progress',
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,

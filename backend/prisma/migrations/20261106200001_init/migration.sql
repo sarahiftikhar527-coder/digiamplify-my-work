@@ -19,34 +19,34 @@
 
 */
 -- AlterTable
-ALTER TABLE `calendars` MODIFY `description` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `calendars` MODIFY `description` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `chats` MODIFY `lastMessageText` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `chats` MODIFY `lastMessageText` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `finances` MODIFY `notes` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `finances` MODIFY `notes` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `leaves` MODIFY `remarks` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `leaves` MODIFY `remarks` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `notifications` MODIFY `details` TEXT NOT NULL DEFAULT '',
-    MODIFY `link` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `notifications` MODIFY `details` TEXT NULL,
+    MODIFY `link` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `profiles` MODIFY `currentAddress` TEXT NOT NULL DEFAULT '',
-    MODIFY `permanentAddress` TEXT NOT NULL DEFAULT '',
-    MODIFY `avatarUrl` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `profiles` MODIFY `currentAddress` TEXT NULL,
+    MODIFY `permanentAddress` TEXT NULL,
+    MODIFY `avatarUrl` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `progress_reports` MODIFY `accomplishments` TEXT NOT NULL DEFAULT '',
-    MODIFY `blockers` TEXT NOT NULL DEFAULT '',
-    MODIFY `nextSteps` TEXT NOT NULL DEFAULT '',
-    MODIFY `adminFeedback` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `progress_reports` MODIFY `accomplishments` TEXT NULL,
+    MODIFY `blockers` TEXT NULL,
+    MODIFY `nextSteps` TEXT NULL,
+    MODIFY `adminFeedback` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `tasks` MODIFY `description` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `tasks` MODIFY `description` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `users` MODIFY `avatarUrl` TEXT NOT NULL DEFAULT '';
+ALTER TABLE `users` MODIFY `avatarUrl` TEXT NULL;
