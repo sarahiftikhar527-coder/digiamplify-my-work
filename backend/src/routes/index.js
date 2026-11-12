@@ -1,4 +1,6 @@
+
 import { Router } from "express";
+
 import authRoutes from "../modules/auth/auth.routes.js";
 import usersRoutes from "../modules/users/users.routes.js";
 import notificationsRoutes from "../modules/notifications/notifications.routes.js";
@@ -17,12 +19,16 @@ import announcementsRoutes from "../modules/announcements/announcements.routes.j
 import chatRoutes from "../modules/chat/chat.routes.js";
 import filesRoutes from "../modules/files/files.routes.js";
 import publicRoutes from "../modules/public/public.routes.js";
+import hierarchyRoutes from "../modules/hierarchy/hierarchy.routes.js";
 
 const router = Router();
 
-router.get("/health", (req, res) =>
-  res.json({ success: true, message: "API is running" })
-);
+router.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "API is running",
+  });
+});
 
 router.use("/auth", authRoutes);
 router.use("/users", usersRoutes);
@@ -42,5 +48,6 @@ router.use("/announcements", announcementsRoutes);
 router.use("/chat", chatRoutes);
 router.use("/files", filesRoutes);
 router.use("/public", publicRoutes);
+router.use("/hierarchy", hierarchyRoutes);
 
 export default router;

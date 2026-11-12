@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -47,8 +48,18 @@ if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
+// API routes
 app.use('/api/v1', apiLimiter, routes);
 
+// Temporary meetings diagnostic route
+app.get('/api/v1/meetings-debug', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Meetings API server is running',
+  });
+});
+
+// Error handling
 app.use(notFound);
 app.use(errorHandler);
 
