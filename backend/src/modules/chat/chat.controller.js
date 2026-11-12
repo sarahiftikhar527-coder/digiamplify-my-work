@@ -1,9 +1,11 @@
+
 import path from "path";
 import crypto from "crypto";
 import fs from "fs";
 import multer from "multer";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import * as service from "./chat.service.js";
+import * as aiService from "./chat.ai.service.js";
 import ApiError from "../../utils/ApiError.js";
 import { CHAT_ATTACHMENTS_DIR } from "../../config/uploads.js";
 
@@ -118,6 +120,21 @@ export const sendMessage = asyncHandler(async (req, res) => {
 export const markRead = asyncHandler(async (req, res) => {
   const result = await service.markRead(req.params.id, req.user);
   success(res, result, "Conversation marked as read.");
+});
+
+export const getMessageInfo = asyncHandler(async (req, res) => {
+  const result = await service.getMessageInfo(
+    req.params.id,
+    req.params.messageId,
+    req.user
+  );
+
+  success(res, result);
+});
+
+export const getAiSuggestions = asyncHandler(async (req, res) => {
+  const result = await aiService.getSuggestions(req.body, req.user);
+  success(res, result);
 });
 
 export const addMembers = asyncHandler(async (req, res) => {

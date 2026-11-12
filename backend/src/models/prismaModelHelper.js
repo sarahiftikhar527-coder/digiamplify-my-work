@@ -609,7 +609,66 @@ export function createPrismaModel(delegate, fieldMap = {}) {
       );
     },
 
-    async exists(filter = {}) {
+
+
+        async exists(filter = {}) {
+      // Chat keeps members/messages in JSON columns. Prisma cannot filter those
+      // by path, so these filters are applied in JavaScript instead.
+      if (delegate === "chat") {
+        const {
+          "members.user": memberFilter,
+          "messages.attachments.id": attachmentFilter,
+          "messages._id": messageFilter,
+          ...rest
+        } = filter;
+
+        const rows = await prisma.chat.findMany({
+          where: translateWhere(rest, fieldMap),
+          select: { id: true, members: true, messages: true },
+        });
+
+        const memberId =
+          memberFilter === undefined ? null : cleanId(memberFilter);
+
+        const match = rows.find((row) => {
+          const members = Array.isArray(row.members) ? row.members : [];
+          const messages = Array.isArray(row.messages) ? row.messages : [];
+
+          if (
+            memberId &&
+            !members.some((m) => cleanId(m?.user ?? m) === memberId)
+          ) {
+            return false;
+          }
+
+          if (
+            attachmentFilter !== undefined &&
+            !messages.some(
+              (msg) =>
+                !msg?.deleted &&
+                (msg?.attachments || []).some(
+                  (item) => item?.id === attachmentFilter
+                )
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            messageFilter !== undefined &&
+            !messages.some(
+              (msg) => cleanId(msg?._id ?? msg?.id) === cleanId(messageFilter)
+            )
+          ) {
+            return false;
+          }
+
+          return true;
+        });
+
+        return match ? { id: match.id, _id: match.id } : null;
+      }
+
       const where = translateWhere(filter, fieldMap);
       const found = await prisma[delegate].findFirst({
         where,
@@ -617,6 +676,7 @@ export function createPrismaModel(delegate, fieldMap = {}) {
       });
       return found ? { id: found.id, _id: found.id } : null;
     },
+
 
     async countDocuments(filter = {}) {
       const where = translateWhere(filter, fieldMap);

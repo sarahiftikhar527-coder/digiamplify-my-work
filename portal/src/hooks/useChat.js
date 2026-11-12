@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { chatService } from "../services/chatService.js";
-import { connectChat } from "../services/chatSocket.js";
+import { getSocket } from "../services/socket.js";
 import { CHAT_CONFIG } from "../modules/employee/chat/chat.config.js";
 
 const getId = (item) => {
@@ -195,12 +195,16 @@ export default function useChat() {
   const [tab, setTab] = useState("all");
   const [replyTo, setReplyTo] = useState(null);
 
-  const activeRef = useRef(null);
+   const activeRef = useRef(null);
   const conversationsRef = useRef([]);
+  const messagesRef = useRef({});
+  const socketOnlineRef = useRef(false);
+  const pollTickRef = useRef(0);
   const requestVersionRef = useRef(0);
 
   activeRef.current = activeId;
   conversationsRef.current = conversations;
+  messagesRef.current = messages;
 
   const upsertConversation = useCallback((response) => {
     const conversation = normalizeConversation(response);
@@ -433,8 +437,30 @@ export default function useChat() {
           payload.messageId,
           () => ({ pinned: payload.pinned })
         );
-      } else if (type === "conversation:updated") {
-        upsertConversation(payload);
+            } else if (type === "conversation:updated") {
+        const updated = normalizeConversation(payload);
+
+        if (updated) {
+          // The chat that is open on screen is always "read".
+          upsertConversation(
+            updated.id === activeRef.current
+              ? { ...updated, unreadCount: 0 }
+              : updated
+          );
+        }
+      } else if (type === "conversation:removed") {
+        const removedId = String(payload.conversationId ?? "");
+
+        if (!removedId) return;
+
+        setConversations((previous) =>
+          previous.filter((conversation) => conversation.id !== removedId)
+        );
+
+        if (activeRef.current === removedId) {
+          activeRef.current = null;
+          setActiveId(null);
+        }
       }
     },
     [myId, bumpLastMessage, patchMessage, upsertConversation]
@@ -455,19 +481,91 @@ export default function useChat() {
       }
     })();
 
-    const stop = connectChat({ onEvent: handleEvent });
-
-    return () => {
+        return () => {
       alive = false;
       requestVersionRef.current += 1;
-      stop();
     };
-  }, [loadConversations, openConversation, handleEvent]);
+  }, [loadConversations, openConversation]);
 
+  // Real-time updates over the same socket.io connection the rest of the app
+  // uses. The server sends these events to EVERY member of a conversation, so
+  // new groups and new messages appear instantly for everyone who was added.
   useEffect(() => {
-    if (CHAT_CONFIG.WS_URL) return undefined;
+    let socket;
 
+    try {
+      socket = getSocket();
+    } catch {
+      return undefined;
+    }
+
+    const events = {
+      "chat:message": (data) =>
+        handleEvent({ type: "message:new", payload: data?.message }),
+      "chat:conversation": (data) =>
+        handleEvent({ type: "conversation:updated", payload: data }),
+      "chat:conversation:removed": (data) =>
+        handleEvent({ type: "conversation:removed", payload: data }),
+      "chat:message:deleted": (data) =>
+        handleEvent({ type: "message:deleted", payload: data }),
+      "chat:message:reaction": (data) =>
+        handleEvent({ type: "message:reaction", payload: data }),
+      "chat:message:pinned": (data) =>
+        handleEvent({ type: "message:pinned", payload: data }),
+    };
+
+    // After a (re)connect, catch up on anything missed while offline.
+    const onConnect = async () => {
+      socketOnlineRef.current = true;
+
+      const list = await loadConversations();
+      const id = activeRef.current;
+
+      if (!id || !list.some((conversation) => conversation.id === id)) return;
+
+      try {
+        const data = normalizeMessages(await chatService.getMessages(id));
+
+        setMessages((previous) => ({
+          ...previous,
+          [id]: mergeMessages(data, previous[id] || []),
+        }));
+      } catch {
+        /* the next poll will retry */
+      }
+    };
+
+    const onDisconnect = () => {
+      socketOnlineRef.current = false;
+    };
+
+    socketOnlineRef.current = Boolean(socket.connected);
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+
+    Object.entries(events).forEach(([name, listener]) =>
+      socket.on(name, listener)
+    );
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+
+      Object.entries(events).forEach(([name, listener]) =>
+        socket.off(name, listener)
+      );
+    };
+  }, [handleEvent, loadConversations]);
+
+  // Safety net: if the socket is offline, poll every few seconds. While the
+  // socket is connected, only a slow refresh (about every 30s) is needed.
+  useEffect(() => {
     const interval = setInterval(async () => {
+      pollTickRef.current += 1;
+
+      if (socketOnlineRef.current && pollTickRef.current % 6 !== 0) return;
+
       try {
         const response = await chatService.getConversations();
         const list = normalizeConversations(response);
@@ -486,19 +584,34 @@ export default function useChat() {
 
         if (!id || id === "undefined" || id === "null") return;
 
-        const messagesResponse = await chatService.getMessages(id);
+                const messagesResponse = await chatService.getMessages(id);
         const data = normalizeMessages(messagesResponse);
+
+        const knownIds = new Set(
+          (messagesRef.current[id] || []).map((item) => String(item.id))
+        );
+
+        const hasNewIncoming = data.some(
+          (item) =>
+            !knownIds.has(String(item.id)) &&
+            String(item.sender?.id ?? "") !== String(myId ?? "")
+        );
 
         setMessages((previous) => ({
           ...previous,
           [id]: mergeMessages(data, previous[id] || []),
         }));
+
+        if (hasNewIncoming) {
+          chatService.markRead(id).catch(() => {});
+        }
       } catch {
+        /* ignore, the next poll will retry */
       }
     }, CHAT_CONFIG.POLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [myId]);
 
   const sendMessage = useCallback(
     async ({ text = "", mentions = [], files = [], replyTo: reply } = {}) => {
@@ -569,17 +682,21 @@ export default function useChat() {
           selectedFiles.map((file) => chatService.uploadAttachment(file))
         );
 
-        const attachmentIds = uploaded
+                const attachmentMeta = uploaded
           .map((attachment) => {
             const result = unwrap(attachment);
-            return (
-              result?.attachment?.id ??
-              result?.attachment?._id ??
-              result?.id ??
-              result?._id
-            );
+            const file = result?.attachment ?? result;
+
+            return {
+              id: file?.id ?? file?._id,
+              name: file?.name,
+              mimeType: file?.mimeType,
+              size: file?.size,
+            };
           })
-          .filter(Boolean);
+          .filter((file) => file.id);
+
+        const attachmentIds = attachmentMeta.map((file) => file.id);
 
         if (selectedFiles.length && !attachmentIds.length) {
           throw new Error("Attachments upload nahi huin. Dobara try karein.");

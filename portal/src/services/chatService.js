@@ -1,6 +1,10 @@
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || (typeof window !== "undefined" && window.location.hostname.includes("digiamplify.com") ? "https://api.digiamplify.com/api/v1" : "http://localhost:5000/api/v1");
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== "undefined" &&
+  window.location.hostname.includes("digiamplify.com")
+    ? "https://api.digiamplify.com/api/v1"
+    : "http://localhost:5000/api/v1");
 
 function getAuthToken() {
   return (
@@ -72,7 +76,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     if (response.status === 401 && !token) {
       throw new Error(
-        "Authentication token nahi mila. Please dobara login karo."
+        "Authentication token not found. Please log in again."
       );
     }
 
@@ -134,6 +138,20 @@ export const chatService = {
 
   sendMessage: (id, payload) =>
     request(`/chat/conversations/${id}/messages`, {
+      method: "POST",
+      body: payload,
+    }),
+
+  // Message Info: retrieve message read receipts.
+  getMessageInfo: (id, messageId) =>
+    request(
+      `/chat/conversations/${id}/messages/${messageId}/info`
+    ),
+
+  // AI Assist: generate message suggestions.
+  // Matches backend route: router.post("/ai/suggestions", ...)
+  getAiSuggestions: (payload) =>
+    request("/chat/ai/suggestions", {
       method: "POST",
       body: payload,
     }),

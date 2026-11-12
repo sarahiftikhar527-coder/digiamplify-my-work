@@ -19,6 +19,13 @@ router.post("/conversations/:id/messages", ctrl.sendMessage);
 router.delete("/conversations/:id/messages", ctrl.clearChat);
 
 router.post("/conversations/:id/read", ctrl.markRead);
+
+router.get(
+  "/conversations/:id/messages/:messageId/info",
+  ctrl.getMessageInfo
+);
+router.post("/ai/suggestions", ctrl.getAiSuggestions);
+
 router.post("/conversations/:id/members", ctrl.addMembers);
 router.post("/conversations/:id/leave", ctrl.leaveGroup);
 

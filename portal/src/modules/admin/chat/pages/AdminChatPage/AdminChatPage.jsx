@@ -1,7 +1,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MessageSquare } from "lucide-react";
+
 import useChat from "../../../../../hooks/useChat";
+
 import {
   ChatWindowHeader,
   ConversationSidebar,
@@ -11,6 +13,8 @@ import {
   MessageList,
   NewMessageModal,
 } from "../../components";
+
+import MessageInfoModal from "@/components/MessageInfoModal/MessageInfoModal";
 
 const getErrorMessage = (
   error,
@@ -22,13 +26,18 @@ const getConversationId = (conversation) =>
 
 const getMemberId = (member) => {
   const user = member?.user || member;
+
   return String(user?.id || user?._id || "");
 };
 
 const AdminChatPage = () => {
   const chat = useChat();
 
-  const { activeConversation: conv, me, myId } = chat;
+  const {
+    activeConversation: conv,
+    me,
+    myId,
+  } = chat;
 
   const conversationId = getConversationId(conv);
 
@@ -36,6 +45,7 @@ const AdminChatPage = () => {
   const [infoOpen, setInfoOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [forwardMsg, setForwardMsg] = useState(null);
+  const [infoMsg, setInfoMsg] = useState(null);
   const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -76,6 +86,7 @@ const AdminChatPage = () => {
 
       setInfoOpen(false);
       setMobileChatOpen(true);
+
       chat.openConversation(id);
     },
     [chat.openConversation]
@@ -89,6 +100,7 @@ const AdminChatPage = () => {
     }
 
     await chat.clearChat(conversationId);
+
     showNotice("Chat cleared successfully.");
   });
 
@@ -109,6 +121,7 @@ const AdminChatPage = () => {
 
   const handleReplyPrivately = runSafely(async (message) => {
     await chat.replyPrivately(message);
+
     setMobileChatOpen(true);
   });
 
@@ -120,7 +133,9 @@ const AdminChatPage = () => {
   const handleForward = runSafely(
     async (message, conversationIds) => {
       await chat.forwardMessage(message, conversationIds);
+
       setForwardMsg(null);
+
       showNotice("Message forwarded successfully.");
     }
   );
@@ -137,12 +152,17 @@ const AdminChatPage = () => {
           throw new Error("Please select a group first.");
         }
 
-        await chat.addMembers(conversationId, payload.memberIds);
+        await chat.addMembers(
+          conversationId,
+          payload.memberIds
+        );
 
         showNotice("Members added successfully.");
       } else {
         await chat.createConversation(payload);
+
         setMobileChatOpen(true);
+
         showNotice("Conversation created successfully.");
       }
 
@@ -150,7 +170,10 @@ const AdminChatPage = () => {
       setInfoOpen(false);
     } catch (error) {
       chat.setError(
-        getErrorMessage(error, "Unable to complete this action.")
+        getErrorMessage(
+          error,
+          "Unable to complete this action."
+        )
       );
     } finally {
       setSubmitting(false);
@@ -164,7 +187,10 @@ const AdminChatPage = () => {
       await chat.reload();
     } catch (error) {
       chat.setError(
-        getErrorMessage(error, "Unable to reload conversations.")
+        getErrorMessage(
+          error,
+          "Unable to reload conversations."
+        )
       );
     }
   };
@@ -196,6 +222,7 @@ const AdminChatPage = () => {
     onPin: handlePin,
     onDelete: handleDelete,
     onRetry: handleRetry,
+    onInfo: setInfoMsg,
   };
 
   const isAdminUser =
@@ -217,6 +244,7 @@ const AdminChatPage = () => {
 
   return (
     <div className="flex h-[calc(100dvh-110px)] min-h-[460px] w-full flex-col">
+
       {chat.error && (
         <div
           role="alert"
@@ -247,6 +275,7 @@ const AdminChatPage = () => {
       )}
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-[#0d0d0d]">
+
         <ConversationSidebar
           className={`${
             mobileChatOpen ? "hidden" : "flex"
@@ -292,6 +321,7 @@ const AdminChatPage = () => {
                 key={`input-${conversationId}`}
                 me={me}
                 myId={myId}
+                conversationId={conversationId}
                 members={conv.members || []}
                 isGroup={conv.type === "group"}
                 replyTo={chat.replyTo}
@@ -310,15 +340,16 @@ const AdminChatPage = () => {
                   : "Select a conversation to start chatting"}
               </p>
 
-              {!chat.loading && conversations.length === 0 && (
-                <button
-                  type="button"
-                  onClick={() => setModal("new")}
-                  className="rounded-lg border border-white/10 px-4 py-2 text-xs text-white/80 transition hover:bg-white/5 hover:text-white"
-                >
-                  Start a conversation
-                </button>
-              )}
+              {!chat.loading &&
+                conversations.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setModal("new")}
+                    className="rounded-lg border border-white/10 px-4 py-2 text-xs text-white/80 transition hover:bg-white/5 hover:text-white"
+                  >
+                    Start a conversation
+                  </button>
+                )}
             </div>
           )}
         </section>
@@ -349,7 +380,9 @@ const AdminChatPage = () => {
         <NewMessageModal
           mode={modal}
           myId={myId}
-          excludeIds={modal === "add" ? excludeMemberIds : []}
+          excludeIds={
+            modal === "add" ? excludeMemberIds : []
+          }
           onClose={() => {
             if (!submitting) {
               setModal(null);
@@ -365,6 +398,14 @@ const AdminChatPage = () => {
           conversations={conversations}
           onClose={() => setForwardMsg(null)}
           onForward={handleForward}
+        />
+      )}
+
+      {infoMsg && conv && (
+        <MessageInfoModal
+          message={infoMsg}
+          conversationId={conversationId}
+          onClose={() => setInfoMsg(null)}
         />
       )}
 

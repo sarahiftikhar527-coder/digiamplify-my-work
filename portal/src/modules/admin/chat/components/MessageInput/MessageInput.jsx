@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import Avatar from "../Avatar";
+import ChatAiAssist from "@/components/ChatAiAssist/ChatAiAssist";
 import useClickOutside from "../../../../../hooks/useClickOutside";
 import { scrollbar } from "../../../../../utils/format";
 
@@ -22,6 +23,7 @@ const MAX_FILES = 5;
 const MessageInput = ({
   me,
   myId,
+  conversationId,
   members = [],
   isGroup = false,
   replyTo,
@@ -61,9 +63,19 @@ const MessageInput = ({
         const user = member?.user || member || {};
 
         return {
-          id: String(user.id || user._id || member?.id || member?._id || ""),
+          id: String(
+            user.id ||
+            user._id ||
+            member?.id ||
+            member?._id ||
+            ""
+          ),
           name: user.name || member?.name || "",
-          avatar: user.avatar || user.avatarUrl || member?.avatar || "",
+          avatar:
+            user.avatar ||
+            user.avatarUrl ||
+            member?.avatar ||
+            "",
         };
       })
       .filter((member) => member.id && member.name);
@@ -122,6 +134,7 @@ const MessageInput = ({
     const position = element.selectionStart;
     const beforeCursor = text.slice(0, position);
     const afterCursor = text.slice(position);
+
     const updatedBefore = beforeCursor.replace(
       /@([^\s@]*)$/,
       `@${member.name.replace(/\s+/g, " ")} `
@@ -204,7 +217,9 @@ const MessageInput = ({
       const combined = [...previous, ...validFiles];
 
       if (combined.length > MAX_FILES) {
-        setFileError(`You can attach a maximum of ${MAX_FILES} files.`);
+        setFileError(
+          `You can attach a maximum of ${MAX_FILES} files.`
+        );
       }
 
       return combined.slice(0, MAX_FILES);
@@ -219,6 +234,7 @@ const MessageInput = ({
     setFiles((previous) =>
       previous.filter((_, fileIndex) => fileIndex !== index)
     );
+
     setFileError("");
   };
 
@@ -233,8 +249,10 @@ const MessageInput = ({
 
     const start = element.selectionStart;
     const end = element.selectionEnd;
+
     const updatedText =
       text.slice(0, start) + emoji + text.slice(end);
+
     const newPosition = start + emoji.length;
 
     setText(updatedText);
@@ -289,7 +307,8 @@ const MessageInput = ({
       }
     } catch (error) {
       setFileError(
-        error?.message || "Message could not be sent. Please try again."
+        error?.message ||
+        "Message could not be sent. Please try again."
       );
     } finally {
       setSending(false);
@@ -319,7 +338,28 @@ const MessageInput = ({
   const isDisabled = disabled || sending;
 
   return (
-    <div className="relative border-t border-white/10 bg-[#101010] px-3 py-3 sm:px-4">
+    <div className="relative border-t border-white/10 bg-[#101010] px-3 pb-3 pt-9 sm:px-4">
+
+      <ChatAiAssist
+        conversationId={conversationId}
+        text={text}
+        disabled={isDisabled}
+        onUse={(value) => {
+          setText(value);
+
+          requestAnimationFrame(() => {
+            const el = taRef.current;
+
+            if (!el) return;
+
+            el.style.height = "auto";
+            el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+            el.focus();
+            el.setSelectionRange(value.length, value.length);
+          });
+        }}
+      />
+
       {replyTo && (
         <div className="mb-2 flex items-start justify-between gap-3 rounded-lg border-l-2 border-red-600 bg-[#1a1a1a] px-3 py-2">
           <div className="min-w-0 text-[11px]">

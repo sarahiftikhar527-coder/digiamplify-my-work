@@ -81,8 +81,7 @@ export const emitToUser = (userId, event, payload) => {
 // Sends the same event to several users (each has a private room).
 export const emitToUsers = (userIds, event, payload) => {
   if (!io || !Array.isArray(userIds)) return
-
-  for (const userId of new Set(userIds.map(String))) {
+  for (const userId of new Set(userIds.filter(Boolean).map(String))) {
     io.to(`user:${userId}`).emit(event, payload)
   }
 }
@@ -91,3 +90,5 @@ export const emitToUsers = (userIds, event, payload) => {
 export const emitToAll = (event, payload) => {
   io?.emit(event, payload)
 }
+
+// Sends the same event to several users (each user's private room).

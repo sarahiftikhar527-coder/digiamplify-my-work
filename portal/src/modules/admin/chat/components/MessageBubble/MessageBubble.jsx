@@ -6,6 +6,7 @@ import {
   Clock,
   FileText,
   Forward,
+  Info,
   Pin,
   PinOff,
   Reply,
@@ -14,6 +15,7 @@ import {
   User,
   Plus,
 } from "lucide-react";
+
 import Avatar from "../Avatar";
 import ChatAttachment from "@/components/ChatAttachment/ChatAttachment";
 import useClickOutside from "../../../../../hooks/useClickOutside";
@@ -44,7 +46,9 @@ const renderText = (text, mentions = []) => {
   const regex = new RegExp(`(@(?:${pattern}))`, "g");
 
   return text.split(regex).map((part, index) => {
-    const isMention = uniqueNames.some((name) => part === `@${name}`);
+    const isMention = uniqueNames.some(
+      (name) => part === `@${name}`
+    );
 
     return isMention ? (
       <span key={index} className="font-semibold text-red-400">
@@ -69,6 +73,7 @@ const MessageBubble = ({
   onPin,
   onDelete,
   onRetry,
+  onInfo,
 }) => {
   const [menu, setMenu] = useState(false);
   const [more, setMore] = useState(false);
@@ -94,15 +99,20 @@ const MessageBubble = ({
   const text = message.text || "";
   const createdAt = message.createdAt;
   const replyTo = message.replyTo;
+
   const reactions = Array.isArray(message.reactions)
     ? message.reactions
     : [];
+
   const pinned = Boolean(message.pinned);
   const deleted = Boolean(message.deleted);
+
   const attachments = Array.isArray(message.attachments)
     ? message.attachments
     : [];
+
   const status = message.status;
+
   const mentions = Array.isArray(message.mentions)
     ? message.mentions
     : [];
@@ -112,6 +122,7 @@ const MessageBubble = ({
   const toggleMenu = () => {
     if (!menu && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
+
       setOpenUp(window.innerHeight - rect.bottom < 320);
     }
 
@@ -134,6 +145,7 @@ const MessageBubble = ({
       icon: Reply,
       onClick: () => run(onReply, message),
     },
+
     ...(!isMine && isGroup
       ? [
           {
@@ -143,21 +155,35 @@ const MessageBubble = ({
           },
         ]
       : []),
+
     {
       label: "React",
       icon: Smile,
       onClick: () => setMore((previous) => !previous),
     },
+
     {
       label: "Forward",
       icon: Forward,
       onClick: () => run(onForward, message),
     },
+
     {
       label: pinned ? "Unpin" : "Pin",
       icon: pinned ? PinOff : Pin,
       onClick: () => run(onPin, message),
     },
+
+    ...(onInfo && (isMine || canDelete)
+      ? [
+          {
+            label: "Message info",
+            icon: Info,
+            onClick: () => run(onInfo, message),
+          },
+        ]
+      : []),
+
     ...(canDelete
       ? [
           {
@@ -199,11 +225,16 @@ const MessageBubble = ({
           </span>
 
           {sender.role && (
-            <span className="text-white/45">{sender.role}</span>
+            <span className="text-white/45">
+              {sender.role}
+            </span>
           )}
 
           <span className="flex items-center gap-1 text-white/45">
-            {pinned && <Pin size={10} className="text-red-500" />}
+            {pinned && (
+              <Pin size={10} className="text-red-500" />
+            )}
+
             {createdAt ? formatTime(createdAt) : ""}
           </span>
         </div>
@@ -286,21 +317,31 @@ const MessageBubble = ({
           {menu && (
             <div
               className={`absolute z-30 flex flex-col gap-2 ${
-                isMine ? "right-0 items-end" : "left-0 items-start"
-              } ${openUp ? "bottom-full mb-2" : "top-full mt-2"}`}
+                isMine
+                  ? "right-0 items-end"
+                  : "left-0 items-start"
+              } ${
+                openUp
+                  ? "bottom-full mb-2"
+                  : "top-full mt-2"
+              }`}
             >
               <div className="flex max-w-[min(90vw,320px)] flex-wrap items-center gap-1 rounded-full border border-white/10 bg-[#161616] px-2 py-1.5 shadow-xl">
-                {[...QUICK, ...(more ? MORE : [])].map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => run(onReact, message, emoji)}
-                    aria-label={`React with ${emoji}`}
-                    className="px-0.5 text-[16px] transition-transform hover:scale-125"
-                  >
-                    {emoji}
-                  </button>
-                ))}
+                {[...QUICK, ...(more ? MORE : [])].map(
+                  (emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() =>
+                        run(onReact, message, emoji)
+                      }
+                      aria-label={`React with ${emoji}`}
+                      className="px-0.5 text-[16px] transition-transform hover:scale-125"
+                    >
+                      {emoji}
+                    </button>
+                  )
+                )}
 
                 {!more && (
                   <button
@@ -326,7 +367,11 @@ const MessageBubble = ({
                     onClick={onClick}
                     className="flex w-full items-center gap-3 px-4 py-2 text-left text-[13px] text-white/90 transition-colors hover:bg-white/5"
                   >
-                    <Icon size={14} className="text-white/60" />
+                    <Icon
+                      size={14}
+                      className="text-white/60"
+                    />
+
                     {label}
                   </button>
                 ))}
@@ -363,7 +408,10 @@ const MessageBubble = ({
                   }`}
                 >
                   {reaction.emoji}
-                  <span className="text-white/70">{userIds.length}</span>
+
+                  <span className="text-white/70">
+                    {userIds.length}
+                  </span>
                 </button>
               );
             })}

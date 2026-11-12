@@ -1,24 +1,39 @@
+
 import { useEffect, useState } from "react";
 import { MessageSquare } from "lucide-react";
+
 import useChat from "../../../../../hooks/useChat";
+
+import MessageInfoModal from "@/components/MessageInfoModal/MessageInfoModal";
+
 import {
-  ChatHeader, ChatWindowHeader, ConversationSidebar, ForwardModal,
-  GroupInfoPanel, MessageInput, MessageList, NewMessageModal,
+  ChatHeader,
+  ChatWindowHeader,
+  ConversationSidebar,
+  ForwardModal,
+  GroupInfoPanel,
+  MessageInput,
+  MessageList,
+  NewMessageModal,
 } from "../../components";
 
 const ChatPage = () => {
   const chat = useChat();
+
   const { activeConversation: conv, me, myId } = chat;
 
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [modal, setModal] = useState(null); // "new" | "add" | null
+  const [infoMsg, setInfoMsg] = useState(null);
+  const [modal, setModal] = useState(null);
   const [forwardMsg, setForwardMsg] = useState(null);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (!notice) return;
+
     const t = setTimeout(() => setNotice(""), 3000);
+
     return () => clearTimeout(t);
   }, [notice]);
 
@@ -36,51 +51,80 @@ const ChatPage = () => {
   };
 
   const handleClear = guard(async () => {
-    if (conv && window.confirm("Clear all messages in this chat?")) await chat.clearChat(conv.id);
+    if (
+      conv &&
+      window.confirm("Clear all messages in this chat?")
+    ) {
+      await chat.clearChat(conv.id);
+    }
   });
 
   const handleExit = guard(async () => {
     if (conv && window.confirm(`Exit "${conv.name}"?`)) {
       await chat.exitGroup(conv.id);
+
       setInfoOpen(false);
       setMobileChatOpen(false);
     }
   });
 
-  const videoCall = () => setNotice("Video call will be available once the calling service is connected.");
+  const videoCall = () =>
+    setNotice(
+      "Video call will be available once the calling service is connected."
+    );
 
   const actions = {
     onReply: chat.setReplyTo,
+
     onReplyPrivately: guard(async (m) => {
       await chat.replyPrivately(m);
       setMobileChatOpen(true);
     }),
+
     onReact: chat.reactToMessage,
     onForward: setForwardMsg,
     onPin: chat.pinMessage,
     onDelete: chat.deleteMessage,
     onRetry: chat.retryMessage,
+    onInfo: setInfoMsg,
   };
 
   const isAdminUser = me?.role?.toLowerCase?.() === "admin";
 
   return (
     <div className="w-full">
-   
 
       {chat.error && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-2 text-[12px] text-red-300">
           <span className="truncate">{chat.error}</span>
+
           <div className="flex shrink-0 gap-3">
-            <button onClick={() => { chat.setError(""); chat.reload(); }} className="font-semibold hover:text-white">Retry</button>
-            <button onClick={() => chat.setError("")} className="hover:text-white">Dismiss</button>
+            <button
+              onClick={() => {
+                chat.setError("");
+                chat.reload();
+              }}
+              className="font-semibold hover:text-white"
+            >
+              Retry
+            </button>
+
+            <button
+              onClick={() => chat.setError("")}
+              className="hover:text-white"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}
 
       <div className="relative flex h-[calc(100dvh-210px)] min-h-[520px] overflow-hidden rounded-lg border border-white/10 bg-[#0d0d0d]">
+
         <ConversationSidebar
-          className={`${mobileChatOpen ? "hidden" : "flex"} w-full lg:flex lg:w-[290px] lg:shrink-0 xl:w-[320px]`}
+          className={`${
+            mobileChatOpen ? "hidden" : "flex"
+          } w-full lg:flex lg:w-[290px] lg:shrink-0 xl:w-[320px]`}
           conversations={chat.filteredConversations}
           activeId={chat.activeId}
           loading={chat.loading}
@@ -92,7 +136,11 @@ const ChatPage = () => {
           onNew={() => setModal("new")}
         />
 
-        <section className={`${mobileChatOpen ? "flex" : "hidden"} min-w-0 flex-1 flex-col lg:flex`}>
+        <section
+          className={`${
+            mobileChatOpen ? "flex" : "hidden"
+          } min-w-0 flex-1 flex-col lg:flex`}
+        >
           {conv ? (
             <>
               <ChatWindowHeader
@@ -103,6 +151,7 @@ const ChatPage = () => {
                 onClear={handleClear}
                 onExit={handleExit}
               />
+
               <MessageList
                 key={conv.id}
                 messages={chat.messages}
@@ -112,10 +161,12 @@ const ChatPage = () => {
                 canDeleteAny={isAdminUser}
                 actions={actions}
               />
+
               <MessageInput
                 key={conv.id}
                 me={me}
                 myId={myId}
+                conversationId={conv.id}
                 members={conv.members}
                 isGroup={conv.type === "group"}
                 replyTo={chat.replyTo}
@@ -126,14 +177,23 @@ const ChatPage = () => {
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-[#141414] text-white/40">
               <MessageSquare size={40} />
-              <p className="text-[13px]">{chat.loading ? "Loading chats..." : "Select a conversation to start chatting"}</p>
+
+              <p className="text-[13px]">
+                {chat.loading
+                  ? "Loading chats..."
+                  : "Select a conversation to start chatting"}
+              </p>
             </div>
           )}
         </section>
 
         {conv && infoOpen && (
           <>
-            <div className="fixed inset-0 z-30 bg-black/60 xl:hidden" onClick={() => setInfoOpen(false)} />
+            <div
+              className="fixed inset-0 z-30 bg-black/60 xl:hidden"
+              onClick={() => setInfoOpen(false)}
+            />
+
             <GroupInfoPanel
               className="fixed inset-y-0 right-0 z-40 w-[300px] max-w-[85vw] xl:static xl:z-auto xl:w-[290px] xl:max-w-none xl:shrink-0"
               conversation={conv}
@@ -151,11 +211,16 @@ const ChatPage = () => {
         <NewMessageModal
           mode={modal}
           myId={myId}
-          excludeIds={modal === "add" ? (conv?.members || []).map((m) => m.id) : []}
+          excludeIds={
+            modal === "add"
+              ? (conv?.members || []).map((m) => m.id)
+              : []
+          }
           onClose={() => setModal(null)}
           onSubmit={async (payload) => {
-            if (modal === "add") await chat.addMembers(conv.id, payload.memberIds);
-            else {
+            if (modal === "add") {
+              await chat.addMembers(conv.id, payload.memberIds);
+            } else {
               await chat.createConversation(payload);
               setMobileChatOpen(true);
             }
@@ -169,6 +234,14 @@ const ChatPage = () => {
           conversations={chat.conversations}
           onClose={() => setForwardMsg(null)}
           onForward={chat.forwardMessage}
+        />
+      )}
+
+      {infoMsg && conv && (
+        <MessageInfoModal
+          message={infoMsg}
+          conversationId={conv.id}
+          onClose={() => setInfoMsg(null)}
         />
       )}
 
