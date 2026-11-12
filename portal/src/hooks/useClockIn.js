@@ -20,6 +20,7 @@ export default function useClockIn() {
     tasks: [],
     sessions: [],
     state: "out",
+    hasPin: null,
   });
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,7 @@ export default function useClockIn() {
       tasks: res.tasks || [],
       sessions: hasSessions ? res.sessions : [],
       state: res.state || fallbackState,
+      hasPin: typeof res.hasPin === "boolean" ? res.hasPin : null,
     });
 
     if (res.serverTime) {
@@ -87,7 +89,8 @@ export default function useClockIn() {
 
     document.addEventListener("visibilitychange", onVisible);
 
-    const t = setInterval(() => load(true), 5 * 60 * 1000);
+    // Refresh every minute so newly assigned tasks and shifts show up.
+    const t = setInterval(() => load(true), 60 * 1000);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
@@ -129,8 +132,10 @@ export default function useClockIn() {
   );
 
   const clockOut = useCallback(
-    (pin, description) =>
-      perform(() => clockInService.clockOut({ pin, description })),
+    (pin, description, completedTaskIds = []) =>
+      perform(() =>
+        clockInService.clockOut({ pin, description, completedTaskIds })
+      ),
     [perform]
   );
 

@@ -3,6 +3,7 @@ export { default as BreakCard } from "./BreakCard/BreakCard";
 export { default as Card } from "./Card";
 export { default as ClockInHeader } from "./ClockInHeader";
 export { default as ClockOutDescription } from "./ClockOutDescription";
+export { default as ClockOutReport } from "./ClockOutReport";
 export { default as ForgotPinModal } from "./ForgotPinModal";
 export { default as LiveClock } from "./LiveClock";
 export { default as PinPad } from "./PinPad";

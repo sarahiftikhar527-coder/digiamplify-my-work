@@ -1,233 +1,155 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
-import ClockInHeader from "./ClockInHeader";
-import ClockPanel from "./ClockPanel";
 import PinPanel from "./PinPanel";
-import BreakCard from "../../../employee/clockIn/components/BreakCard/BreakCard";
-import SessionsCard from "../../../employee/clockIn/components/SessionsCard/SessionsCard";
-import WorkTimerCard from "../../../employee/clockIn/components/WorkTimerCard/WorkTimerCard";
+import TeamTodayPanel from "./TeamTodayPanel";
 
-import useMyAttendance from "../../../../hooks/useMyAttendance";
+import {
+  AssignedShiftCard,
+  BreakCard,
+  ClockOutReport,
+  ForgotPinModal,
+  PinPad,
+  SessionsCard,
+  TaskAssignToday,
+  TodayStatusCard,
+  WorkTimerCard,
+} from "../../../employee/clockIn/components";
+
+import useClockIn from "../../../../hooks/useClockIn";
+import useNow from "../../../../hooks/useNow";
 import { clockInService } from "../../../../services/clockInService.js";
+import { getStatus } from "../../../../utils/time";
 import {
   getDayTotals,
   getOpenBreak,
 } from "../../../../utils/attendanceSessions";
 
-const useTicker = () => {
-  const [now, setNow] = useState(new Date());
+// The admin's own clock in: same screen as the employee Clock In page,
+// followed by the live attendance of the whole team.
+const MyClockIn = () => {
+  const c = useClockIn();
+  const now = useNow(c.offset);
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  return now;
-};
-
-const getLocalDate = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
-
-const MyClockIn = ({ onViewAttendance }) => {
-  const now = useTicker();
-  const a = useMyAttendance();
-
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(getLocalDate());
+  const [doneIds, setDoneIds] = useState([]);
   const [pinSetupSubmitting, setPinSetupSubmitting] = useState(false);
-  const [pinSetupError, setPinSetupError] = useState("");
 
-  const {
-    record,
-    shift,
-    recent,
-    sessions,
-    state,
-    loading,
-    submitting,
-    error,
-    reload,
-    hasPin,
-  } = a;
+  const { record, shift, shifts, tasks, sessions, state, loading, error } = c;
 
-  // out = clock in, in/break = clock out
-  const mode = hasPin === false ? "setup" : state === "out" ? "in" : "out";
+  // hasPin === false means the PIN was never created: show the setup card.
+  const needsPin = c.hasPin === false;
+
+  // "out" means the admin can clock in; "in" or "break" shows clock out.
+  const mode = state === "out" ? "in" : "out";
   const onBreak = state === "break";
 
+  const status = getStatus(now, shift, record);
   const totals = getDayTotals(sessions, now);
-  const worked = totals.workedMinutes;
   const openBreak = getOpenBreak(sessions);
 
+  const ready = !loading && !error;
+
+  const tickedIds = useMemo(() => {
+    const open = new Set(
+      (tasks || [])
+        .filter((task) => !task.completed && !task.inReview)
+        .map((task) => task.id)
+    );
+
+    return doneIds.filter((id) => open.has(id));
+  }, [doneIds, tasks]);
+
   const handleSubmit = async (pin) => {
-    if (!/^\d{4}$/.test(String(pin ?? ""))) {
-      return { ok: false, error: "Please enter your 4-digit PIN." };
+    if (mode === "in") {
+      return c.clockIn(pin);
     }
 
-    if (mode === "in") return a.clockIn(pin);
+    const result = await c.clockOut(pin, description.trim(), tickedIds);
 
-    const result = await a.clockOut(pin, description.trim());
-
-    if (result?.ok) setDescription("");
+    if (result?.ok) {
+      setDescription("");
+      setDoneIds([]);
+    }
 
     return result;
   };
 
   const handleSetPin = async (password, newPin) => {
-    setPinSetupError("");
     setPinSetupSubmitting(true);
 
     try {
       await clockInService.setPin({ password, newPin });
-
-      if (typeof reload === "function") {
-        await reload();
-      }
+      await c.reload();
 
       return { ok: true };
     } catch (err) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Unable to save attendance PIN.";
-
-      setPinSetupError(message);
-      return { ok: false, error: message };
+      return {
+        ok: false,
+        error:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Unable to save attendance PIN.",
+      };
     } finally {
       setPinSetupSubmitting(false);
     }
   };
 
-  const handleExport = () => {
-    const escapeCsv = (value) =>
-      `"${String(value ?? "").replace(/"/g, '""')}"`;
-
-    const statusText =
-      state === "break"
-        ? "On break"
-        : state === "in"
-          ? "Working"
-          : record?.clockInAt
-            ? "Completed"
-            : "Not clocked in";
-
-    const rows = [
-      [
-        "Date",
-        "First Clock In",
-        "Last Clock Out",
-        "Clock Ins",
-        "Breaks",
-        "Break Minutes",
-        "Worked Minutes",
-        "Status",
-        "Description",
-      ],
-      [
-        record?.dateKey || date,
-        record?.clockInAt ? new Date(record.clockInAt).toLocaleString() : "",
-        record?.clockOutAt ? new Date(record.clockOutAt).toLocaleString() : "",
-        totals.clockIns,
-        totals.breakCount,
-        totals.breakMinutes,
-        worked,
-        statusText,
-        record?.description || description,
-      ],
-    ];
-
-    const csv = rows
-      .map((row) => row.map(escapeCsv).join(","))
-      .join("\r\n");
-
-    const blob = new Blob(["\uFEFF", csv], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = `attendance-${date}.csv`;
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="w-full">
-      <ClockInHeader
-        date={date}
-        onDateChange={setDate}
-        onExport={handleExport}
-        onBack={onViewAttendance}
-      />
-
-      {(error || pinSetupError) && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-3 text-[12px] text-red-300">
-          <span>{pinSetupError || error}</span>
+      {/* ERROR */}
+      {error && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-2.5 text-[12px] text-red-300">
+          <span>{error}</span>
 
           <button
             type="button"
-            onClick={() => {
-              setPinSetupError("");
-              reload?.();
-            }}
-            className="shrink-0 font-semibold hover:text-white"
+            onClick={() => c.reload()}
+            className="font-semibold hover:text-white"
           >
             Retry
           </button>
         </div>
       )}
 
-      {!error && !loading && a.backendOutdated && (
+      {/* OUTDATED BACKEND WARNING */}
+      {!error && !loading && c.backendOutdated && (
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-[12px] text-amber-300">
           Backend update missing: breaks and multiple clock-ins need the
-          updated backend. Run the database migration, then restart the backend.
+          updated backend. Run the database migration, then restart the
+          backend.
         </div>
       )}
 
-      {mode === "setup" ? (
+      {needsPin ? (
         <div className="mx-auto max-w-md">
           <PinPanel
-            mode="setup"
             disabled={loading}
             submitting={pinSetupSubmitting}
             onSetPin={handleSetPin}
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.2fr_1fr]">
-          <ClockPanel
-            now={now}
-            mode={mode}
-            shift={shift}
-            record={record}
-            worked={worked}
-            recent={recent}
-            loading={loading}
-          />
-
-          <div className="flex min-w-0 flex-col gap-4">
-            <PinPanel
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          {/* LEFT SIDE */}
+          <div className="min-w-0 lg:sticky lg:top-4">
+            <PinPad
               key={`${mode}-${onBreak}`}
               mode={mode}
-              worked={worked}
-              disabled={loading || submitting || !!error || onBreak}
-              submitting={submitting}
-              keyboard={!onBreak}
+              disabled={!ready || onBreak}
+              keyboard={!forgotOpen && !onBreak}
+              description={
+                onBreak ? "End your break first, then clock out." : undefined
+              }
               onSubmit={handleSubmit}
-              description={description}
-              onDescription={setDescription}
+              onForgot={() => setForgotOpen(true)}
             />
+          </div>
+
+          {/* RIGHT SIDE */}
+          <div className="mt-5 flex min-w-0 flex-col gap-4 lg:mt-0">
+            <AssignedShiftCard shift={shifts} loading={loading} />
 
             <WorkTimerCard sessions={sessions} state={state} now={now} />
 
@@ -236,16 +158,48 @@ const MyClockIn = ({ onViewAttendance }) => {
                 state={state}
                 openBreak={openBreak}
                 now={now}
-                busy={submitting}
-                error=""
-                onStart={a.startBreak}
-                onEnd={a.endBreak}
+                busy={c.breakBusy}
+                error={c.breakError}
+                onStart={c.startBreak}
+                onEnd={c.endBreak}
+              />
+            )}
+
+            <TodayStatusCard
+              status={status}
+              record={record}
+              totals={totals}
+              state={state}
+              loading={loading}
+            />
+
+            {state === "in" && (
+              <ClockOutReport
+                tasks={tasks}
+                selected={tickedIds}
+                onChange={setDoneIds}
+                description={description}
+                onDescription={setDescription}
               />
             )}
 
             <SessionsCard sessions={sessions} now={now} loading={loading} />
+
+            {Array.isArray(tasks) && tasks.length > 0 && (
+              <TaskAssignToday tasks={tasks} loading={loading} />
+            )}
           </div>
         </div>
+      )}
+
+      {/* EVERYBODY'S CLOCK IN / CLOCK OUT, LIVE */}
+      <TeamTodayPanel />
+
+      {forgotOpen && (
+        <ForgotPinModal
+          defaultEmail={c.me?.email || ""}
+          onClose={() => setForgotOpen(false)}
+        />
       )}
     </div>
   );

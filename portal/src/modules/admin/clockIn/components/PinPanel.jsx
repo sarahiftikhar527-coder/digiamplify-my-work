@@ -1,54 +1,48 @@
-
 import { useEffect, useState } from "react";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
-import { formatHours } from "./attendanceUtils";
+import { Delete as BackspaceIcon, Loader2, ShieldCheck } from "lucide-react";
 
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "Clear", "0", "Del"];
+const PIN_LENGTH = 4;
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "back", "0", "#"];
 
+// First time setup of the attendance PIN (same look as the employee PinPad).
+//   onSetPin(password, pin) -> Promise<{ ok, error }>
 const PinPanel = ({
-  mode,
-  worked = 0,
   disabled = false,
   submitting = false,
   keyboard = true,
-  onSubmit,
   onSetPin,
-  description = "",
-  onDescription = () => {},
 }) => {
   const [pin, setPin] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [saved, setSaved] = useState(false);
 
-  const isSetup = mode === "setup";
+  const blocked = disabled || submitting;
 
-  const press = (key) => {
+  const press = (digit) => {
+    if (blocked) return;
+
     setMessage("");
-
-    if (key === "Clear") {
-      setPin("");
-      return;
-    }
-
-    if (key === "Del") {
-      setPin((previous) => previous.slice(0, -1));
-      return;
-    }
-
-    setPin((previous) =>
-      previous.length < 4 ? previous + key : previous
+    setPin((current) =>
+      current.length < PIN_LENGTH ? current + digit : current
     );
   };
 
-  const submit = async () => {
-    if (disabled || submitting || pin.length !== 4) return;
+  const back = () => {
+    if (blocked) return;
 
-    if (isSetup && !password.trim()) {
+    setPin((current) => current.slice(0, -1));
+  };
+
+  const submit = async () => {
+    if (blocked || pin.length !== PIN_LENGTH) return;
+
+    if (!password.trim()) {
       setMessage("Enter your current login password.");
       return;
     }
 
-    if (typeof (isSetup ? onSetPin : onSubmit) !== "function") {
+    if (typeof onSetPin !== "function") {
       setMessage("This action is not connected yet. Please contact support.");
       return;
     }
@@ -56,163 +50,135 @@ const PinPanel = ({
     try {
       setMessage("");
 
-      const result = isSetup
-        ? await onSetPin(password, pin)
-        : await onSubmit(pin);
+      const result = await onSetPin(password, pin);
 
       if (!result?.ok) {
-        setMessage(
-          result?.error || result?.message || "Unable to complete the request."
-        );
+        setMessage(result?.error || "Unable to save the PIN.");
+        setPin("");
         return;
       }
 
       setPin("");
       setPassword("");
-      setMessage(
-        isSetup ? "Attendance PIN saved successfully." : ""
-      );
+      setSaved(true);
     } catch (error) {
       setMessage(error?.message || "Something went wrong.");
+      setPin("");
     }
   };
 
   useEffect(() => {
-    if (!keyboard || mode === "done" || isSetup) return;
+    if (!keyboard) return undefined;
 
-    const handleKeyDown = (event) => {
+    const onKey = (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
       const tag = event.target?.tagName;
 
-      if (tag === "TEXTAREA" || tag === "INPUT") return;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
       if (/^\d$/.test(event.key)) press(event.key);
-      else if (event.key === "Backspace") press("Del");
-      else if (event.key === "Enter") submit();
+      else if (event.key === "Backspace") back();
+      else if (event.key === "Enter" && tag !== "BUTTON") submit();
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   });
 
-  if (mode === "done") {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-[#141416] p-6 text-center">
-        <CheckCircle2 size={44} className="text-green-500" />
-        <p className="mt-4 text-lg font-semibold text-white">
-          Attendance completed
-        </p>
-        <p className="mt-1 text-[13px] text-white/60">
-          You worked {formatHours(worked)} today.
-        </p>
-      </div>
-    );
-  }
-
-  const action = mode === "out" ? "Clock Out" : "Clock In";
-
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#141416] p-6">
-      <div className="flex flex-col items-center">
-        {isSetup && <ShieldCheck size={34} className="text-green-500" />}
+    <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-4 sm:p-6">
+      <div className="flex flex-col items-center text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
+          <ShieldCheck size={22} className="text-red-500" />
+        </span>
 
-        <h2 className="mt-2 text-center text-xl font-semibold text-white">
-          {isSetup ? "Set Attendance PIN" : "Enter your PIN"}
-        </h2>
+        <h4 className="mt-3 text-[15px] font-semibold text-white">
+          Set Attendance PIN
+        </h4>
 
-        <p className="mt-2 text-center text-[13px] text-white/50">
-          {isSetup
-            ? "Confirm your login password and create a 4-digit PIN."
-            : `Use your 4-digit PIN to ${action.toLowerCase()}.`}
+        <p className="mt-1 text-[11px] text-white/50">
+          Confirm your login password and create a 4-digit PIN. You will use
+          it to clock in and clock out.
         </p>
       </div>
 
-      {isSetup && (
-        <div className="mt-5">
-          <label className="mb-2 block text-sm text-white/70">
-            Current login password
-          </label>
+      <label className="mb-1.5 mt-5 block text-[11px] font-medium text-white/55">
+        Current login password
+      </label>
 
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setMessage("");
-            }}
-            placeholder="Enter your account password"
-            className="w-full rounded-xl border border-white/10 bg-[#0e0e10] p-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-green-500/60"
-          />
-        </div>
-      )}
+      <input
+        type="password"
+        autoComplete="current-password"
+        value={password}
+        disabled={blocked}
+        onChange={(event) => {
+          setPassword(event.target.value);
+          setMessage("");
+        }}
+        placeholder="Enter your account password"
+        className="w-full rounded-lg border border-white/10 bg-[#121212] p-3 text-[12.5px] text-white outline-none placeholder:text-white/40 focus:border-red-600 disabled:opacity-60"
+      />
 
-      <div className="mt-6 flex justify-center gap-4">
-        {[0, 1, 2, 3].map((index) => (
-          <span
+      <div className="mt-5 flex justify-center gap-3 sm:gap-4">
+        {[...Array(PIN_LENGTH)].map((_, index) => (
+          <div
             key={index}
-            className={`h-3.5 w-3.5 rounded-full border-2 ${
-              isSetup ? "border-green-500" : "border-red-600"
-            } ${index < pin.length
-              ? isSetup
-                ? "bg-green-500"
-                : "bg-red-600"
-              : ""
+            aria-label={`PIN digit ${index + 1}`}
+            className={`flex h-12 w-12 items-center justify-center rounded-lg border bg-[#121212] text-xl text-white transition sm:h-14 sm:w-14 ${
+              message
+                ? "border-red-600"
+                : index === pin.length && !blocked
+                  ? "border-red-600"
+                  : "border-white/15"
             }`}
-          />
+          >
+            {pin[index] ? "●" : ""}
+          </div>
         ))}
       </div>
 
-      {message && (
-        <p className="mt-3 text-center text-[12px] text-red-400">
-          {message}
-        </p>
-      )}
+      <p
+        role="alert"
+        className={`mt-3 min-h-[16px] text-center text-[11px] ${
+          saved && !message ? "text-green-400" : "text-red-400"
+        }`}
+      >
+        {message || (saved ? "Attendance PIN saved successfully." : "")}
+      </p>
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="mx-auto mt-3 grid max-w-[300px] grid-cols-3 gap-2.5 sm:gap-3">
         {KEYS.map((key) => (
           <button
             key={key}
             type="button"
-            onClick={() => press(key)}
-            disabled={disabled || submitting}
-            className="h-14 rounded-xl border border-white/10 bg-white/5 font-semibold text-white hover:bg-white/10 active:scale-95 disabled:opacity-50"
+            disabled={blocked}
+            aria-label={
+              key === "back" ? "Backspace" : key === "#" ? "Confirm" : key
+            }
+            onClick={() =>
+              key === "back" ? back() : key === "#" ? submit() : press(key)
+            }
+            className="flex h-11 items-center justify-center rounded-lg border border-white/5 bg-[#1a1a1a] text-lg text-white transition hover:bg-[#242424] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-12"
           >
-            {key}
+            {key === "back" ? <BackspaceIcon size={18} /> : key}
           </button>
         ))}
       </div>
 
-      {mode === "out" && (
-        <textarea
-          value={description}
-          onChange={(event) => onDescription(event.target.value)}
-          rows={2}
-          maxLength={500}
-          placeholder="What did you work on today? (optional)"
-          className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-[#0e0e10] p-3 text-[13px] text-white outline-none placeholder:text-white/40 focus:border-red-500/60"
-        />
-      )}
-
       <button
         type="button"
         onClick={submit}
-        disabled={
-          pin.length !== 4 ||
-          disabled ||
-          submitting ||
-          (isSetup && !password.trim())
-        }
-        className={`mt-4 w-full rounded-xl py-4 text-[15px] font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 ${
-          isSetup
-            ? "bg-gradient-to-r from-green-600 to-green-700 shadow-green-900/30"
-            : "bg-gradient-to-r from-red-600 to-red-700 shadow-red-900/30"
-        }`}
+        disabled={blocked || pin.length !== PIN_LENGTH || !password.trim()}
+        className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-[#c1121f] py-3 text-[14px] font-semibold text-white transition hover:bg-[#d4202d] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {submitting
-          ? "Please wait..."
-          : isSetup
-            ? "Save Attendance PIN"
-            : action}
+        {submitting ? (
+          <>
+            <Loader2 size={16} className="animate-spin" /> Please wait...
+          </>
+        ) : (
+          "Save Attendance PIN"
+        )}
       </button>
     </div>
   );

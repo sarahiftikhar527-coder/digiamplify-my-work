@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
 import Profile from '../../models/Profile.js'
-import Chat from '../../models/chat.js'
 import ApiError from '../../utils/ApiError.js'
 import { prisma } from '../../config/db.js'
 import {
@@ -42,6 +41,13 @@ const EXTENSION_MIME = {
   doc: 'application/msword',
   docx:
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  csv: 'text/csv',
+  zip: 'application/zip',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx:
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 }
 
 export function sanitizeUploadFileName(fileName) {
@@ -210,29 +216,46 @@ export async function assertProfileDocumentAccess(user, fileName) {
 }
 
 /**
- * Member of at least one conversation that references attachment id chat/<fileName>.
- * Chat model removes users from `members` on leave (no separate left flag).
+ * A chat file can be opened by:
+ *  - the person who uploaded it, and
+ *  - any current member of a conversation where the file was sent.
+ * Returns the stored attachment details (used for the download name).
  */
 export async function assertChatAttachmentAccess(user, fileName) {
-  const attachmentId = buildChatAttachmentId(fileName)
-  const userId = user._id || user.id
+  sanitizeUploadFileName(fileName)
 
-  const allowed = await Chat.exists({
-    'messages.attachments.id': attachmentId,
-    'members.user': userId,
+  const userId = String(user._id || user.id)
+
+  const allowed = await prisma.chatAttachment.findFirst({
+    where: {
+      fileName,
+      OR: [
+        { uploaderId: userId },
+        {
+          message: {
+            deleted: false,
+            conversation: {
+              members: { some: { userId, leftAt: null } },
+            },
+          },
+        },
+      ],
+    },
+    select: { originalName: true, mimeType: true },
   })
 
-  if (!allowed) {
-    const attachmentReferenced = await Chat.exists({
-      'messages.attachments.id': attachmentId,
-    })
+  if (allowed) return allowed
 
-    if (!attachmentReferenced) {
-      throw new ApiError(404, 'File not found.')
-    }
+  const referenced = await prisma.chatAttachment.findFirst({
+    where: { fileName },
+    select: { id: true },
+  })
 
-    throw new ApiError(403, 'You do not have permission to access this file.')
+  if (!referenced) {
+    throw new ApiError(404, 'File not found.')
   }
+
+  throw new ApiError(403, 'You do not have permission to access this file.')
 }
 
 export async function streamProfileDocument(fileName, res) {
@@ -250,7 +273,7 @@ export async function streamProfileDocument(fileName, res) {
   res.sendFile(absolutePath)
 }
 
-export async function streamChatAttachment(fileName, res) {
+export async function streamChatAttachment(fileName, res, details = null) {
   const { absolutePath } = resolvePathUnderRoot(
     CHAT_ATTACHMENTS_DIR,
     fileName
@@ -261,6 +284,15 @@ export async function streamChatAttachment(fileName, res) {
   }
 
   const headers = buildServeHeaders(fileName)
+
+  // Show the original file name when the person saves the file.
+  if (details?.originalName) {
+    const safeName = encodeURIComponent(details.originalName)
+    const disposition = shouldServeInline(fileName) ? 'inline' : 'attachment'
+
+    headers['Content-Disposition'] = `${disposition}; filename*=UTF-8''${safeName}`
+  }
+
   res.set(headers)
   res.sendFile(absolutePath)
 }

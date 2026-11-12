@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   CheckCircle2,
@@ -72,8 +71,20 @@ const formatDueTime = (value) => {
 const TaskAssignToday = ({ tasks = [], loading = false }) => {
   const safeTasks = Array.isArray(tasks) ? tasks : [];
 
+  const doneCount = safeTasks.filter(
+    (task) =>
+      task.completed === true ||
+      task.inReview === true ||
+      ["completed", "approved"].includes(String(task.status).toLowerCase())
+  ).length;
+
+  const title =
+    safeTasks.length > 0
+      ? `Task Assign Today (${doneCount}/${safeTasks.length})`
+      : "Task Assign Today";
+
   return (
-    <Card icon={ClipboardList} title="Task Assign Today">
+    <Card icon={ClipboardList} title={title}>
       {loading ? (
         <div className="animate-pulse space-y-3 py-2">
           {[...Array(3)].map((_, i) => (
@@ -109,6 +120,7 @@ const TaskAssignToday = ({ tasks = [], loading = false }) => {
 
             const isCompleted =
               task.completed === true ||
+              task.inReview === true ||
               task.status?.toLowerCase() === "completed" ||
               task.status?.toLowerCase() === "approved";
 
@@ -162,11 +174,19 @@ const TaskAssignToday = ({ tasks = [], loading = false }) => {
                     </div>
                   </div>
 
-                  {isCompleted && (
-                    <span className="shrink-0 rounded-md border border-green-500/20 bg-green-500/10 px-2 py-1 text-[9px] font-semibold text-green-400">
-                      Completed
+                  {task.inReview ? (
+                    <span className="shrink-0 rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[9px] font-semibold text-sky-300">
+                      In review
                     </span>
-                  )}
+                  ) : isCompleted ? (
+                    <span className="shrink-0 rounded-md border border-green-500/20 bg-green-500/10 px-2 py-1 text-[9px] font-semibold text-green-400">
+                      {task.taskType === "daily" ? "Done today" : "Completed"}
+                    </span>
+                  ) : task.overdue ? (
+                    <span className="shrink-0 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] font-semibold text-red-400">
+                      Overdue
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2 pl-[25px]">
@@ -178,6 +198,12 @@ const TaskAssignToday = ({ tasks = [], loading = false }) => {
                     />
                     {priority.label}
                   </span>
+
+                  {task.taskType === "daily" && (
+                    <span className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/60">
+                      Daily task
+                    </span>
+                  )}
 
                   {dueDate && (
                     <span className="inline-flex items-center gap-1 text-[10px] text-white/45">

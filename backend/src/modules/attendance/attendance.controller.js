@@ -1,6 +1,9 @@
 import * as service from "./attendance.service.js";
 import * as sessionService from "./attendanceSessions.service.js";
 import * as teamService from "./teamAttendance.service.js";
+import * as taskService from "./attendanceTasks.service.js";
+import { broadcastMemberUpdate } from "./attendanceTeam.service.js";
+import { emitToAll } from "../../sockets/index.js";
 
 const handle = (fn) => async (req, res, next) => {
   try {
@@ -20,8 +23,39 @@ const handle = (fn) => async (req, res, next) => {
   }
 };
 
-export const myToday = handle((req) =>
-  sessionService.getMyToday(req.user._id)
+// Adds the employee's tasks of today to an attendance snapshot.
+// A task problem must never break clock in / clock out.
+const withTasks = async (userId, data) => {
+  try {
+    const tasks = await taskService.getClockInTasks(userId);
+
+    return { ...data, tasks };
+  } catch (error) {
+    console.error("[ATTENDANCE] tasks could not be loaded:", error?.message);
+
+    return { ...data, tasks: Array.isArray(data?.tasks) ? data.tasks : [] };
+  }
+};
+
+// Tells every open Clock In page (employees and admin) that someone
+// clocked in, clocked out or changed a break. Never throws.
+const announceChange = (userId) => {
+  try {
+    broadcastMemberUpdate(userId);
+    emitToAll("attendance:live-update", { userId: String(userId) });
+  } catch (error) {
+    console.error("[ATTENDANCE] live update failed:", error?.message);
+  }
+};
+
+const afterChange = async (userId, data) => {
+  announceChange(userId);
+
+  return withTasks(userId, data);
+};
+
+export const myToday = handle(async (req) =>
+  withTasks(req.user._id, await sessionService.getMyToday(req.user._id))
 );
 
 export const myRecent = handle((req) =>
@@ -35,24 +69,52 @@ export const myAbsenteeism = handle((req) =>
   )
 );
 
-export const clockIn = handle((req) =>
-  sessionService.clockIn(req.user._id, req.body?.pin)
-);
-
-export const clockOut = handle((req) =>
-  sessionService.clockOut(
+export const clockIn = handle(async (req) =>
+  afterChange(
     req.user._id,
-    req.body?.pin,
-    req.body?.description
+    await sessionService.clockIn(req.user._id, req.body?.pin)
   )
 );
 
-export const startBreak = handle((req) =>
-  sessionService.startBreak(req.user._id, req.body?.type)
+export const clockOut = handle(async (req) => {
+  const userId = req.user._id;
+  const taskIds = req.body?.completedTaskIds;
+
+  // The ticked tasks are written into the description of the clock out.
+  const prepared = await taskService.prepareClockOutNote(
+    userId,
+    req.body?.description,
+    taskIds
+  );
+
+  const data = await sessionService.clockOut(
+    userId,
+    req.body?.pin,
+    prepared.note
+  );
+
+  // The PIN was correct and the clock out is saved: now update the tasks.
+  await taskService.applyClockOutChecklist(
+    userId,
+    taskIds,
+    req.body?.description
+  );
+
+  return afterChange(userId, data);
+});
+
+export const startBreak = handle(async (req) =>
+  afterChange(
+    req.user._id,
+    await sessionService.startBreak(req.user._id, req.body?.type)
+  )
 );
 
-export const endBreak = handle((req) =>
-  sessionService.endBreak(req.user._id)
+export const endBreak = handle(async (req) =>
+  afterChange(
+    req.user._id,
+    await sessionService.endBreak(req.user._id)
+  )
 );
 
 export const completeShift = handle((req) =>
@@ -104,3 +166,16 @@ export const setEmployeePin = handle((req) =>
 export const teamLive = handle((req) =>
   teamService.getTeamLive(req.user, req.query)
 );
+
+// Older team card (/team/today): it needs `workedSeconds` on every member.
+export const teamToday = handle(async (req) => {
+  const data = await teamService.getTeamLive(req.user, req.query);
+
+  return {
+    ...data,
+    members: (data.members || []).map((member) => ({
+      ...member,
+      workedSeconds: Math.round((Number(member.workedMinutes) || 0) * 60),
+    })),
+  };
+});

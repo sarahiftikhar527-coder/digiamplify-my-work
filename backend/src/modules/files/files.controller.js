@@ -16,6 +16,6 @@ export const downloadProfileDocument = asyncHandler(async (req, res) => {
 export const downloadChatAttachment = asyncHandler(async (req, res) => {
   const { fileName } = req.params
 
-  await assertChatAttachmentAccess(req.user, fileName)
-  await streamChatAttachment(fileName, res)
+  const details = await assertChatAttachmentAccess(req.user, fileName)
+  await streamChatAttachment(fileName, res, details)
 })

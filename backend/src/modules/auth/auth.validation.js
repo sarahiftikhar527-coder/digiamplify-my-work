@@ -23,3 +23,19 @@ export const changePasswordSchema = z.object({
     newPassword: z.string().min(8, 'New password must be at least 8 characters'),
   }),
 })
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().trim().min(1, 'Email is required').email('Valid email required'),
+  }),
+})
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    token: z.string().trim().min(16, 'Reset link is invalid or missing').max(256, 'Reset link is invalid'),
+    newPassword: z
+      .string()
+      .min(8, 'New password must be at least 8 characters')
+      .max(128, 'New password is too long'),
+  }),
+})

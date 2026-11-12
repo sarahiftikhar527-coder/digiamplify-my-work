@@ -11,6 +11,8 @@ import { usersService } from "@/services/usersService";
 import Login from "@/pages/Login/Login";
 import Signup from "@/pages/Signup/Signup";
 import ResetPinPage from "@/pages/ResetPin/ResetPinPage";
+import ForgotPasswordPage from "@/pages/PasswordRecovery/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/PasswordRecovery/ResetPasswordPage";
 
 // Employee pages
 import DashboardPage from "@/modules/employee/dashboard/pages/DashboardPage";
@@ -20,7 +22,7 @@ import FinancePage from "@/modules/employee/finance/pages/FinancePage";
 import CalendarPage from "@/modules/employee/calendar/pages/CalendarPage";
 import ChatPage from "@/modules/employee/chat/pages/ChatPage";
 import ClockInPage from "@/modules/employee/clockIn/pages/ClockInPage";
-import EmployeeHierarchyPage from "@/modules/employee/hierarchy/pages/EmployeeHierarchyPage/EmployeeHierarchyPage.jsx";
+import TeamLivePage from "@/modules/employee/teamLive/pages/TeamLivePage/TeamLivePage.jsx";
 import HelpSupportPage from "@/modules/employee/helpSupport/pages/HelpSupportPage";
 
 import { AdminApprovalsPage as ApprovalsHubPage } from "@/modules/admin/approvals";
@@ -235,6 +237,8 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/reset-pin" element={<ResetPinPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<RoleDashboardRedirect />} />
@@ -250,8 +254,7 @@ export default function AppRoutes() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/clock-in" element={<ClockInPage />} />
-            <Route path="/hierarchy" element={<EmployeeHierarchyPage />} />
-            <Route path="/team-live" element={<Navigate to="/hierarchy" replace />} />
+            <Route path="/team-live" element={<TeamLivePage />} />
             <Route path="/help-support" element={<HelpSupportPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
           </Route>

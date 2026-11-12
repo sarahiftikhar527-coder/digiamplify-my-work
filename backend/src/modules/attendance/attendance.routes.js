@@ -50,7 +50,7 @@ router.patch("/shifts/:shiftId/complete", controller.completeShift);
 router.get("/team/live", controller.teamLive);
 
 // Alias for the older frontend hook that still calls /team/today.
-router.get("/team/today", controller.teamLive);
+router.get("/team/today", controller.teamToday);
 
 router.get(
   "/admin/summary",

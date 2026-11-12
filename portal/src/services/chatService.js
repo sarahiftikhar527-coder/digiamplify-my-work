@@ -51,7 +51,7 @@ async function request(path, options = {}) {
     });
   } catch {
     throw new Error(
-      "Backend se connection nahi ho raha. Check karo ke backend server running hai."
+      "Unable to connect to the backend. Please check whether the backend server is running."
     );
   }
 

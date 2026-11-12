@@ -1,4 +1,3 @@
-
 import path from "path";
 import crypto from "crypto";
 import fs from "fs";
@@ -7,10 +6,6 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import * as service from "./chat.service.js";
 import ApiError from "../../utils/ApiError.js";
 import { CHAT_ATTACHMENTS_DIR } from "../../config/uploads.js";
-import {
-  buildChatAttachmentId,
-  buildChatAttachmentUrl,
-} from "../../utils/fileUrls.js";
 
 fs.mkdirSync(CHAT_ATTACHMENTS_DIR, { recursive: true });
 
@@ -68,6 +63,17 @@ const success = (res, data = {}, notice = "Success", status = 200) => {
 
   return res.status(status).json(payload);
 };
+
+export const listUsers = asyncHandler(async (req, res) => {
+  const result = await service.listUsers(req.query.search, req.user);
+  success(res, result);
+});
+
+// Light endpoint for the sidebar "Chat" badge: total unread messages.
+export const getUnreadSummary = asyncHandler(async (req, res) => {
+  const result = await service.getUnreadSummary(req.user);
+  success(res, result);
+});
 
 export const listConversations = asyncHandler(async (req, res) => {
   const result = await service.listConversations(req.user);
@@ -176,25 +182,17 @@ export const forwardMessage = asyncHandler(async (req, res) => {
   success(res, result, "Message forwarded.");
 });
 
-export const listUsers = asyncHandler(async (req, res) => {
-  const result = await service.listUsers(req.query.search, req.user);
-  success(res, result);
-});
-
+// The file is already saved by multer. The service stores it in the
+// database so it can be sent with a message.
 export const uploadAttachment = asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new ApiError(400, "Please select a file to upload.");
   }
 
-  const id = buildChatAttachmentId(req.file.filename);
-
-  const attachment = {
-    id,
-    name: req.file.originalname,
-    url: buildChatAttachmentUrl(req.file.filename),
-    mimeType: req.file.mimetype,
-    size: req.file.size,
-  };
+  const attachment = await service.registerAttachmentUpload(
+    req.user,
+    req.file
+  );
 
   success(
     res,

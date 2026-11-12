@@ -216,11 +216,11 @@ const AdminChatPage = () => {
     : [];
 
   return (
-    <div className="w-full">
+    <div className="flex h-[calc(100dvh-110px)] min-h-[460px] w-full flex-col">
       {chat.error && (
         <div
           role="alert"
-          className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-3 text-[12px] text-red-300"
+          className="mb-3 flex shrink-0 items-center justify-between gap-3 rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-3 text-[12px] text-red-300"
         >
           <span className="min-w-0 flex-1 break-words">
             {chat.error}
@@ -246,7 +246,7 @@ const AdminChatPage = () => {
         </div>
       )}
 
-      <div className="relative flex h-[calc(100dvh-210px)] min-h-[520px] overflow-hidden rounded-lg border border-white/10 bg-[#0d0d0d]">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-[#0d0d0d]">
         <ConversationSidebar
           className={`${
             mobileChatOpen ? "hidden" : "flex"
@@ -265,7 +265,7 @@ const AdminChatPage = () => {
         <section
           className={`${
             mobileChatOpen ? "flex" : "hidden"
-          } min-w-0 flex-1 flex-col lg:flex`}
+          } min-h-0 min-w-0 flex-1 flex-col lg:flex`}
         >
           {conv ? (
             <>

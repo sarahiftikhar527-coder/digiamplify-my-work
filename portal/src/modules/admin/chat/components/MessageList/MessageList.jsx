@@ -1,5 +1,4 @@
-
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { MessageSquare, Pin } from "lucide-react";
 import MessageBubble from "../MessageBubble";
 import {
@@ -26,6 +25,11 @@ const getMessageDate = (message) => {
   return Number.isNaN(date.getTime()) ? new Date() : date;
 };
 
+/*
+  Only the message box scrolls. We move its own scrollTop instead of using
+  scrollIntoView, because scrollIntoView also scrolls the whole page (and the
+  chat window with it).
+*/
 const MessageList = ({
   messages = [],
   loading = false,
@@ -35,10 +39,11 @@ const MessageList = ({
   actions = {},
 }) => {
   const boxRef = useRef(null);
-  const endRef = useRef(null);
-  const prevLen = useRef(0);
   const previousLastId = useRef(null);
   const initialScrollDone = useRef(false);
+
+  // true while the reader is at (or near) the bottom of the chat.
+  const stickToBottom = useRef(true);
 
   const safeMessages = Array.isArray(messages) ? messages : [];
   const currentUserId = String(myId || "");
@@ -50,15 +55,23 @@ const MessageList = ({
   const lastPinned = pinned[pinned.length - 1];
   const lastPinnedId = getMessageId(lastPinned);
 
+  const scrollToBottom = useCallback((behavior = "auto") => {
+    const box = boxRef.current;
+
+    if (!box) return;
+
+    box.scrollTo({ top: box.scrollHeight, behavior });
+  }, []);
+
   useEffect(() => {
     const box = boxRef.current;
 
     if (!box) return;
 
     if (safeMessages.length === 0) {
-      prevLen.current = 0;
       previousLastId.current = null;
       initialScrollDone.current = false;
+      stickToBottom.current = true;
       return;
     }
 
@@ -66,41 +79,59 @@ const MessageList = ({
     const lastMessageId = getMessageId(lastMessage);
 
     const isInitialLoad = !initialScrollDone.current;
+    const isNewMessage = lastMessageId !== previousLastId.current;
+    const isOwnMessage = getSenderId(lastMessage) === currentUserId;
+
     const nearBottom =
       box.scrollHeight - box.scrollTop - box.clientHeight < 320;
-
-    const isNewMessage =
-      lastMessageId !== previousLastId.current;
-
-    const isOwnMessage =
-      getSenderId(lastMessage) === currentUserId;
 
     if (
       isInitialLoad ||
       (isNewMessage && (nearBottom || isOwnMessage))
     ) {
-      endRef.current?.scrollIntoView({
-        behavior: isInitialLoad ? "auto" : "smooth",
-        block: "end",
-      });
+      stickToBottom.current = true;
+      scrollToBottom(isInitialLoad ? "auto" : "smooth");
     }
 
     initialScrollDone.current = true;
-    prevLen.current = safeMessages.length;
     previousLastId.current = lastMessageId;
-  }, [safeMessages, currentUserId]);
+  }, [safeMessages, currentUserId, scrollToBottom]);
+
+  const handleScroll = () => {
+    const box = boxRef.current;
+
+    if (!box) return;
+
+    stickToBottom.current =
+      box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  };
+
+  // Images change the height after they load: stay at the bottom.
+  const handleMediaLoad = () => {
+    if (stickToBottom.current) scrollToBottom("auto");
+  };
 
   const scrollToPinnedMessage = () => {
-    if (!lastPinnedId) return;
+    const box = boxRef.current;
 
-    const element = document.getElementById(
-      `msg-${lastPinnedId}`
-    );
+    if (!box || !lastPinnedId) return;
 
-    element?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
+    const element = box.querySelector(`#msg-${CSS.escape(lastPinnedId)}`);
+
+    if (!element) return;
+
+    const boxRect = box.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+
+    const top =
+      elementRect.top -
+      boxRect.top +
+      box.scrollTop -
+      box.clientHeight / 2 +
+      element.offsetHeight / 2;
+
+    stickToBottom.current = false;
+    box.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   };
 
   if (loading && safeMessages.length === 0) {
@@ -116,18 +147,15 @@ const MessageList = ({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-[#141414]">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#141414]">
       {lastPinned && (
         <button
           type="button"
           onClick={scrollToPinnedMessage}
-          className="flex min-w-0 items-center gap-2 border-b border-white/10 bg-[#1a1a1a] px-4 py-2 text-left text-[12px] text-white/70 transition-colors hover:bg-[#202020]"
+          className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/10 bg-[#1a1a1a] px-4 py-2 text-left text-[12px] text-white/70 transition-colors hover:bg-[#202020]"
           aria-label="Scroll to the latest pinned message"
         >
-          <Pin
-            size={12}
-            className="shrink-0 text-red-500"
-          />
+          <Pin size={12} className="shrink-0 text-red-500" />
 
           <span className="truncate">
             {lastPinned.text || "Attachment"}
@@ -143,7 +171,9 @@ const MessageList = ({
 
       <div
         ref={boxRef}
-        className={`min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4 sm:px-5 ${scrollbar}`}
+        onScroll={handleScroll}
+        onLoadCapture={handleMediaLoad}
+        className={`relative min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-3 py-4 sm:px-5 ${scrollbar}`}
         role="log"
         aria-label="Chat messages"
         aria-live="polite"
@@ -168,13 +198,11 @@ const MessageList = ({
               : null;
 
             const showDate =
-              index === 0 ||
-              !isSameDay(previousDate, messageDate);
+              index === 0 || !isSameDay(previousDate, messageDate);
 
             const senderId = getSenderId(message);
             const isMine =
-              Boolean(currentUserId) &&
-              senderId === currentUserId;
+              Boolean(currentUserId) && senderId === currentUserId;
 
             return (
               <div
@@ -196,9 +224,7 @@ const MessageList = ({
                   </div>
                 )}
 
-                <div
-                  id={messageId ? `msg-${messageId}` : undefined}
-                >
+                <div id={messageId ? `msg-${messageId}` : undefined}>
                   <MessageBubble
                     message={message}
                     isMine={isMine}
@@ -212,8 +238,6 @@ const MessageList = ({
             );
           })
         )}
-
-        <div ref={endRef} />
       </div>
     </div>
   );

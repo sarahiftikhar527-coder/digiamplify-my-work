@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import useClockIn from "../../../../../hooks/useClockIn";
 import useNow from "../../../../../hooks/useNow";
@@ -6,7 +6,7 @@ import useNow from "../../../../../hooks/useNow";
 import {
   AssignedShiftCard,
   BreakCard,
-  ClockOutDescription,
+  ClockOutReport,
   ForgotPinModal,
   PinPad,
   SessionsCard,
@@ -28,6 +28,7 @@ const ClockInPage = () => {
 
   const [forgotOpen, setForgotOpen] = useState(false);
   const [description, setDescription] = useState("");
+  const [doneIds, setDoneIds] = useState([]);
 
   const { record, shift, shifts, tasks, sessions, state, loading, error } = c;
 
@@ -41,14 +42,30 @@ const ClockInPage = () => {
 
   const ready = !loading && !error;
 
+  // Only tasks that still exist (and are not finished) can stay ticked.
+  const tickedIds = useMemo(() => {
+    const open = new Set(
+      (tasks || [])
+        .filter((task) => !task.completed && !task.inReview)
+        .map((task) => task.id)
+    );
+
+    return doneIds.filter((id) => open.has(id));
+  }, [doneIds, tasks]);
+
   // The result must be returned: PinPad uses it to show errors and invalid PIN.
   const handleSubmit = async (pin) => {
     if (mode === "in") {
       return c.clockIn(pin);
     }
 
-    const result = await c.clockOut(pin, description.trim());
-    if (result?.ok) setDescription("");
+    const result = await c.clockOut(pin, description.trim(), tickedIds);
+
+    if (result?.ok) {
+      setDescription("");
+      setDoneIds([]);
+    }
+
     return result;
   };
 
@@ -134,11 +151,14 @@ const ClockInPage = () => {
             loading={loading}
           />
 
-          {/* CLOCK OUT DESCRIPTION */}
+          {/* CLOCK OUT REPORT: task checklist + description */}
           {state === "in" && (
-            <ClockOutDescription
-              value={description}
-              onChange={setDescription}
+            <ClockOutReport
+              tasks={tasks}
+              selected={tickedIds}
+              onChange={setDoneIds}
+              description={description}
+              onDescription={setDescription}
             />
           )}
 

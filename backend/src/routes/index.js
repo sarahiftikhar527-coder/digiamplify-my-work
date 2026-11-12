@@ -12,11 +12,11 @@ import attendanceRoutes from "../modules/attendance/attendance.routes.js";
 import financeRoutes from "../modules/finance/finance.routes.js";
 import receiptsRoutes from "../modules/receipts/receipts.routes.js";
 import calendarRoutes from "../modules/calendar/calendar.routes.js";
+import meetingsRoutes from "../modules/meetings/meetings.routes.js";
 import announcementsRoutes from "../modules/announcements/announcements.routes.js";
 import chatRoutes from "../modules/chat/chat.routes.js";
 import filesRoutes from "../modules/files/files.routes.js";
 import publicRoutes from "../modules/public/public.routes.js";
-import hierarchyRoutes from "../modules/hierarchy/hierarchy.routes.js";
 
 const router = Router();
 
@@ -37,10 +37,10 @@ router.use("/attendance", attendanceRoutes);
 router.use("/finance", financeRoutes);
 router.use("/receipts", receiptsRoutes);
 router.use("/calendar", calendarRoutes);
+router.use("/meetings", meetingsRoutes);
 router.use("/announcements", announcementsRoutes);
 router.use("/chat", chatRoutes);
 router.use("/files", filesRoutes);
 router.use("/public", publicRoutes);
-router.use("/hierarchy", hierarchyRoutes);
 
 export default router;

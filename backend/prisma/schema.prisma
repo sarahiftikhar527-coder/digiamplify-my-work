@@ -23,6 +23,8 @@ model User {
   pinHash            String?   @db.VarChar(255)
   pinResetTokenHash  String?   @db.VarChar(255)
   pinResetExpires    DateTime?
+    passwordResetTokenHash String?   @db.VarChar(255)
+  passwordResetExpires   DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -43,6 +45,11 @@ model User {
   createdCalendarEvents   Calendar[]              @relation("CreatedCalendar")
   reviewedCalendarEvents  Calendar[]              @relation("ReviewedCalendar")
   createdChats            Chat[]                  @relation("CreatedChats")
+    chatConversationsCreated ChatConversation[]     @relation("ChatConversationCreator")
+  chatMemberships         ChatMember[]            @relation("ChatMemberUser")
+  chatMessagesSent        ChatMessage[]           @relation("ChatMessageSender")
+  chatAttachmentsUploaded ChatAttachment[]        @relation("ChatAttachmentUploader")
+  chatReactions           ChatReaction[]          @relation("ChatReactionUser")
   finances                Finance[]               @relation("EmployeeFinances")
   createdFinances         Finance[]               @relation("CreatedFinances")
   updatedFinances         Finance[]               @relation("UpdatedFinances")
@@ -60,6 +67,7 @@ model User {
   @@index([role])
   @@index([isDeleted])
     @@index([managerId])
+      @@index([passwordResetTokenHash])
   @@map("users")
 }
 
@@ -513,4 +521,97 @@ model MeetingAttendee {
   @@unique([meetingId, userId])
   @@index([userId])
   @@map("meeting_attendees")
+}
+
+model ChatConversation {
+  id              String   @id @default(uuid())
+  type            String   @default("direct") @db.VarChar(20)
+  name            String   @default("") @db.VarChar(120)
+  uniqueKey       String?  @unique @db.VarChar(191)
+  createdById     String
+  createdBy       User     @relation("ChatConversationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  lastMessageAt   DateTime @default(now())
+  lastMessageText String?  @db.VarChar(500)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  members  ChatMember[]
+  messages ChatMessage[]
+
+  @@index([lastMessageAt])
+  @@map("chat_conversations")
+}
+
+model ChatMember {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation("ChatMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  role           String           @default("member") @db.VarChar(20)
+  lastReadAt     DateTime?
+  clearedAt      DateTime?
+  joinedAt       DateTime         @default(now())
+  leftAt         DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId, leftAt])
+  @@map("chat_members")
+}
+
+model ChatMessage {
+  id              String           @id @default(uuid())
+  conversationId  String
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User             @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  text            String           @default("") @db.Text
+  replyToId       String?
+  replyTo         ChatMessage?     @relation("ChatMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies         ChatMessage[]    @relation("ChatMessageReplies")
+  forwardedFromId String?          @db.VarChar(191)
+  pinned          Boolean          @default(false)
+  pinnedById      String?          @db.VarChar(191)
+  deleted         Boolean          @default(false)
+  mentions        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  attachments ChatAttachment[]
+  reactions   ChatReaction[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("chat_messages")
+}
+
+model ChatAttachment {
+  id           String       @id @default(uuid())
+  fileName     String       @db.VarChar(191)
+  originalName String       @db.VarChar(255)
+  mimeType     String       @default("application/octet-stream") @db.VarChar(150)
+  size         Int          @default(0)
+  uploaderId   String
+  uploader     User         @relation("ChatAttachmentUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
+  messageId    String?
+  message      ChatMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+
+  @@index([fileName])
+  @@index([messageId])
+  @@index([uploaderId, messageId])
+  @@map("chat_attachments")
+}
+
+model ChatReaction {
+  id        String      @id @default(uuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation("ChatReactionUser", fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String      @db.VarChar(32)
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@map("chat_reactions")
 }

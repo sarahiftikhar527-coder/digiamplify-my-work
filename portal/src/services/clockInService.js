@@ -11,11 +11,13 @@ export const clockInService = {
   clockIn: ({ pin }) =>
     unwrap(apiClient.post("/attendance/clock-in", { pin })),
 
-  clockOut: ({ pin, description }) =>
+  // completedTaskIds: the tasks ticked in the clock out checklist.
+  clockOut: ({ pin, description, completedTaskIds = [] }) =>
     unwrap(
       apiClient.post("/attendance/clock-out", {
         pin,
         description,
+        completedTaskIds,
       })
     ),
 

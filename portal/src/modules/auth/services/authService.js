@@ -69,3 +69,37 @@ export const login = async ({ email, password }) => {
     throw new Error(getErrorMessage(error, "Login failed. Please try again."));
   }
 };
+
+// Forgot password, step 1: ask the server to email a reset link.
+export const forgotPassword = async ({ email }) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/auth/forgot-password`,
+      { email: email.trim().toLowerCase() },
+      { withCredentials: true }
+    );
+
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(error, "Unable to send the reset email. Please try again.")
+    );
+  }
+};
+
+// Forgot password, step 2: set the new password using the token from the email link.
+export const resetPassword = async ({ token, newPassword }) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/auth/reset-password`,
+      { token, newPassword },
+      { withCredentials: true }
+    );
+
+    return response.data?.data ?? response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(error, "Unable to reset the password. Please try again.")
+    );
+  }
+};

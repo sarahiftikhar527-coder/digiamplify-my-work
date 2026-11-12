@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, X } from "lucide-react";
 import NavGroup, { NavItem } from "../shared/NavGroup";
 import { getNavigationByRole } from "@/constants/navigation";
-import { getChangeRequestCount } from "@/services/api/profileService";
 import { Avatar } from "@/shared/components/ui";
 import { useAuth } from "@/context";
-import { usersService } from "@/services/usersService";
+import useSidebarCounts from "@/hooks/useSidebarCounts";
 
 const Logo = () => (
   <div className="flex items-end whitespace-nowrap text-[23px] font-semibold leading-none tracking-tight text-white">
@@ -29,39 +28,8 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
   const navigation = getNavigationByRole(user?.role) || [];
   const isAdmin = String(user?.role || "").toLowerCase() === "admin";
 
-  const [pendingApprovals, setPendingApprovals] = useState(0);
-  const [pendingProfileApprovals, setPendingProfileApprovals] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    getChangeRequestCount()
-      .then((res) => {
-        if (!cancelled) setPendingProfileApprovals(Number(res?.data?.count || 0));
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!isAdmin) return undefined;
-
-    let cancelled = false;
-
-    usersService
-      .pending()
-      .then((items) => {
-        if (!cancelled) setPendingApprovals(Array.isArray(items) ? items.length : 0);
-      })
-      .catch(() => {
-        // Badge is optional: ignore errors silently.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin, pathname]);
-
-  const counts = { pendingApprovals: pendingApprovals + pendingProfileApprovals };
+  // Live badges: unread chat messages and pending approvals.
+  const counts = useSidebarCounts({ isAdmin });
 
   useEffect(() => {
     if (window.innerWidth < 1024 && open) {

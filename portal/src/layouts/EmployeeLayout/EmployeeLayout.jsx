@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import useHideOnScroll from "@/hooks/useHideOnScroll";
 import useTaskAlerts from "@/hooks/useTaskAlerts";
+import useSidebarCounts from "@/hooks/useSidebarCounts";
 
 const EmployeeLayout = () => {
   // The sidebar is closed by default. It opens when the mouse hovers over the
@@ -13,6 +14,9 @@ const EmployeeLayout = () => {
   // Number of new tasks the admin assigned (shown as a badge on "Task").
   // This also plays the alert sound when a new task arrives.
   const { newTasks } = useTaskAlerts()
+
+  // Number of unread chat messages (shown as a badge on "Chat").
+  const { chatUnread } = useSidebarCounts({ isAdmin: false })
 
   // The page scrolls inside <main>. The top bar hides while scrolling down
   // and comes back as soon as the user scrolls up a little.
@@ -36,7 +40,7 @@ const EmployeeLayout = () => {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={closeSidebar}
-        counts={{ newTasks }}
+        counts={{ newTasks, chatUnread }}
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col">

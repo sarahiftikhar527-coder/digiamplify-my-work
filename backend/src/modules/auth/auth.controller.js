@@ -57,3 +57,15 @@ export const changePassword = asyncHandler(async (req, res) => {
   res.clearCookie(COOKIE, cookieOptions)
   ok(res, null, 'Password changed. Please login again.')
 })
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const result = await service.requestPasswordReset(req.validated.body.email)
+  ok(res, null, result.message)
+})
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.validated.body
+  const { email } = await service.resetPassword(token, newPassword)
+  res.clearCookie(COOKIE, cookieOptions)
+  ok(res, { email }, 'Password updated. You can now log in with your new password.')
+})

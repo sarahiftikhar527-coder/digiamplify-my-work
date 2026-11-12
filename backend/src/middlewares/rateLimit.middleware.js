@@ -55,6 +55,40 @@ export const pinResetLimiter = rateLimit({
   message: pinResetLimitMessage,
 })
 
+const passwordResetMessage = {
+  success: false,
+  message: 'Too many password reset attempts. Try again later.',
+}
+
+export const passwordForgotIpLimiter = rateLimit({
+  ...base,
+  windowMs: pinResetWindowMs,
+  limit: 10,
+  message: passwordResetMessage,
+})
+
+export const passwordForgotEmailLimiter = rateLimit({
+  ...base,
+  windowMs: pinResetWindowMs,
+  limit: 3,
+  message: passwordResetMessage,
+  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req) => {
+    const email = String(req.validated?.body?.email ?? req.body?.email ?? '')
+      .trim()
+      .toLowerCase()
+
+    return email ? `password-forgot:${email}` : `password-forgot-ip:${req.ip}`
+  },
+})
+
+export const passwordResetLimiter = rateLimit({
+  ...base,
+  windowMs: pinResetWindowMs,
+  limit: 10,
+  message: passwordResetMessage,
+})
+
 const oneHourMs = 60 * 60 * 1000
 
 export const contactPublicIpLimiter = rateLimit({
