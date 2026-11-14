@@ -2,6 +2,7 @@ import Task from "../../models/Task.js";
 import User from "../../models/User.js";
 import { prisma } from "../../config/db.js";
 import { ROLES } from "../../constants/roles.js";
+import { assertCanAssignTo } from "../../utils/hierarchy.js";
 
 const TASK_STATUSES = [
   "pending",
@@ -17,7 +18,6 @@ const UPDATE_STATUSES = ["in-progress", "completed"];
 const DEFAULT_TIME_ZONE = "Asia/Karachi";
 const MAX_MINUTES = 60 * 24 * 30;
 
-// Allowed year range for any date typed by a user.
 const MIN_YEAR = 2000;
 const MAX_YEAR = 2100;
 
@@ -27,7 +27,6 @@ function createError(message, statusCode = 400) {
   return error;
 }
 
-// Rejects invalid dates and absurd years (for example 20256).
 function assertSaneDate(date, label = "Date") {
   if (Number.isNaN(date.getTime())) {
     throw createError(`${label} is invalid.`);
@@ -71,7 +70,6 @@ function normalizeTimeZone(timeZone) {
   }
 }
 
-// "YYYY-MM-DD" of a date in the given time zone.
 function dayKey(value = new Date(), timeZone = DEFAULT_TIME_ZONE) {
   const date = value instanceof Date ? value : new Date(value);
 
@@ -95,7 +93,6 @@ function minutesBetween(from, to) {
   return Math.max(0, Math.round(diff / 60000));
 }
 
-// Minutes entered by the employee. Empty value means "not provided".
 function parseMinutes(value) {
   if (value === undefined || value === null || value === "") return null;
 
@@ -108,7 +105,6 @@ function parseMinutes(value) {
   return minutes;
 }
 
-// Fields to save when a task changes status (start time, finish time, time spent).
 function buildStatusPatch(task, status, timeSpentMinutes) {
   const now = new Date();
   const data = { status };
@@ -230,7 +226,7 @@ async function getPopulatedTask(taskId) {
 
 /*
 |--------------------------------------------------------------------------
-| Employee: stats and old list (kept for dashboard / calendar)
+| Employee: stats and old list
 |--------------------------------------------------------------------------
 */
 
@@ -274,7 +270,6 @@ export async function getEmployeeTasks(employeeId) {
   }));
 }
 
-// Employee changes a task status. Start time, finish time and time spent are saved here.
 export async function updateEmployeeTaskStatus(
   employeeId,
   taskId,
@@ -309,7 +304,7 @@ export async function updateEmployeeTaskStatus(
 
 /*
 |--------------------------------------------------------------------------
-| Employee: ClickUp style workspace (Assigned to me / Today & Overdue / Personal)
+| Employee: ClickUp style workspace
 |--------------------------------------------------------------------------
 */
 
@@ -348,8 +343,7 @@ export async function getEmployeeWorkspace(
     today: lists.today.length,
     personal: lists.personal.length,
     overdue: tasks.filter((task) => task.isOverdue).length,
-    pendingDailyUpdates: tasks.filter((task) => task.needsUpdateToday)
-      .length,
+    pendingDailyUpdates: tasks.filter((task) => task.needsUpdateToday).length,
   };
 
   return {
@@ -360,7 +354,6 @@ export async function getEmployeeWorkspace(
   };
 }
 
-// Employee ticks a fixed daily task: what was done today and how long it took.
 export async function submitDailyUpdate(
   employeeId,
   taskId,
@@ -500,6 +493,7 @@ export async function updatePersonalTask(
     if (!TASK_STATUSES.includes(updates.status)) {
       throw createError("Invalid task status.");
     }
+
     Object.assign(
       data,
       buildStatusPatch(task, updates.status, updates.timeSpentMinutes)
@@ -544,7 +538,7 @@ export async function deletePersonalTask(employeeId, taskId) {
 
 /*
 |--------------------------------------------------------------------------
-| Admin
+| Admin and task assigners
 |--------------------------------------------------------------------------
 */
 
@@ -563,11 +557,35 @@ export async function createTask({
     throw createError("Task type must be daily or extra.");
   }
 
-  const employee = await User.findOne({
-    _id: assignedTo,
-    role: ROLES.EMPLOYEE,
-    status: "active",
-    isDeleted: false,
+  if (!assignedTo || !assignedBy) {
+    throw createError("Assigned employee and assigner are required.");
+  }
+
+  if (!TASK_PRIORITIES.includes(priority)) {
+    throw createError("Invalid task priority.");
+  }
+
+  const assigner = await prisma.user.findFirst({
+    where: {
+      id: String(assignedBy),
+      status: "active",
+      isDeleted: false,
+    },
+  });
+
+  if (!assigner) {
+    throw createError("Task assigner not found or inactive.", 404);
+  }
+
+  await assertCanAssignTo(assigner, [String(assignedTo)]);
+
+  const employee = await prisma.user.findFirst({
+    where: {
+      id: String(assignedTo),
+      role: ROLES.EMPLOYEE,
+      status: "active",
+      isDeleted: false,
+    },
   });
 
   if (!employee) {
@@ -576,10 +594,8 @@ export async function createTask({
 
   const start = startDate ? new Date(startDate) : new Date();
 
-  // Check the start date first, because the default end date is built from it.
   assertSaneDate(start, "Start date");
 
-  // A fixed daily task without an end date keeps running for one year.
   const due = dueDate
     ? new Date(dueDate)
     : new Date(start.getTime() + 365 * 24 * 60 * 60 * 1000);
@@ -588,14 +604,14 @@ export async function createTask({
 
   const row = await prisma.task.create({
     data: {
-      title,
-      subtitle,
-      description,
+      title: String(title || "").trim(),
+      subtitle: String(subtitle || "").trim(),
+      description: String(description || "").trim(),
       priority,
       taskType,
       startDate: taskType === "daily" ? start : null,
-      assignedToId: String(assignedTo),
-      assignedById: String(assignedBy),
+      assignedToId: String(employee.id),
+      assignedById: String(assigner.id),
       dueDate: due,
     },
   });
@@ -603,83 +619,112 @@ export async function createTask({
   return { ...row, _id: row.id };
 }
 
-export async function getAllTasksForAdmin() {
-  const tasks = await Task.find({})
-    .populate("assignedTo", "name email department designation status")
-    .populate("assignedBy", "name email")
-    .sort({ createdAt: -1 })
-    .lean();
+// Admins see all tasks. Other task assigners see their own assigned tasks
+// and tasks assigned to employees within their reporting hierarchy.
+export async function getAllTasksForAdmin(scope = null) {
+  const filter = scope
+    ? {
+        OR: [
+          { assignedById: String(scope.userId) },
+          { assignedToId: { in: scope.employeeIds.map(String) } },
+        ],
+      }
+    : {};
 
-  return tasks.map((task) => ({
-    ...task,
-    status: normalizeSavedStatus(task.status),
-  }));
+  const tasks = await prisma.task.findMany({
+    where: filter,
+    include: {
+      assignedTo: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          department: true,
+          designation: true,
+          status: true,
+        },
+      },
+      assignedBy: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return tasks
+    .filter(
+      (task) =>
+        !scope || String(task.assignedById) !== String(task.assignedToId)
+    )
+    .map((task) => ({
+      ...task,
+      _id: task.id,
+      status: normalizeSavedStatus(task.status),
+    }));
 }
 
 export async function updateAdminTask(taskId, updates) {
-  const task = await Task.findById(taskId);
+  const task = await prisma.task.findUnique({
+    where: { id: String(taskId) },
+  });
 
   if (!task) {
     throw createError("Task not found.", 404);
   }
 
-  // Validate dates up front so nothing is saved if one of them is bad.
+  const data = {};
+
   let parsedDueDate;
   let parsedStartDate;
 
   if (updates.dueDate !== undefined) {
     parsedDueDate = new Date(updates.dueDate);
     assertSaneDate(parsedDueDate, "Due date");
+    data.dueDate = parsedDueDate;
   }
 
   if (updates.startDate !== undefined) {
     parsedStartDate = new Date(updates.startDate);
     assertSaneDate(parsedStartDate, "Start date");
+    data.startDate = parsedStartDate;
   }
 
   if (updates.title !== undefined) {
     const title = String(updates.title).trim();
-
-    if (!title) {
-      throw createError("Task title is required.");
-    }
-
-    task.title = title;
+    if (!title) throw createError("Task title is required.");
+    data.title = title;
   }
 
   if (updates.subtitle !== undefined) {
-    task.subtitle = String(updates.subtitle || "").trim();
+    data.subtitle = String(updates.subtitle || "").trim();
   }
 
   if (updates.description !== undefined) {
-    task.description = String(updates.description || "").trim();
+    data.description = String(updates.description || "").trim();
   }
 
   if (updates.priority !== undefined) {
     if (!TASK_PRIORITIES.includes(updates.priority)) {
       throw createError("Invalid task priority.");
     }
-
-    task.priority = updates.priority;
-  }
-
-  if (parsedDueDate) {
-    task.dueDate = parsedDueDate;
+    data.priority = updates.priority;
   }
 
   if (updates.assignedTo !== undefined) {
-    const employee = await User.findOne({
-      _id: updates.assignedTo,
-      role: ROLES.EMPLOYEE,
-      status: "active",
-      isDeleted: false,
+    const employee = await prisma.user.findFirst({
+      where: {
+        id: String(updates.assignedTo),
+        role: ROLES.EMPLOYEE,
+        status: "active",
+        isDeleted: false,
+      },
     });
 
     if (!employee) {
       throw createError("Active employee not found.", 404);
     }
 
-    task.assignedTo = employee._id;
+    data.assignedToId = employee.id;
   }
 
   if (updates.status !== undefined) {
@@ -687,28 +732,26 @@ export async function updateAdminTask(taskId, updates) {
       throw createError("Invalid task status.");
     }
 
-    task.status = updates.status;
-    updateCompletionDate(task, updates.status);
+    data.status = updates.status;
+    data.completedAt =
+      updates.status === "approved" || updates.status === "completed"
+        ? task.completedAt || new Date()
+        : null;
   }
-
-  await task.save();
-
-  // Fields added for fixed daily tasks are saved directly with Prisma.
-  const extra = {};
 
   if (updates.isActive !== undefined) {
-    extra.isActive = Boolean(updates.isActive);
+    data.isActive = Boolean(updates.isActive);
   }
 
-  if (parsedStartDate) {
-    extra.startDate = parsedStartDate;
-  }
+  const row = await prisma.task.update({
+    where: { id: task.id },
+    data,
+  });
 
-  if (Object.keys(extra).length) {
-    await prisma.task.update({ where: { id: String(taskId) }, data: extra });
-  }
-
-  return getPopulatedTask(task._id);
+  return {
+    ...row,
+    _id: row.id,
+  };
 }
 
 export async function updateAdminTaskStatus(taskId, status) {
@@ -716,34 +759,54 @@ export async function updateAdminTaskStatus(taskId, status) {
     throw createError("Invalid task status.");
   }
 
-  const task = await Task.findById(taskId);
+  const task = await prisma.task.findUnique({
+    where: { id: String(taskId) },
+  });
 
   if (!task) {
     throw createError("Task not found.", 404);
   }
 
-  task.status = status;
-  updateCompletionDate(task, status);
+  const row = await prisma.task.update({
+    where: { id: task.id },
+    data: {
+      status,
+      completedAt:
+        status === "approved" || status === "completed"
+          ? task.completedAt || new Date()
+          : null,
+    },
+  });
 
-  await task.save();
-
-  return getPopulatedTask(task._id);
+  return { ...row, _id: row.id };
 }
 
 export async function deleteAdminTask(taskId) {
-  const task = await Task.findByIdAndDelete(taskId);
+  const task = await prisma.task.findUnique({
+    where: { id: String(taskId) },
+  });
 
   if (!task) {
     throw createError("Task not found.", 404);
   }
 
-  return task;
+  await prisma.task.delete({
+    where: { id: task.id },
+  });
+
+  return { ...task, _id: task.id };
 }
 
-// Admin feed of daily updates posted by employees (default: today).
+/*
+|--------------------------------------------------------------------------
+| Admin feed of daily updates
+|--------------------------------------------------------------------------
+*/
+
 export async function getAdminDailyUpdates({
   date,
   employeeId,
+  employeeIds: scopeIds,
   taskId,
   timeZone,
 } = {}) {
@@ -752,12 +815,21 @@ export async function getAdminDailyUpdates({
 
   const where = { updateDate: day };
 
-  if (employeeId) where.employeeId = String(employeeId);
+  if (employeeId) {
+    where.employeeId = String(employeeId);
+  } else if (scopeIds) {
+    where.employeeId = { in: scopeIds.map(String) };
+  }
+
   if (taskId) where.taskId = String(taskId);
 
   const rows = await prisma.taskDailyUpdate.findMany({
     where,
-    include: { task: { select: { id: true, title: true, priority: true } } },
+    include: {
+      task: {
+        select: { id: true, title: true, priority: true },
+      },
+    },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -766,7 +838,12 @@ export async function getAdminDailyUpdates({
   const employees = employeeIds.length
     ? await prisma.user.findMany({
         where: { id: { in: employeeIds } },
-        select: { id: true, name: true, email: true, designation: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          designation: true,
+        },
       })
     : [];
 
@@ -782,33 +859,69 @@ export async function getAdminDailyUpdates({
   };
 }
 
-// Admin activity for one day:
-//  - fixedTasks: every active fixed daily task with that day's update (or null = not posted)
-//  - extraTasks: extra tasks started, finished or due on that day, with times
-export async function getAdminActivity({ date, employeeId, timeZone } = {}) {
+/*
+|--------------------------------------------------------------------------
+| Admin activity for one day
+|--------------------------------------------------------------------------
+*/
+
+export async function getAdminActivity({
+  date,
+  employeeId,
+  employeeIds,
+  timeZone,
+} = {}) {
   const tz = normalizeTimeZone(timeZone);
+
   const day =
     date && /^\d{4}-\d{2}-\d{2}$/.test(String(date))
       ? String(date)
       : dayKey(new Date(), tz);
 
-  const dailyWhere = { taskType: "daily", isActive: true };
-  if (employeeId) dailyWhere.assignedToId = String(employeeId);
+  const dailyWhere = {
+    taskType: "daily",
+    isActive: true,
+  };
+
+  if (employeeId) {
+    dailyWhere.assignedToId = String(employeeId);
+  } else if (employeeIds) {
+    dailyWhere.assignedToId = { in: employeeIds.map(String) };
+  }
 
   const dailyTasks = await prisma.task.findMany({
     where: dailyWhere,
-    include: { dailyUpdates: { where: { updateDate: day } } },
+    include: {
+      dailyUpdates: {
+        where: { updateDate: day },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
   const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-  const extraWhere = { taskType: "extra", updatedAt: { gte: since } };
-  if (employeeId) extraWhere.assignedToId = String(employeeId);
 
-  const extraRows = await prisma.task.findMany({
+  const extraWhere = {
+    taskType: "extra",
+    updatedAt: { gte: since },
+  };
+
+  if (employeeId) {
+    extraWhere.assignedToId = String(employeeId);
+  } else if (employeeIds) {
+    extraWhere.assignedToId = { in: employeeIds.map(String) };
+  }
+
+  const allExtraRows = await prisma.task.findMany({
     where: extraWhere,
     orderBy: { updatedAt: "desc" },
   });
+
+  const extraRows = employeeIds
+    ? allExtraRows.filter(
+        (task) => task.assignedById !== task.assignedToId
+      )
+    : allExtraRows;
 
   const userIds = [
     ...new Set(
@@ -819,7 +932,12 @@ export async function getAdminActivity({ date, employeeId, timeZone } = {}) {
   const users = userIds.length
     ? await prisma.user.findMany({
         where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true, designation: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          designation: true,
+        },
       })
     : [];
 
@@ -830,6 +948,7 @@ export async function getAdminActivity({ date, employeeId, timeZone } = {}) {
       const startKey = task.startDate
         ? dayKey(task.startDate, tz)
         : dayKey(task.createdAt, tz);
+
       const endKey = task.dueDate ? dayKey(task.dueDate, tz) : "";
 
       return startKey <= day && (!endKey || endKey >= day);

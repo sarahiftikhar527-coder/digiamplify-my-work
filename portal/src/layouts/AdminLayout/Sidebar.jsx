@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, X } from "lucide-react";
@@ -20,16 +21,24 @@ const Logo = () => (
   </div>
 );
 
-export default function Sidebar({ open = false, onClose = () => {} }) {
+export default function Sidebar({
+  open = false,
+  onClose = () => {},
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
   const navigation = getNavigationByRole(user?.role) || [];
-  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
 
-  // Live badges: unread chat messages and pending approvals.
-  const counts = useSidebarCounts({ isAdmin });
+  const isAdmin = ["admin", "superadmin"].includes(
+    String(user?.role || "").trim().toLowerCase()
+  );
+
+  const counts = useSidebarCounts({
+    isAdmin,
+    showApprovals: true,
+  });
 
   useEffect(() => {
     if (window.innerWidth < 1024 && open) {
@@ -72,79 +81,79 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
           open ? "w-[225px]" : "w-0"
         }`}
       >
-      <aside
-        className="flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)]"
-        onMouseLeave={onClose}
-      >
-        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between gap-2 px-4 pb-9 pt-8">
-            <Logo />
+        <aside
+          className="flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)]"
+          onMouseLeave={onClose}
+        >
+          <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
+            <div className="flex items-center justify-between gap-2 px-4 pb-9 pt-8">
+              <Logo />
 
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close sidebar"
-              title="Close sidebar"
-              className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close sidebar"
+                title="Close sidebar"
+                className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <X size={18} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <nav
+              aria-label="Admin navigation"
+              className="flex flex-col gap-1 px-3"
             >
-              <X size={18} strokeWidth={1.5} />
-            </button>
-          </div>
+              {navigation.map((item) => {
+                if (item.children?.length) {
+                  return (
+                    <NavGroup
+                      key={item.path}
+                      item={item}
+                      counts={counts}
+                      onNavigate={onClose}
+                    />
+                  );
+                }
 
-          <nav
-            aria-label="Admin navigation"
-            className="flex flex-col gap-1 px-3"
-          >
-            {navigation.map((item) => {
-              if (item.children?.length) {
                 return (
-                  <NavGroup
+                  <NavItem
                     key={item.path}
                     item={item}
                     counts={counts}
+                    end={item.path === "/"}
                     onNavigate={onClose}
                   />
                 );
-              }
-
-              return (
-                <NavItem
-                  key={item.path}
-                  item={item}
-                  counts={counts}
-                  end={item.path === "/"}
-                  onNavigate={onClose}
-                />
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="shrink-0 border-t border-white/10 px-3 py-4">
-          <div className="flex items-center gap-2">
-            <Avatar size={32} />
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-white">
-                {user?.name || user?.email || "User"}
-              </p>
-              <p className="truncate text-[10px] capitalize text-gray-400">
-                {user?.role || "Member"}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded-md p-2 text-gray-400 transition hover:bg-[#F0202F]/10 hover:text-white"
-              aria-label="Logout"
-              title="Logout"
-            >
-              <LogOut size={17} strokeWidth={1.5} />
-            </button>
+              })}
+            </nav>
           </div>
-        </div>
-      </aside>
+
+          <div className="shrink-0 border-t border-white/10 px-3 py-4">
+            <div className="flex items-center gap-2">
+              <Avatar size={32} />
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-white">
+                  {user?.name || user?.email || "User"}
+                </p>
+                <p className="truncate text-[10px] capitalize text-gray-400">
+                  {user?.role || "Member"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-md p-2 text-gray-400 transition hover:bg-[#F0202F]/10 hover:text-white"
+                aria-label="Logout"
+                title="Logout"
+              >
+                <LogOut size={17} strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
+        </aside>
       </div>
     </>
   );

@@ -1,148 +1,230 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import apiClient, { unwrap } from '@/services/api/apiClient'
-import { getSocket } from '@/services/socket'
-import { usersService } from '@/services/usersService'
-import { getChangeRequestCount } from '@/services/api/profileService'
 
-/*
-  Live number badges for the sidebar.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import apiClient, { unwrap } from "@/services/api/apiClient";
+import { getSocket } from "@/services/socket";
+import { usersService } from "@/services/usersService";
 
-  - chatUnread:       unread chat messages (employee and admin).
-  - pendingApprovals: signup requests + profile change requests (admin only).
+const CHAT_REFRESH_MS = 10000;
+const COUNTS_REFRESH_MS = 20000;
 
-  Updates:
-  - instantly through the socket ("chat:notification", "notification:new"),
-  - when the admin approves / rejects a request ("approvals:changed"),
-  - when the tab becomes visible again,
-  - and by a slow refresh as a safety net.
-*/
-const CHAT_REFRESH_MS = 10000
-const APPROVALS_REFRESH_MS = 20000
+const getData = (result) => result?.data ?? result ?? {};
 
-export default function useSidebarCounts({ isAdmin = false } = {}) {
-  const { pathname } = useLocation()
+const getTaskRows = (result) => {
+  const data = getData(result);
 
-  const [chatUnread, setChatUnread] = useState(0)
-  const [pendingSignups, setPendingSignups] = useState(0)
-  const [pendingProfile, setPendingProfile] = useState(0)
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.tasks)) return data.tasks;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data?.tasks)) return data.data.tasks;
 
-  const onChatPage = useRef(false)
+  return [];
+};
 
-  onChatPage.current = /^\/(admin\/)?chat(\/|$)/.test(pathname)
+const isOpenTask = (task) => {
+  const status = String(task?.status || "").toLowerCase();
+
+  return (
+    task?.isDone !== true &&
+    !["completed", "approved", "cancelled", "canceled", "rejected"].includes(status)
+  );
+};
+
+export default function useSidebarCounts({
+  isAdmin = false,
+  showApprovals = false,
+} = {}) {
+  const { pathname } = useLocation();
+
+  const [chatUnread, setChatUnread] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [meetingInvitations, setMeetingInvitations] = useState(0);
+  const [newTasks, setNewTasks] = useState(0);
+  const [pendingFinance, setPendingFinance] = useState(0);
+
+  const onChatPage = useRef(false);
+  const canLoadApprovals = isAdmin || showApprovals;
+
+  onChatPage.current = /(^|\/)(admin\/)?chat(\/|$)/i.test(pathname);
 
   const loadChat = useCallback(async () => {
     try {
-      // Light endpoint: only the number of unread messages.
-      const result = await unwrap(apiClient.get('/chat/unread'))
-      const data = result?.data ?? result
+      const result = await unwrap(apiClient.get("/chat/unread"));
+      const data = getData(result);
 
-      setChatUnread(Math.max(0, Number(data?.total) || 0))
+      setChatUnread(Math.max(0, Number(data?.total) || 0));
     } catch {
-      // The badge is optional. Ignore errors.
+      // Keep the last available count.
     }
-  }, [])
+  }, []);
 
   const loadApprovals = useCallback(async () => {
-    try {
-      const requests = await usersService.pending()
-      setPendingSignups(Array.isArray(requests) ? requests.length : 0)
-    } catch {
-      // Ignore errors.
-    }
+    if (!canLoadApprovals) return;
 
     try {
-      const result = await getChangeRequestCount()
-      setPendingProfile(Number(result?.data?.count || 0))
-    } catch {
-      // Ignore errors.
-    }
-  }, [])
+      const result = await usersService.pending();
 
-  // Chat: first load, page change, slow refresh, tab focus.
+      const rows = Array.isArray(result)
+        ? result
+        : result?.requests || result?.items || result?.users || [];
+
+      setPendingApprovals(rows.length);
+    } catch {
+      // Keep the last available count.
+    }
+  }, [canLoadApprovals]);
+
+  const loadMeetings = useCallback(async () => {
+    try {
+      const result = await unwrap(apiClient.get("/meetings/summary"));
+      const data = getData(result);
+
+      setMeetingInvitations(
+        Math.max(0, Number(data?.pendingInvites) || 0)
+      );
+    } catch {
+      // Keep the last available count.
+    }
+  }, []);
+
+  const loadAdminTasks = useCallback(async () => {
+    if (!isAdmin) return;
+
+    try {
+      const result = await unwrap(apiClient.get("/tasks/admin"));
+      const tasks = getTaskRows(result);
+
+      setNewTasks(tasks.filter(isOpenTask).length);
+    } catch {
+      // Keep the last available count.
+    }
+  }, [isAdmin]);
+
+  const loadFinance = useCallback(async () => {
+    if (isAdmin) return;
+
+    try {
+      const result = await unwrap(
+        apiClient.get("/finance/me/pending-count")
+      );
+
+      const data = getData(result);
+      const count = Number(
+        data?.count ?? data?.pendingCount ?? data?.total ?? 0
+      );
+
+      setPendingFinance(Math.max(0, count));
+    } catch {
+      // Keep the last available count.
+    }
+  }, [isAdmin]);
+
+  const refreshCounts = useCallback(() => {
+    loadMeetings();
+
+    if (canLoadApprovals) loadApprovals();
+    if (isAdmin) loadAdminTasks();
+    if (!isAdmin) loadFinance();
+  }, [
+    canLoadApprovals,
+    isAdmin,
+    loadMeetings,
+    loadApprovals,
+    loadAdminTasks,
+    loadFinance,
+  ]);
+
   useEffect(() => {
-    loadChat()
-  }, [loadChat, pathname])
+    loadChat();
+  }, [loadChat, pathname]);
+
+  useEffect(() => {
+    refreshCounts();
+  }, [refreshCounts, pathname]);
 
   useEffect(() => {
     const tick = () => {
-      if (document.visibilityState === 'visible') loadChat()
-    }
+      if (document.visibilityState !== "visible") return;
 
-    const timer = setInterval(tick, CHAT_REFRESH_MS)
-    document.addEventListener('visibilitychange', tick)
+      loadChat();
+      refreshCounts();
+    };
 
-    return () => {
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', tick)
-    }
-  }, [loadChat])
+    const timer = window.setInterval(tick, COUNTS_REFRESH_MS);
 
-  // Approvals (admin only).
-  useEffect(() => {
-    if (isAdmin) loadApprovals()
-  }, [isAdmin, loadApprovals, pathname])
-
-  useEffect(() => {
-    if (!isAdmin) return undefined
-
-    const tick = () => {
-      if (document.visibilityState === 'visible') loadApprovals()
-    }
-
-    const timer = setInterval(tick, APPROVALS_REFRESH_MS)
-    document.addEventListener('visibilitychange', tick)
-    window.addEventListener('approvals:changed', loadApprovals)
+    document.addEventListener("visibilitychange", tick);
 
     return () => {
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', tick)
-      window.removeEventListener('approvals:changed', loadApprovals)
-    }
-  }, [isAdmin, loadApprovals])
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [loadChat, refreshCounts]);
 
-  // Instant updates from the server.
   useEffect(() => {
-    let socket
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadChat();
+    }, CHAT_REFRESH_MS);
+
+    return () => window.clearInterval(timer);
+  }, [loadChat]);
+
+  useEffect(() => {
+    if (!canLoadApprovals) return undefined;
+
+    const onApprovalsChanged = () => loadApprovals();
+
+    window.addEventListener("approvals:changed", onApprovalsChanged);
+
+    return () => {
+      window.removeEventListener("approvals:changed", onApprovalsChanged);
+    };
+  }, [canLoadApprovals, loadApprovals]);
+
+  useEffect(() => {
+    let socket;
 
     try {
-      socket = getSocket()
+      socket = getSocket();
     } catch {
-      return undefined
+      return undefined;
     }
 
-    // On the chat page the open conversation is marked as read by the page
-    // itself, so wait a moment to avoid a short flash of the badge.
     const onChat = () => {
-      if (onChatPage.current) setTimeout(loadChat, 1500)
-      else loadChat()
-    }
+      if (onChatPage.current) {
+        window.setTimeout(loadChat, 1500);
+      } else {
+        loadChat();
+      }
+    };
 
-    // A new signup request or profile change request creates a notification.
     const onNotification = () => {
-      if (isAdmin) loadApprovals()
-    }
+      refreshCounts();
+    };
 
     const onConnect = () => {
-      loadChat()
-      if (isAdmin) loadApprovals()
-    }
+      loadChat();
+      refreshCounts();
+    };
 
-    socket.on('chat:notification', onChat)
-    socket.on('chat:unread:changed', onChat)
-    socket.on('notification:new', onNotification)
-    socket.on('connect', onConnect)
+    socket.on("chat:notification", onChat);
+    socket.on("chat:unread:changed", onChat);
+    socket.on("notification:new", onNotification);
+    socket.on("connect", onConnect);
 
     return () => {
-      socket.off('chat:notification', onChat)
-      socket.off('chat:unread:changed', onChat)
-      socket.off('notification:new', onNotification)
-      socket.off('connect', onConnect)
-    }
-  }, [isAdmin, loadChat, loadApprovals])
+      socket.off("chat:notification", onChat);
+      socket.off("chat:unread:changed", onChat);
+      socket.off("notification:new", onNotification);
+      socket.off("connect", onConnect);
+    };
+  }, [loadChat, refreshCounts]);
 
   return {
     chatUnread,
-    pendingApprovals: isAdmin ? pendingSignups + pendingProfile : 0,
-  }
+    pendingApprovals,
+    meetingInvitations,
+    newTasks,
+    pendingFinance,
+    refreshCounts,
+  };
 }

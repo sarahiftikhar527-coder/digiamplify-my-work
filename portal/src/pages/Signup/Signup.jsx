@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { register as registerWithBackend } from "../../modules/auth/services/authService.js";
+import { POSITION_OPTIONS } from "@/constants/positions";
 
 const SIGNUP_IMAGE = "/images/Login/login.webp";
 const REMEMBER_KEY = "digiamplify_remembered_email";
@@ -20,7 +22,11 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PIN_REGEX = /^\d{4,6}$/;
 const MIN_PASSWORD = 8;
 
-const ROLES = ["Employee", "Manager", "HR"];
+// Role labels shown in the dropdown. The matching position key is sent to the server.
+const ROLES = POSITION_OPTIONS.map((option) => option.label);
+const POSITION_BY_LABEL = Object.fromEntries(
+  POSITION_OPTIONS.map((option) => [option.label, option.value])
+);
 
 const ROUTES = {
   login: "/login",
@@ -288,7 +294,7 @@ const RoleSelect = ({ id, value, onChange, hasError }) => {
         <ul
           role="listbox"
           aria-labelledby={id}
-          className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-[8px] border border-[#3d3d3d] bg-[#121212] p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
+          className="absolute left-0 right-0 top-full z-30 mt-2 max-h-[300px] overflow-y-auto rounded-[8px] border border-[#3d3d3d] bg-[#121212] p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
         >
           {ROLES.map((role) => {
             const selected = role === value;
@@ -446,7 +452,7 @@ const Signup = () => {
         name: form.name,
         email: cleanEmail,
         password: form.password,
-        role: form.role,
+        position: POSITION_BY_LABEL[form.role],
         pin: form.pin,
       });
 

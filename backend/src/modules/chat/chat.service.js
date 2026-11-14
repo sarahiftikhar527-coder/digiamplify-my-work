@@ -1,3 +1,4 @@
+
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -8,37 +9,22 @@ import { buildChatAttachmentUrl } from "../../utils/fileUrls.js";
 import { CHAT_ATTACHMENTS_DIR } from "../../config/uploads.js";
 import { emitToUsers } from "../../sockets/index.js";
 
-/*
-  Chat storage model (table "chats", JSON columns):
-    members:    [{ user: "<userId>", lastReadAt, joinedAt }]
-    admins:     ["<userId>", ...]
-    messages:   [{ _id, sender, text, attachments, replyTo, mentions, readBy,
-                   reactions, pinned, deleted, forwardedFrom, createdAt, updatedAt }]
-    clearedFor: [{ user: "<userId>", clearedAt }]
-
-  Real-time events sent to each member's private socket room ("user:<id>"):
-    chat:conversation          { conversation }                 group created / members changed
-    chat:conversation:removed  { conversationId }               user left or was removed
-    chat:message               { conversationId, message }      new message
-    chat:message:deleted       { conversationId, messageId }
-    chat:message:reaction      { conversationId, messageId, reactions }
-    chat:message:pinned        { conversationId, messageId, pinned }
-    chat:message:read          { conversationId, userId, readAt, messageIds }
-*/
-
 // ---------------------------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------------------------
 
 const idOf = (value) => {
   if (value === null || value === undefined) return "";
+
   if (typeof value === "object") {
     return String(value._id ?? value.id ?? "").trim();
   }
+
   return String(value).trim();
 };
 
-const isValidId = (value) => /^[A-Za-z0-9_-]{8,128}$/.test(String(value ?? ""));
+const isValidId = (value) =>
+  /^[A-Za-z0-9_-]{8,128}$/.test(String(value ?? ""));
 
 function requireId(value, label = "ID") {
   const id = idOf(value);
@@ -52,30 +38,38 @@ function requireId(value, label = "ID") {
 
 const toIso = (value) => {
   if (!value) return null;
+
   const date = new Date(value);
+
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
 const unique = (list) => [...new Set(list.filter(Boolean))];
 
-const isAdminUser = (user) => user?.role === ROLES.ADMIN;
+const isAdminUser = (user) =>
+  ["admin", "superadmin"].includes(
+    String(user?.role || "").toLowerCase()
+  );
 
-const activeUserFilter = { isDeleted: false, status: "active" };
+const activeUserFilter = {
+  isDeleted: false,
+  status: "active",
+};
 
-// A failed socket emit must never break the HTTP request that triggered it.
+// A failed socket emit must never break the HTTP request.
 function safeEmit(userIds, event, payload) {
   try {
     emitToUsers(userIds, event, payload);
   } catch (error) {
-    console.error(`[chat] socket emit failed (${event}):`, error?.message);
+    console.error(
+      `[chat] socket emit failed (${event}):`,
+      error?.message
+    );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Per-conversation lock.
-// Messages live inside one JSON column, so two people sending at the same time
-// would overwrite each other ("last write wins"). Running every write for the
-// same conversation one after another prevents lost messages.
+// Per-conversation lock
 // ---------------------------------------------------------------------------
 
 const chatLocks = new Map();
@@ -84,11 +78,13 @@ async function withChatLock(chatId, task) {
   const previous = chatLocks.get(chatId) || Promise.resolve();
 
   let release;
+
   const gate = new Promise((resolve) => {
     release = resolve;
   });
 
   const tail = previous.then(() => gate);
+
   chatLocks.set(chatId, tail);
 
   await previous;
@@ -97,12 +93,15 @@ async function withChatLock(chatId, task) {
     return await task();
   } finally {
     release();
-    if (chatLocks.get(chatId) === tail) chatLocks.delete(chatId);
+
+    if (chatLocks.get(chatId) === tail) {
+      chatLocks.delete(chatId);
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Loading / saving (normalises old and new stored shapes to one clean shape)
+// Loading / saving
 // ---------------------------------------------------------------------------
 
 function hydrate(row) {
@@ -120,71 +119,78 @@ function hydrate(row) {
     (Array.isArray(row.admins) ? row.admins : []).map(idOf)
   );
 
-  const clearedFor = (Array.isArray(row.clearedFor) ? row.clearedFor : [])
+  const clearedFor = (
+    Array.isArray(row.clearedFor) ? row.clearedFor : []
+  )
     .map((entry) => ({
       user: idOf(entry?.user),
       clearedAt: toIso(entry?.clearedAt),
     }))
     .filter((entry) => entry.user && entry.clearedAt);
 
-  const messages = (Array.isArray(row.messages) ? row.messages : []).map(
-    (message) => {
-      let id = idOf(message?._id ?? message?.id);
+  const messages = (
+    Array.isArray(row.messages) ? row.messages : []
+  ).map((message) => {
+    let id = idOf(message?._id ?? message?.id);
 
-      // Old messages were saved without an id or timestamp. Give them one.
-      if (!id) {
-        id = crypto.randomUUID();
-        needsBackfill = true;
-      }
+    if (!id) {
+      id = crypto.randomUUID();
+      needsBackfill = true;
+    }
 
-      let createdAt = toIso(message?.createdAt);
+    let createdAt = toIso(message?.createdAt);
 
-      if (!createdAt) {
-        createdAt =
-          toIso(row.lastMessageAt) ||
-          toIso(row.createdAt) ||
-          new Date().toISOString();
-        needsBackfill = true;
-      }
+    if (!createdAt) {
+      createdAt =
+        toIso(row.lastMessageAt) ||
+        toIso(row.createdAt) ||
+        new Date().toISOString();
 
-      return {
-        _id: id,
-        sender: idOf(message?.sender),
-        text: String(message?.text || ""),
-        attachments: Array.isArray(message?.attachments)
-          ? message.attachments
-          : [],
-        replyTo: idOf(message?.replyTo) || null,
-        mentions: (Array.isArray(message?.mentions) ? message.mentions : [])
-          .map(idOf)
-          .filter(Boolean),
-        // Each entry: who saw the message and when. Old data saved plain ids,
-        // so those entries get a null time.
-        readBy: (Array.isArray(message?.readBy) ? message.readBy : [])
-          .map((entry) => ({
-            user: idOf(entry?.user ?? entry),
-            at: toIso(entry?.at),
-          }))
-          .filter((entry) => entry.user),
-        reactions: (Array.isArray(message?.reactions) ? message.reactions : [])
-          .map((reaction) => ({
-            emoji: String(reaction?.emoji || ""),
-            userIds: (Array.isArray(reaction?.userIds)
+      needsBackfill = true;
+    }
+
+    return {
+      _id: id,
+      sender: idOf(message?.sender),
+      text: String(message?.text || ""),
+      attachments: Array.isArray(message?.attachments)
+        ? message.attachments
+        : [],
+      replyTo: idOf(message?.replyTo) || null,
+      mentions: (
+        Array.isArray(message?.mentions) ? message.mentions : []
+      )
+        .map(idOf)
+        .filter(Boolean),
+      readBy: (
+        Array.isArray(message?.readBy) ? message.readBy : []
+      )
+        .map((entry) => ({
+          user: idOf(entry?.user ?? entry),
+          at: toIso(entry?.at),
+        }))
+        .filter((entry) => entry.user),
+      reactions: (
+        Array.isArray(message?.reactions) ? message.reactions : []
+      )
+        .map((reaction) => ({
+          emoji: String(reaction?.emoji || ""),
+          userIds: (
+            Array.isArray(reaction?.userIds)
               ? reaction.userIds
               : []
-            )
-              .map(idOf)
-              .filter(Boolean),
-          }))
-          .filter((reaction) => reaction.emoji),
-        pinned: Boolean(message?.pinned),
-        deleted: Boolean(message?.deleted),
-        forwardedFrom: idOf(message?.forwardedFrom) || null,
-        createdAt,
-        updatedAt: toIso(message?.updatedAt) || createdAt,
-      };
-    }
-  );
+          )
+            .map(idOf)
+            .filter(Boolean),
+        }))
+        .filter((reaction) => reaction.emoji),
+      pinned: Boolean(message?.pinned),
+      deleted: Boolean(message?.deleted),
+      forwardedFrom: idOf(message?.forwardedFrom) || null,
+      createdAt,
+      updatedAt: toIso(message?.updatedAt) || createdAt,
+    };
+  });
 
   return {
     id: row.id,
@@ -205,12 +211,15 @@ function hydrate(row) {
 
 async function saveChat(chat) {
   await prisma.chat.update({
-    where: { id: chat.id },
+    where: {
+      id: chat.id,
+    },
     data: {
       name: chat.name,
-      lastMessageAt: new Date(chat.lastMessageAt || Date.now()),
+      lastMessageAt: new Date(
+        chat.lastMessageAt || Date.now()
+      ),
       lastMessageText: chat.lastMessageText || null,
-      // Only ids and plain data are stored (no populated user objects).
       members: chat.members.map((member) => ({
         user: member.user,
         lastReadAt: member.lastReadAt,
@@ -225,7 +234,10 @@ async function saveChat(chat) {
 
 async function loadChat(chatId) {
   const id = requireId(chatId, "conversation ID");
-  const row = await prisma.chat.findUnique({ where: { id } });
+
+  const row = await prisma.chat.findUnique({
+    where: { id },
+  });
 
   if (!row) {
     throw new ApiError(404, "Conversation not found.");
@@ -234,38 +246,49 @@ async function loadChat(chatId) {
   return hydrate(row);
 }
 
-const memberIdsOf = (chat) => chat.members.map((member) => member.user);
+const memberIdsOf = (chat) =>
+  chat.members.map((member) => member.user);
 
 const hasMember = (chat, userId) =>
-  chat.members.some((member) => member.user === idOf(userId));
+  chat.members.some(
+    (member) => member.user === idOf(userId)
+  );
 
 function assertMember(chat, user) {
   if (!hasMember(chat, user)) {
-    throw new ApiError(403, "You do not have access to this conversation.");
+    throw new ApiError(
+      403,
+      "You do not have access to this conversation."
+    );
   }
 }
 
-// Read access: loads the conversation and makes sure the user is a member.
 async function getChat(chatId, user) {
   const chat = await loadChat(chatId);
+
   assertMember(chat, user);
 
-  if (!chat.needsBackfill) return chat;
+  if (!chat.needsBackfill) {
+    return chat;
+  }
 
-  // Persist generated ids/timestamps for old messages exactly once.
   return withChatLock(chat.id, async () => {
     const fresh = await loadChat(chat.id);
-    if (fresh.needsBackfill) await saveChat(fresh);
+
+    if (fresh.needsBackfill) {
+      await saveChat(fresh);
+    }
+
     return fresh;
   });
 }
 
-// Write access: lock, load, check membership, change, save.
 async function mutateChat(chatId, user, mutator) {
   const id = requireId(chatId, "conversation ID");
 
   return withChatLock(id, async () => {
     const chat = await loadChat(id);
+
     assertMember(chat, user);
 
     const result = await mutator(chat);
@@ -274,28 +297,40 @@ async function mutateChat(chatId, user, mutator) {
       await saveChat(chat);
     }
 
-    return { chat, result };
+    return {
+      chat,
+      result,
+    };
   });
 }
 
-// All conversations the user belongs to.
 async function listChatsFor(userId) {
   const rows = await prisma.chat.findMany({
-    orderBy: { lastMessageAt: "desc" },
+    orderBy: {
+      lastMessageAt: "desc",
+    },
   });
 
   const id = idOf(userId);
 
-  return rows.map(hydrate).filter((chat) => hasMember(chat, id));
+  return rows
+    .map(hydrate)
+    .filter((chat) => hasMember(chat, id));
 }
 
 async function loadUserMap(ids) {
   const list = unique(ids);
 
-  if (!list.length) return new Map();
+  if (!list.length) {
+    return new Map();
+  }
 
   const users = await prisma.user.findMany({
-    where: { id: { in: list } },
+    where: {
+      id: {
+        in: list,
+      },
+    },
     select: {
       id: true,
       name: true,
@@ -306,30 +341,43 @@ async function loadUserMap(ids) {
     },
   });
 
-  return new Map(users.map((person) => [person.id, person]));
+  return new Map(
+    users.map((person) => [person.id, person])
+  );
 }
 
 function collectUserIds(chat) {
-  const ids = [chat.createdById, ...chat.admins, ...memberIdsOf(chat)];
+  const ids = [
+    chat.createdById,
+    ...chat.admins,
+    ...memberIdsOf(chat),
+  ];
 
   for (const message of chat.messages) {
-    ids.push(message.sender, ...message.mentions);
+    ids.push(
+      message.sender,
+      ...message.mentions
+    );
   }
 
-  // "Admin Support <userId>" chats are named after the employee.
   if (chat.name.startsWith("Admin Support ")) {
-    ids.push(chat.name.slice("Admin Support ".length).trim());
+    ids.push(
+      chat.name.slice("Admin Support ".length).trim()
+    );
   }
 
   return ids;
 }
 
 // ---------------------------------------------------------------------------
-// Visibility / serialisation
+// Visibility / serialization
 // ---------------------------------------------------------------------------
 
 function clearedAtFor(chat, userId) {
-  const entry = chat.clearedFor.find((item) => item.user === idOf(userId));
+  const entry = chat.clearedFor.find(
+    (item) => item.user === idOf(userId)
+  );
+
   return entry?.clearedAt || null;
 }
 
@@ -339,15 +387,21 @@ function visibleMessages(chat, userId) {
   return chat.messages.filter(
     (message) =>
       !message.deleted &&
-      (!clearedAt || new Date(message.createdAt) > new Date(clearedAt))
+      (
+        !clearedAt ||
+        new Date(message.createdAt) > new Date(clearedAt)
+      )
   );
 }
 
 function serializeMessage(chat, message, users) {
   const sender = users.get(message.sender);
+
   const parent = message.replyTo
     ? chat.messages.find(
-        (item) => item._id === message.replyTo && !item.deleted
+        (item) =>
+          item._id === message.replyTo &&
+          !item.deleted
       )
     : null;
 
@@ -368,7 +422,8 @@ function serializeMessage(chat, message, users) {
       ? {
           id: parent._id,
           text: parent.text,
-          senderName: users.get(parent.sender)?.name || "User",
+          senderName:
+            users.get(parent.sender)?.name || "User",
         }
       : null,
     replyToId: message.replyTo,
@@ -393,7 +448,9 @@ function displayName(chat, currentId, users, otherNames) {
   }
 
   if (chat.name.startsWith("Admin Support ")) {
-    const ownerId = chat.name.slice("Admin Support ".length).trim();
+    const ownerId = chat.name
+      .slice("Admin Support ".length)
+      .trim();
 
     return ownerId === currentId
       ? "Admin Support"
@@ -429,56 +486,93 @@ function serializeConversation(chat, currentUserId, users) {
   const visible = visibleMessages(chat, currentId);
 
   const latest = [...visible].sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    (a, b) =>
+      new Date(b.createdAt) - new Date(a.createdAt)
   )[0];
 
-  const currentMember = chat.members.find((entry) => entry.user === currentId);
+  const currentMember = chat.members.find(
+    (entry) => entry.user === currentId
+  );
 
   const unreadCount = visible.filter(
     (message) =>
       message.sender !== currentId &&
-      (!currentMember?.lastReadAt ||
-        new Date(message.createdAt) > new Date(currentMember.lastReadAt))
+      (
+        !currentMember?.lastReadAt ||
+        new Date(message.createdAt) >
+          new Date(currentMember.lastReadAt)
+      )
   ).length;
 
   return {
     id: chat.id,
     _id: chat.id,
     type: chat.type,
-    name: displayName(chat, currentId, users, otherNames),
+    name: displayName(
+      chat,
+      currentId,
+      users,
+      otherNames
+    ),
     members,
     admins: chat.admins,
     lastMessage: latest
       ? {
-          text: latest.text || (latest.attachments.length ? "Attachment" : ""),
+          text:
+            latest.text ||
+            (latest.attachments.length ? "Attachment" : ""),
           createdAt: latest.createdAt,
         }
-      : { text: "", createdAt: null },
+      : {
+          text: "",
+          createdAt: null,
+        },
     lastMessageAt: chat.lastMessageAt,
     unreadCount,
     createdAt: chat.createdAt,
   };
 }
 
-// Sends each member their own copy of the conversation (names and unread
-// counts depend on who is looking).
-async function emitConversationToMembers(chat, userIds = memberIdsOf(chat)) {
+async function emitConversationToMembers(
+  chat,
+  userIds = memberIdsOf(chat)
+) {
   try {
-    const users = await loadUserMap(collectUserIds(chat));
+    const users = await loadUserMap(
+      collectUserIds(chat)
+    );
 
     for (const userId of unique(userIds)) {
-      safeEmit([userId], "chat:conversation", {
-        conversation: serializeConversation(chat, userId, users),
-      });
+      safeEmit(
+        [userId],
+        "chat:conversation",
+        {
+          conversation: serializeConversation(
+            chat,
+            userId,
+            users
+          ),
+        }
+      );
     }
   } catch (error) {
-    console.error("[chat] could not emit conversation:", error?.message);
+    console.error(
+      "[chat] could not emit conversation:",
+      error?.message
+    );
   }
 }
 
 async function serializeFor(chat, user) {
-  const users = await loadUserMap(collectUserIds(chat));
-  return serializeConversation(chat, idOf(user), users);
+  const users = await loadUserMap(
+    collectUserIds(chat)
+  );
+
+  return serializeConversation(
+    chat,
+    idOf(user),
+    users
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -522,10 +616,15 @@ function resolveAttachment(input) {
   let size = Number(input?.size) || 0;
 
   try {
-    const stats = fs.statSync(path.join(CHAT_ATTACHMENTS_DIR, fileName));
-    if (stats.isFile()) size = stats.size;
+    const stats = fs.statSync(
+      path.join(CHAT_ATTACHMENTS_DIR, fileName)
+    );
+
+    if (stats.isFile()) {
+      size = stats.size;
+    }
   } catch {
-    // File metadata is optional; the upload endpoint already stored the file.
+    // File metadata is optional.
   }
 
   return {
@@ -542,20 +641,33 @@ function resolveAttachment(input) {
 function normalizeAttachmentInputs(data) {
   const byId = new Map();
 
-  for (const item of Array.isArray(data.attachments) ? data.attachments : []) {
+  for (const item of (
+    Array.isArray(data.attachments) ? data.attachments : []
+  )) {
     const id = String(item?.id || "").trim();
-    if (id) byId.set(id, item);
+
+    if (id) {
+      byId.set(id, item);
+    }
   }
 
-  for (const value of Array.isArray(data.attachmentIds)
-    ? data.attachmentIds
-    : []) {
+  for (const value of (
+    Array.isArray(data.attachmentIds)
+      ? data.attachmentIds
+      : []
+  )) {
     const id = String(value || "").trim();
-    if (id && !byId.has(id)) byId.set(id, { id });
+
+    if (id && !byId.has(id)) {
+      byId.set(id, { id });
+    }
   }
 
   if (byId.size > 10) {
-    throw new ApiError(400, "You can attach at most 10 files per message.");
+    throw new ApiError(
+      400,
+      "You can attach at most 10 files per message."
+    );
   }
 
   return [...byId.values()];
@@ -567,7 +679,10 @@ function normalizeAttachmentInputs(data) {
 
 export async function listConversations(user) {
   const chats = await listChatsFor(idOf(user));
-  const users = await loadUserMap(chats.flatMap(collectUserIds));
+
+  const users = await loadUserMap(
+    chats.flatMap(collectUserIds)
+  );
 
   return {
     conversations: chats.map((chat) =>
@@ -579,7 +694,9 @@ export async function listConversations(user) {
 export async function getConversation(chatId, user) {
   const chat = await getChat(chatId, user);
 
-  return { conversation: await serializeFor(chat, user) };
+  return {
+    conversation: await serializeFor(chat, user),
+  };
 }
 
 function findDirectChat(chats, firstId, secondId) {
@@ -594,36 +711,63 @@ function findDirectChat(chats, firstId, secondId) {
 
 export async function createConversation(data = {}, user) {
   const currentId = idOf(user);
-  const type = data.type === "group" ? "group" : "direct";
 
-  const requestedIds = Array.isArray(data.memberIds) ? data.memberIds : [];
+  const type =
+    data.type === "group" ? "group" : "direct";
 
-  const ids = unique([currentId, ...requestedIds.map(idOf)]);
+  const requestedIds = Array.isArray(data.memberIds)
+    ? data.memberIds
+    : [];
+
+  const ids = unique([
+    currentId,
+    ...requestedIds.map(idOf),
+  ]);
 
   if (ids.length < 2) {
-    throw new ApiError(400, "At least two members are required.");
+    throw new ApiError(
+      400,
+      "At least two members are required."
+    );
   }
 
   if (ids.some((id) => !isValidId(id))) {
-    throw new ApiError(400, "One or more member IDs are invalid.");
+    throw new ApiError(
+      400,
+      "One or more member IDs are invalid."
+    );
   }
 
   if (type === "direct" && ids.length !== 2) {
-    throw new ApiError(400, "A direct chat must have exactly two members.");
+    throw new ApiError(
+      400,
+      "A direct chat must have exactly two members."
+    );
   }
 
   const people = await prisma.user.findMany({
-    where: { id: { in: ids }, ...activeUserFilter },
-    select: { id: true, role: true },
+    where: {
+      id: { in: ids },
+      ...activeUserFilter,
+    },
+    select: {
+      id: true,
+      role: true,
+    },
   });
 
   if (people.length !== ids.length) {
-    throw new ApiError(400, "One or more members are unavailable.");
+    throw new ApiError(
+      400,
+      "One or more members are unavailable."
+    );
   }
 
-  // Reuse an existing one-to-one chat instead of creating duplicates.
   if (type === "direct") {
-    const otherId = ids.find((id) => id !== currentId);
+    const otherId = ids.find(
+      (id) => id !== currentId
+    );
+
     const existing = findDirectChat(
       await listChatsFor(currentId),
       currentId,
@@ -631,7 +775,9 @@ export async function createConversation(data = {}, user) {
     );
 
     if (existing) {
-      return { conversation: await serializeFor(existing, user) };
+      return {
+        conversation: await serializeFor(existing, user),
+      };
     }
   }
 
@@ -639,17 +785,20 @@ export async function createConversation(data = {}, user) {
 
   const name =
     type === "group"
-      ? String(data.name || "").trim().slice(0, 100) || "New group"
+      ? String(data.name || "").trim().slice(0, 100) ||
+        "New group"
       : "";
 
-  // The creator is always a group admin (so employees can manage the groups
-  // they create). Admin-role members are group admins too.
   const admins =
     type === "group"
       ? unique([
           currentId,
           ...people
-            .filter((person) => person.role === ROLES.ADMIN)
+            .filter((person) =>
+              ["admin", "superadmin"].includes(
+                String(person.role || "").toLowerCase()
+              )
+            )
             .map((person) => person.id),
         ])
       : [];
@@ -673,11 +822,11 @@ export async function createConversation(data = {}, user) {
 
   const chat = hydrate(row);
 
-  // Tell every member right away, so the group shows up for them without a
-  // refresh.
   await emitConversationToMembers(chat);
 
-  return { conversation: await serializeFor(chat, user) };
+  return {
+    conversation: await serializeFor(chat, user),
+  };
 }
 
 export async function getAdminConversation(user) {
@@ -685,43 +834,75 @@ export async function getAdminConversation(user) {
   const currentIsAdmin = isAdminUser(user);
 
   const admins = await prisma.user.findMany({
-    where: { role: ROLES.ADMIN, ...activeUserFilter },
-    select: { id: true },
+    where: {
+      role: {
+        in: ["admin", "superadmin"],
+      },
+      ...activeUserFilter,
+    },
+    select: {
+      id: true,
+    },
   });
 
-  const adminIds = admins.map((person) => person.id);
+  const adminIds = admins.map(
+    (person) => person.id
+  );
 
-  const name = currentIsAdmin ? "Admin Team" : `Admin Support ${currentId}`;
+  const name = currentIsAdmin
+    ? "Admin Team"
+    : `Admin Support ${currentId}`;
 
-  const memberIds = currentIsAdmin
-    ? unique([...adminIds, currentId])
-    : unique([currentId, ...adminIds]);
+  const memberIds = unique([
+    currentId,
+    ...adminIds,
+  ]);
 
-  const existing = (await listChatsFor(currentId)).find(
-    (chat) => chat.type === "group" && chat.name === name
+  const existing = (
+    await listChatsFor(currentId)
+  ).find(
+    (chat) =>
+      chat.type === "group" &&
+      chat.name === name
   );
 
   if (existing) {
-    const missing = memberIds.filter((id) => !hasMember(existing, id));
+    const missing = memberIds.filter(
+      (id) => !hasMember(existing, id)
+    );
 
     if (!missing.length) {
-      return { conversation: await serializeFor(existing, user) };
+      return {
+        conversation: await serializeFor(existing, user),
+      };
     }
 
-    // An admin created after this chat was made is added automatically.
-    const { chat } = await mutateChat(existing.id, user, (current) => {
-      const now = new Date().toISOString();
+    const { chat } = await mutateChat(
+      existing.id,
+      user,
+      (current) => {
+        const now = new Date().toISOString();
 
-      for (const id of missing) {
-        current.members.push({ user: id, lastReadAt: null, joinedAt: now });
+        for (const id of missing) {
+          current.members.push({
+            user: id,
+            lastReadAt: null,
+            joinedAt: now,
+          });
+        }
+
+        current.admins = unique([
+          ...current.admins,
+          ...adminIds,
+        ]);
       }
-
-      current.admins = unique([...current.admins, ...adminIds]);
-    });
+    );
 
     await emitConversationToMembers(chat);
 
-    return { conversation: await serializeFor(chat, user) };
+    return {
+      conversation: await serializeFor(chat, user),
+    };
   }
 
   const now = new Date().toISOString();
@@ -737,7 +918,9 @@ export async function getAdminConversation(user) {
         lastReadAt: id === currentId ? now : null,
         joinedAt: now,
       })),
-      admins: currentIsAdmin ? memberIds : adminIds,
+      admins: currentIsAdmin
+        ? memberIds
+        : adminIds,
       messages: [],
       clearedFor: [],
     },
@@ -747,7 +930,9 @@ export async function getAdminConversation(user) {
 
   await emitConversationToMembers(chat);
 
-  return { conversation: await serializeFor(chat, user) };
+  return {
+    conversation: await serializeFor(chat, user),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -757,19 +942,29 @@ export async function getAdminConversation(user) {
 export async function getMessages(chatId, user, before) {
   const chat = await getChat(chatId, user);
 
-  let messages = visibleMessages(chat, idOf(user));
+  let messages = visibleMessages(
+    chat,
+    idOf(user)
+  );
 
-  if (before && !Number.isNaN(new Date(before).getTime())) {
+  if (
+    before &&
+    !Number.isNaN(new Date(before).getTime())
+  ) {
     messages = messages.filter(
-      (message) => new Date(message.createdAt) < new Date(before)
+      (message) =>
+        new Date(message.createdAt) < new Date(before)
     );
   }
 
   messages = [...messages].sort(
-    (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    (a, b) =>
+      new Date(a.createdAt) - new Date(b.createdAt)
   );
 
-  const users = await loadUserMap(collectUserIds(chat));
+  const users = await loadUserMap(
+    collectUserIds(chat)
+  );
 
   return {
     messages: messages.map((message) =>
@@ -780,18 +975,29 @@ export async function getMessages(chatId, user, before) {
 
 export async function sendMessage(chatId, data = {}, user) {
   const currentId = idOf(user);
+
   const text = String(data.text ?? "").trim();
-  const attachmentInputs = normalizeAttachmentInputs(data);
+
+  const attachmentInputs =
+    normalizeAttachmentInputs(data);
 
   if (!text && !attachmentInputs.length) {
-    throw new ApiError(400, "A message or attachment is required.");
+    throw new ApiError(
+      400,
+      "A message or attachment is required."
+    );
   }
 
   if (text.length > 10000) {
-    throw new ApiError(400, "Message is too long.");
+    throw new ApiError(
+      400,
+      "Message is too long."
+    );
   }
 
-  const attachments = attachmentInputs.map(resolveAttachment);
+  const attachments = attachmentInputs.map(
+    resolveAttachment
+  );
 
   const { chat, result: message } = await mutateChat(
     chatId,
@@ -800,21 +1006,33 @@ export async function sendMessage(chatId, data = {}, user) {
       let replyTo = null;
 
       if (data.replyToId) {
-        const replyId = requireId(data.replyToId, "reply ID");
+        const replyId = requireId(
+          data.replyToId,
+          "reply ID"
+        );
+
         const parent = current.messages.find(
-          (item) => item._id === replyId && !item.deleted
+          (item) =>
+            item._id === replyId &&
+            !item.deleted
         );
 
         if (!parent) {
-          throw new ApiError(404, "Reply message not found.");
+          throw new ApiError(
+            404,
+            "Reply message not found."
+          );
         }
 
         replyTo = parent._id;
       }
 
-      // Only real members of this conversation can be mentioned.
       const mentions = unique(
-        (Array.isArray(data.mentions) ? data.mentions : []).map(idOf)
+        (
+          Array.isArray(data.mentions)
+            ? data.mentions
+            : []
+        ).map(idOf)
       ).filter((id) => hasMember(current, id));
 
       const now = new Date().toISOString();
@@ -826,7 +1044,12 @@ export async function sendMessage(chatId, data = {}, user) {
         attachments,
         replyTo,
         mentions,
-        readBy: [{ user: currentId, at: now }],
+        readBy: [
+          {
+            user: currentId,
+            at: now,
+          },
+        ],
         reactions: [],
         pinned: false,
         deleted: false,
@@ -836,108 +1059,173 @@ export async function sendMessage(chatId, data = {}, user) {
       };
 
       current.messages.push(created);
+
       current.lastMessageAt = now;
       current.lastMessageText = text || "Attachment";
 
-      // Sending a message shows the chat again if the sender had cleared it.
       current.clearedFor = current.clearedFor.filter(
         (entry) => entry.user !== currentId
       );
 
-      const me = current.members.find((entry) => entry.user === currentId);
-      if (me) me.lastReadAt = now;
+      const me = current.members.find(
+        (entry) => entry.user === currentId
+      );
+
+      if (me) {
+        me.lastReadAt = now;
+      }
 
       return created;
     }
   );
 
-  const users = await loadUserMap(collectUserIds(chat));
-  const payload = serializeMessage(chat, message, users);
+  const users = await loadUserMap(
+    collectUserIds(chat)
+  );
 
-  // Deliver to EVERY member of the conversation (employees included).
-  safeEmit(memberIdsOf(chat), "chat:message", {
-    conversationId: chat.id,
-    message: payload,
-  });
+  const payload = serializeMessage(
+    chat,
+    message,
+    users
+  );
+
+  safeEmit(
+    memberIdsOf(chat),
+    "chat:message",
+    {
+      conversationId: chat.id,
+      message: payload,
+    }
+  );
 
   return {
     message: payload,
-    conversation: serializeConversation(chat, currentId, users),
+    conversation: serializeConversation(
+      chat,
+      currentId,
+      users
+    ),
   };
 }
 
 export async function markRead(chatId, user) {
   const currentId = idOf(user);
 
-  const { chat, result } = await mutateChat(chatId, user, (current) => {
-    const member = current.members.find((entry) => entry.user === currentId);
+  const { chat, result } = await mutateChat(
+    chatId,
+    user,
+    (current) => {
+      const member = current.members.find(
+        (entry) => entry.user === currentId
+      );
 
-    const hasSeen = (message) =>
-      message.readBy.some((entry) => entry.user === currentId);
+      const hasSeen = (message) =>
+        message.readBy.some(
+          (entry) => entry.user === currentId
+        );
 
-    const hasUnread = current.messages.some(
-      (message) =>
-        !message.deleted && message.sender !== currentId && !hasSeen(message)
-    );
+      const hasUnread = current.messages.some(
+        (message) =>
+          !message.deleted &&
+          message.sender !== currentId &&
+          !hasSeen(message)
+      );
 
-    // Nothing new to mark: skip the database write.
-    if (!hasUnread && member?.lastReadAt) {
-      current.skipSave = true;
-      return null;
-    }
-
-    const now = new Date().toISOString();
-    const messageIds = [];
-
-    if (member) member.lastReadAt = now;
-
-    for (const message of current.messages) {
-      if (hasSeen(message)) continue;
-
-      message.readBy.push({ user: currentId, at: now });
-
-      if (!message.deleted && message.sender !== currentId) {
-        messageIds.push(message._id);
+      if (!hasUnread && member?.lastReadAt) {
+        current.skipSave = true;
+        return null;
       }
+
+      const now = new Date().toISOString();
+      const messageIds = [];
+
+      if (member) {
+        member.lastReadAt = now;
+      }
+
+      for (const message of current.messages) {
+        if (hasSeen(message)) continue;
+
+        message.readBy.push({
+          user: currentId,
+          at: now,
+        });
+
+        if (
+          !message.deleted &&
+          message.sender !== currentId
+        ) {
+          messageIds.push(message._id);
+        }
+      }
+
+      return {
+        readAt: now,
+        messageIds,
+      };
     }
+  );
 
-    return { readAt: now, messageIds };
-  });
-
-  // Let the other members know (this is what updates "seen" in message info).
   if (result?.messageIds?.length) {
-    safeEmit(memberIdsOf(chat), "chat:message:read", {
-      conversationId: chat.id,
-      userId: currentId,
-      readAt: result.readAt,
-      messageIds: result.messageIds,
-    });
+    safeEmit(
+      memberIdsOf(chat),
+      "chat:message:read",
+      {
+        conversationId: chat.id,
+        userId: currentId,
+        readAt: result.readAt,
+        messageIds: result.messageIds,
+      }
+    );
   }
 
-  return { conversationId: chat.id, unreadCount: 0 };
+  return {
+    conversationId: chat.id,
+    unreadCount: 0,
+  };
 }
 
-// "Message info": who has seen a message and at what time (like WhatsApp).
-// Only the sender (or an admin) can open it.
-export async function getMessageInfo(chatId, messageId, user) {
-  const validMessageId = requireId(messageId, "message ID");
+// ---------------------------------------------------------------------------
+// Message information
+// ---------------------------------------------------------------------------
+
+export async function getMessageInfo(
+  chatId,
+  messageId,
+  user
+) {
+  const validMessageId = requireId(
+    messageId,
+    "message ID"
+  );
+
   const chat = await getChat(chatId, user);
 
   const message = chat.messages.find(
-    (item) => item._id === validMessageId && !item.deleted
+    (item) =>
+      item._id === validMessageId &&
+      !item.deleted
   );
 
   if (!message) {
     throw new ApiError(404, "Message not found.");
   }
 
-  if (message.sender !== idOf(user) && !isAdminUser(user)) {
-    throw new ApiError(403, "Only the sender can view message info.");
+  if (
+    message.sender !== idOf(user) &&
+    !isAdminUser(user)
+  ) {
+    throw new ApiError(
+      403,
+      "Only the sender can view message info."
+    );
   }
 
   const users = await loadUserMap([
     ...collectUserIds(chat),
-    ...message.readBy.map((entry) => entry.user),
+    ...message.readBy.map(
+      (entry) => entry.user
+    ),
   ]);
 
   const person = (id) => ({
@@ -948,7 +1236,10 @@ export async function getMessageInfo(chatId, messageId, user) {
   });
 
   const readAtByUser = new Map(
-    message.readBy.map((entry) => [entry.user, entry.at])
+    message.readBy.map((entry) => [
+      entry.user,
+      entry.at,
+    ])
   );
 
   const recipients = chat.members.filter(
@@ -956,20 +1247,31 @@ export async function getMessageInfo(chatId, messageId, user) {
   );
 
   const seenBy = recipients
-    .filter((member) => readAtByUser.has(member.user))
+    .filter((member) =>
+      readAtByUser.has(member.user)
+    )
     .map((member) => ({
       user: person(member.user),
       readAt: readAtByUser.get(member.user),
     }))
     .sort(
       (a, b) =>
-        (a.readAt ? new Date(a.readAt).getTime() : Infinity) -
-        (b.readAt ? new Date(b.readAt).getTime() : Infinity)
+        (a.readAt
+          ? new Date(a.readAt).getTime()
+          : Infinity) -
+        (b.readAt
+          ? new Date(b.readAt).getTime()
+          : Infinity)
     );
 
   const notSeenBy = recipients
-    .filter((member) => !readAtByUser.has(member.user))
-    .map((member) => ({ user: person(member.user) }));
+    .filter(
+      (member) =>
+        !readAtByUser.has(member.user)
+    )
+    .map((member) => ({
+      user: person(member.user),
+    }));
 
   return {
     messageId: message._id,
@@ -984,150 +1286,261 @@ export async function getMessageInfo(chatId, messageId, user) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Group members
+// ---------------------------------------------------------------------------
+
 export async function addMembers(chatId, data = {}, user) {
   const currentId = idOf(user);
 
   const requestedIds = unique(
-    (Array.isArray(data.memberIds) ? data.memberIds : []).map(idOf)
+    (
+      Array.isArray(data.memberIds)
+        ? data.memberIds
+        : []
+    ).map(idOf)
   );
 
   if (!requestedIds.length) {
-    throw new ApiError(400, "Select at least one member.");
+    throw new ApiError(
+      400,
+      "Select at least one member."
+    );
   }
 
   if (requestedIds.some((id) => !isValidId(id))) {
-    throw new ApiError(400, "One or more member IDs are invalid.");
+    throw new ApiError(
+      400,
+      "One or more member IDs are invalid."
+    );
   }
 
   let addedIds = [];
 
-  const { chat } = await mutateChat(chatId, user, async (current) => {
-    if (current.type !== "group") {
-      throw new ApiError(400, "Members can only be added to group chats.");
+  const { chat } = await mutateChat(
+    chatId,
+    user,
+    async (current) => {
+      if (current.type !== "group") {
+        throw new ApiError(
+          400,
+          "Members can only be added to group chats."
+        );
+      }
+
+      const allowed =
+        isAdminUser(user) ||
+        current.admins.includes(currentId) ||
+        current.createdById === currentId;
+
+      if (!allowed) {
+        throw new ApiError(
+          403,
+          "Only group admins can add members."
+        );
+      }
+
+      addedIds = requestedIds.filter(
+        (id) => !hasMember(current, id)
+      );
+
+      if (!addedIds.length) {
+        current.skipSave = true;
+        return;
+      }
+
+      const people = await prisma.user.findMany({
+        where: {
+          id: { in: addedIds },
+          ...activeUserFilter,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (people.length !== addedIds.length) {
+        throw new ApiError(
+          400,
+          "One or more members are unavailable."
+        );
+      }
+
+      const now = new Date().toISOString();
+
+      for (const id of addedIds) {
+        current.members.push({
+          user: id,
+          lastReadAt: null,
+          joinedAt: now,
+        });
+      }
     }
-
-    const allowed =
-      isAdminUser(user) ||
-      current.admins.includes(currentId) ||
-      current.createdById === currentId;
-
-    if (!allowed) {
-      throw new ApiError(403, "Only group admins can add members.");
-    }
-
-    addedIds = requestedIds.filter((id) => !hasMember(current, id));
-
-    if (!addedIds.length) {
-      current.skipSave = true;
-      return;
-    }
-
-    const people = await prisma.user.findMany({
-      where: { id: { in: addedIds }, ...activeUserFilter },
-      select: { id: true },
-    });
-
-    if (people.length !== addedIds.length) {
-      throw new ApiError(400, "One or more members are unavailable.");
-    }
-
-    const now = new Date().toISOString();
-
-    for (const id of addedIds) {
-      current.members.push({ user: id, lastReadAt: null, joinedAt: now });
-    }
-  });
+  );
 
   if (addedIds.length) {
-    // New members see the group immediately; existing members see the
-    // updated member list.
     await emitConversationToMembers(chat);
   }
 
-  return { conversation: await serializeFor(chat, user) };
+  return {
+    conversation: await serializeFor(chat, user),
+  };
 }
 
 export async function leaveGroup(chatId, user) {
   const currentId = idOf(user);
 
-  const { chat } = await mutateChat(chatId, user, (current) => {
-    if (current.type !== "group") {
-      throw new ApiError(400, "This is not a group chat.");
+  const { chat } = await mutateChat(
+    chatId,
+    user,
+    (current) => {
+      if (current.type !== "group") {
+        throw new ApiError(
+          400,
+          "This is not a group chat."
+        );
+      }
+
+      current.members = current.members.filter(
+        (entry) => entry.user !== currentId
+      );
+
+      current.admins = current.admins.filter(
+        (id) => id !== currentId
+      );
     }
+  );
 
-    current.members = current.members.filter(
-      (entry) => entry.user !== currentId
-    );
-
-    current.admins = current.admins.filter((id) => id !== currentId);
-  });
-
-  safeEmit([currentId], "chat:conversation:removed", {
-    conversationId: chat.id,
-  });
+  safeEmit(
+    [currentId],
+    "chat:conversation:removed",
+    {
+      conversationId: chat.id,
+    }
+  );
 
   await emitConversationToMembers(chat);
 
-  return { conversationId: chat.id, left: true };
+  return {
+    conversationId: chat.id,
+    left: true,
+  };
 }
 
 export async function clearChat(chatId, user) {
   const currentId = idOf(user);
 
-  const { chat } = await mutateChat(chatId, user, (current) => {
-    const now = new Date().toISOString();
-    const existing = current.clearedFor.find(
-      (entry) => entry.user === currentId
-    );
+  const { chat } = await mutateChat(
+    chatId,
+    user,
+    (current) => {
+      const now = new Date().toISOString();
 
-    if (existing) {
-      existing.clearedAt = now;
-    } else {
-      current.clearedFor.push({ user: currentId, clearedAt: now });
+      const existing = current.clearedFor.find(
+        (entry) => entry.user === currentId
+      );
+
+      if (existing) {
+        existing.clearedAt = now;
+      } else {
+        current.clearedFor.push({
+          user: currentId,
+          clearedAt: now,
+        });
+      }
     }
-  });
+  );
 
-  return { conversationId: chat.id, cleared: true };
+  return {
+    conversationId: chat.id,
+    cleared: true,
+  };
 }
 
-export async function deleteMessage(chatId, messageId, user) {
-  const validMessageId = requireId(messageId, "message ID");
+// ---------------------------------------------------------------------------
+// Delete message
+// ---------------------------------------------------------------------------
 
-  const { chat } = await mutateChat(chatId, user, (current) => {
-    const message = current.messages.find(
-      (item) => item._id === validMessageId && !item.deleted
-    );
+export async function deleteMessage(
+  chatId,
+  messageId,
+  user
+) {
+  const validMessageId = requireId(
+    messageId,
+    "message ID"
+  );
 
-    if (!message) {
-      throw new ApiError(404, "Message not found.");
+  const { chat } = await mutateChat(
+    chatId,
+    user,
+    (current) => {
+      const message = current.messages.find(
+        (item) =>
+          item._id === validMessageId &&
+          !item.deleted
+      );
+
+      if (!message) {
+        throw new ApiError(
+          404,
+          "Message not found."
+        );
+      }
+
+      if (
+        message.sender !== idOf(user) &&
+        !isAdminUser(user)
+      ) {
+        throw new ApiError(
+          403,
+          "You cannot delete this message."
+        );
+      }
+
+      message.deleted = true;
+      message.text = "";
+      message.attachments = [];
+      message.updatedAt = new Date().toISOString();
     }
+  );
 
-    if (message.sender !== idOf(user) && !isAdminUser(user)) {
-      throw new ApiError(403, "You cannot delete this message.");
+  safeEmit(
+    memberIdsOf(chat),
+    "chat:message:deleted",
+    {
+      conversationId: chat.id,
+      messageId: validMessageId,
     }
+  );
 
-    message.deleted = true;
-    message.text = "";
-    message.attachments = [];
-    message.updatedAt = new Date().toISOString();
-  });
-
-  safeEmit(memberIdsOf(chat), "chat:message:deleted", {
+  return {
     conversationId: chat.id,
     messageId: validMessageId,
-  });
-
-  return { conversationId: chat.id, messageId: validMessageId };
+  };
 }
 
-export async function reactToMessage(chatId, messageId, data = {}, user) {
+// ---------------------------------------------------------------------------
+// Reactions
+// ---------------------------------------------------------------------------
+
+export async function reactToMessage(
+  chatId,
+  messageId,
+  data = {},
+  user
+) {
   const emoji = String(data.emoji || "").trim();
 
   if (!emoji || emoji.length > 32) {
     throw new ApiError(400, "Invalid emoji.");
   }
 
-  const validMessageId = requireId(messageId, "message ID");
+  const validMessageId = requireId(
+    messageId,
+    "message ID"
+  );
+
   const currentId = idOf(user);
 
   const { chat, result: reactions } = await mutateChat(
@@ -1135,19 +1548,33 @@ export async function reactToMessage(chatId, messageId, data = {}, user) {
     user,
     (current) => {
       const message = current.messages.find(
-        (item) => item._id === validMessageId && !item.deleted
+        (item) =>
+          item._id === validMessageId &&
+          !item.deleted
       );
 
       if (!message) {
-        throw new ApiError(404, "Message not found.");
+        throw new ApiError(
+          404,
+          "Message not found."
+        );
       }
 
-      const reaction = message.reactions.find((item) => item.emoji === emoji);
+      const reaction = message.reactions.find(
+        (item) => item.emoji === emoji
+      );
 
       if (!reaction) {
-        message.reactions.push({ emoji, userIds: [currentId] });
-      } else if (reaction.userIds.includes(currentId)) {
-        reaction.userIds = reaction.userIds.filter((id) => id !== currentId);
+        message.reactions.push({
+          emoji,
+          userIds: [currentId],
+        });
+      } else if (
+        reaction.userIds.includes(currentId)
+      ) {
+        reaction.userIds = reaction.userIds.filter(
+          (id) => id !== currentId
+        );
 
         if (!reaction.userIds.length) {
           message.reactions = message.reactions.filter(
@@ -1165,139 +1592,239 @@ export async function reactToMessage(chatId, messageId, data = {}, user) {
     }
   );
 
-  safeEmit(memberIdsOf(chat), "chat:message:reaction", {
-    conversationId: chat.id,
+  safeEmit(
+    memberIdsOf(chat),
+    "chat:message:reaction",
+    {
+      conversationId: chat.id,
+      messageId: validMessageId,
+      reactions,
+    }
+  );
+
+  return {
     messageId: validMessageId,
     reactions,
-  });
-
-  return { messageId: validMessageId, reactions };
+  };
 }
 
-export async function pinMessage(chatId, messageId, data = {}, user) {
-  const validMessageId = requireId(messageId, "message ID");
+// ---------------------------------------------------------------------------
+// Pin message
+// ---------------------------------------------------------------------------
+
+export async function pinMessage(
+  chatId,
+  messageId,
+  data = {},
+  user
+) {
+  const validMessageId = requireId(
+    messageId,
+    "message ID"
+  );
+
   const pinned = Boolean(data.pinned);
 
-  const { chat } = await mutateChat(chatId, user, (current) => {
-    const message = current.messages.find(
-      (item) => item._id === validMessageId && !item.deleted
-    );
+  const { chat } = await mutateChat(
+    chatId,
+    user,
+    (current) => {
+      const message = current.messages.find(
+        (item) =>
+          item._id === validMessageId &&
+          !item.deleted
+      );
 
-    if (!message) {
-      throw new ApiError(404, "Message not found.");
+      if (!message) {
+        throw new ApiError(
+          404,
+          "Message not found."
+        );
+      }
+
+      message.pinned = pinned;
     }
+  );
 
-    message.pinned = pinned;
-  });
+  safeEmit(
+    memberIdsOf(chat),
+    "chat:message:pinned",
+    {
+      conversationId: chat.id,
+      messageId: validMessageId,
+      pinned,
+    }
+  );
 
-  safeEmit(memberIdsOf(chat), "chat:message:pinned", {
-    conversationId: chat.id,
+  return {
     messageId: validMessageId,
     pinned,
-  });
-
-  return { messageId: validMessageId, pinned };
+  };
 }
 
-export async function forwardMessage(messageId, data = {}, user) {
-  const sourceId = requireId(messageId, "message ID");
+// ---------------------------------------------------------------------------
+// Forward message
+// ---------------------------------------------------------------------------
+
+export async function forwardMessage(
+  messageId,
+  data = {},
+  user
+) {
+  const sourceId = requireId(
+    messageId,
+    "message ID"
+  );
+
   const currentId = idOf(user);
 
   const destinationIds = unique(
-    (Array.isArray(data.conversationIds) ? data.conversationIds : []).map(idOf)
+    (
+      Array.isArray(data.conversationIds)
+        ? data.conversationIds
+        : []
+    ).map(idOf)
   );
 
   if (!destinationIds.length) {
-    throw new ApiError(400, "Select at least one destination conversation.");
+    throw new ApiError(
+      400,
+      "Select at least one destination conversation."
+    );
   }
 
-  if (destinationIds.some((id) => !isValidId(id))) {
+  if (
+    destinationIds.some((id) => !isValidId(id))
+  ) {
     throw new ApiError(
       400,
       "One or more destination conversation IDs are invalid."
     );
   }
 
-  // Find the message in one of the user's own conversations.
   let source = null;
 
   for (const chat of await listChatsFor(currentId)) {
     source = chat.messages.find(
-      (item) => item._id === sourceId && !item.deleted
+      (item) =>
+        item._id === sourceId &&
+        !item.deleted
     );
+
     if (source) break;
   }
 
   if (!source) {
-    throw new ApiError(404, "Message not found.");
+    throw new ApiError(
+      404,
+      "Message not found."
+    );
   }
 
   const results = [];
 
   for (const destinationId of destinationIds) {
-    const { chat, result: forwarded } = await mutateChat(
-      destinationId,
-      user,
-      (current) => {
-        const now = new Date().toISOString();
+    const { chat, result: forwarded } =
+      await mutateChat(
+        destinationId,
+        user,
+        (current) => {
+          const now = new Date().toISOString();
 
-        const created = {
-          _id: crypto.randomUUID(),
-          sender: currentId,
-          text: source.text,
-          attachments: source.attachments,
-          replyTo: null,
-          mentions: [],
-          readBy: [{ user: currentId, at: now }],
-          reactions: [],
-          pinned: false,
-          deleted: false,
-          forwardedFrom: source._id,
-          createdAt: now,
-          updatedAt: now,
-        };
+          const created = {
+            _id: crypto.randomUUID(),
+            sender: currentId,
+            text: source.text,
+            attachments: source.attachments,
+            replyTo: null,
+            mentions: [],
+            readBy: [
+              {
+                user: currentId,
+                at: now,
+              },
+            ],
+            reactions: [],
+            pinned: false,
+            deleted: false,
+            forwardedFrom: source._id,
+            createdAt: now,
+            updatedAt: now,
+          };
 
-        current.messages.push(created);
-        current.lastMessageAt = now;
-        current.lastMessageText = source.text || "Forwarded attachment";
+          current.messages.push(created);
+          current.lastMessageAt = now;
+          current.lastMessageText =
+            source.text || "Forwarded attachment";
 
-        const me = current.members.find((entry) => entry.user === currentId);
-        if (me) me.lastReadAt = now;
+          const me = current.members.find(
+            (entry) => entry.user === currentId
+          );
 
-        return created;
-      }
+          if (me) {
+            me.lastReadAt = now;
+          }
+
+          return created;
+        }
+      );
+
+    const users = await loadUserMap(
+      collectUserIds(chat)
     );
 
-    const users = await loadUserMap(collectUserIds(chat));
-
-    safeEmit(memberIdsOf(chat), "chat:message", {
-      conversationId: chat.id,
-      message: serializeMessage(chat, forwarded, users),
-    });
+    safeEmit(
+      memberIdsOf(chat),
+      "chat:message",
+      {
+        conversationId: chat.id,
+        message: serializeMessage(
+          chat,
+          forwarded,
+          users
+        ),
+      }
+    );
 
     results.push(chat.id);
   }
 
-  return { forwardedTo: results };
+  return {
+    forwardedTo: results,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Users & attachments
+// Users
 // ---------------------------------------------------------------------------
 
 export async function listUsers(search = "", user) {
   const where = {
     ...activeUserFilter,
-    id: { not: idOf(user) },
+    id: {
+      not: idOf(user),
+    },
   };
 
   const term = String(search || "").trim();
 
   if (term) {
     where.OR = [
-      { name: { contains: term } },
-      { email: { contains: term } },
-      { department: { contains: term } },
+      {
+        name: {
+          contains: term,
+        },
+      },
+      {
+        email: {
+          contains: term,
+        },
+      },
+      {
+        department: {
+          contains: term,
+        },
+      },
     ];
   }
 
@@ -1312,7 +1839,9 @@ export async function listUsers(search = "", user) {
       department: true,
       designation: true,
     },
-    orderBy: { name: "asc" },
+    orderBy: {
+      name: "asc",
+    },
     take: 50,
   });
 
@@ -1330,7 +1859,152 @@ export async function listUsers(search = "", user) {
   };
 }
 
-export async function getAttachmentAccess(attachmentId, user) {
+// ---------------------------------------------------------------------------
+// Unread summary
+// ---------------------------------------------------------------------------
+
+export async function getUnreadSummary(user) {
+  const currentId = idOf(user);
+
+  if (!currentId) {
+    throw new ApiError(
+      401,
+      "Authentication required."
+    );
+  }
+
+  const chats = await listChatsFor(currentId);
+
+  let totalUnread = 0;
+
+  const conversations = chats.map((chat) => {
+    const member = chat.members.find(
+      (entry) => entry.user === currentId
+    );
+
+    const visible = visibleMessages(
+      chat,
+      currentId
+    );
+
+    const unreadCount = visible.filter(
+      (message) => {
+        if (message.sender === currentId) {
+          return false;
+        }
+
+        if (
+          member?.lastReadAt &&
+          new Date(message.createdAt) <=
+            new Date(member.lastReadAt)
+        ) {
+          return false;
+        }
+
+        return true;
+      }
+    ).length;
+
+    totalUnread += unreadCount;
+
+    return {
+      conversationId: chat.id,
+      unreadCount,
+    };
+  });
+
+  return {
+    unreadCount: totalUnread,
+    totalUnread,
+    count: totalUnread,
+    conversations,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Register uploaded chat attachment
+// ---------------------------------------------------------------------------
+
+export async function registerAttachmentUpload(user, file) {
+  if (!user || !idOf(user)) {
+    throw new ApiError(
+      401,
+      "Authentication required."
+    );
+  }
+
+  if (!file || !file.filename) {
+    throw new ApiError(
+      400,
+      "Please select a file to upload."
+    );
+  }
+
+  const fileName = path.basename(
+    String(file.filename)
+  );
+
+  if (!/^[A-Za-z0-9._-]{1,120}$/.test(fileName)) {
+    throw new ApiError(
+      400,
+      "Invalid uploaded file."
+    );
+  }
+
+  const extension = path.extname(fileName).toLowerCase();
+
+  const expectedMime = MIME_BY_EXTENSION[extension];
+
+  if (!expectedMime) {
+    throw new ApiError(
+      400,
+      "This file type is not supported."
+    );
+  }
+
+  const filePath = path.join(
+    CHAT_ATTACHMENTS_DIR,
+    fileName
+  );
+
+  let stats;
+
+  try {
+    stats = await fs.promises.stat(filePath);
+  } catch {
+    throw new ApiError(
+      400,
+      "Uploaded file could not be found."
+    );
+  }
+
+  if (!stats.isFile()) {
+    throw new ApiError(
+      400,
+      "Invalid uploaded file."
+    );
+  }
+
+  return {
+    id: `chat/${fileName}`,
+    name: cleanFileName(
+      file.originalname,
+      fileName
+    ),
+    url: buildChatAttachmentUrl(fileName),
+    mimeType: file.mimetype || expectedMime,
+    size: Number(file.size) || stats.size,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Attachment access
+// ---------------------------------------------------------------------------
+
+export async function getAttachmentAccess(
+  attachmentId,
+  user
+) {
   const id = String(attachmentId || "").trim();
 
   const chats = await listChatsFor(idOf(user));
@@ -1339,12 +2013,17 @@ export async function getAttachmentAccess(attachmentId, user) {
     chat.messages.some(
       (message) =>
         !message.deleted &&
-        message.attachments.some((attachment) => attachment?.id === id)
+        message.attachments.some(
+          (attachment) => attachment?.id === id
+        )
     )
   );
 
   if (!found) {
-    throw new ApiError(404, "Attachment not found.");
+    throw new ApiError(
+      404,
+      "Attachment not found."
+    );
   }
 
   return true;

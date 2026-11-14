@@ -12,9 +12,19 @@ import {
 } from "lucide-react";
 
 import { hierarchyService } from "@/services/hierarchyService";
+import { useAuth } from "@/context/AuthContext/AuthContext/AuthContext.jsx";
+import { canManageHierarchy } from "@/constants/positions";
 import EmployeeCard from "./EmployeeCard";
 import MoveModal from "./MoveModal";
-import { ROOT, buildIndex, checkMove, depthOf, descendants } from "./hierarchyUtils";
+import {
+  POSITION_COLORS,
+  POSITION_LEGEND,
+  ROOT,
+  buildIndex,
+  checkMove,
+  depthOf,
+  descendants,
+} from "./hierarchyUtils";
 import "./hierarchy.css";
 
 const Stat = ({ label, value }) => (
@@ -43,6 +53,7 @@ export default function HierarchyBoard({
   const isAdmin = mode === "admin";
   const [params] = useSearchParams();
   const teamView = !isAdmin && params.get("view") === "team";
+  const { user: authUser } = useAuth();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -161,9 +172,24 @@ export default function HierarchyBoard({
     );
   }
 
-  const manages = (id) => (me.role === "admin" ? true : myTeam.has(id));
+  // Only Admin, Project Manager and Team Lead may drag and drop.
+  const canEdit = canManageHierarchy({
+    ...authUser,
+    ...me,
+    position: me.position || authUser?.position,
+    role: me.role || authUser?.role,
+  });
+
+  const manages = (id) => canEdit && (me.role === "admin" ? true : myTeam.has(id));
 
   const move = async (id, managerId) => {
+    if (!canEdit) {
+      notify("Only Admin, Project Manager and Team Lead can change the hierarchy.", "error");
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+
     const verdict = checkMove(me, index, id, managerId);
 
     if (!verdict.ok) {
@@ -208,7 +234,7 @@ export default function HierarchyBoard({
   };
 
   const dropState = (newManagerId, cardId) => {
-    if (!dragId || dragId === cardId) return "none";
+    if (!canEdit || !dragId || dragId === cardId) return "none";
     return checkMove(me, index, dragId, newManagerId).ok ? "valid" : "invalid";
   };
 
@@ -312,18 +338,20 @@ export default function HierarchyBoard({
       ? "valid"
       : "invalid"
     : "none";
-  const showZone = !teamView && (isAdmin || myTeam.size > 0);
+  const showZone = canEdit && !teamView && (isAdmin || myTeam.size > 0);
 
   const movingOptions = moving
     ? [...index.byId.values()].filter((e) => checkMove(me, index, moving.id, e.id).ok)
     : [];
   const movingTop = !!moving && isAdmin && checkMove(me, index, moving.id, null).ok;
 
-  const banner = isAdmin
-    ? "Drag a card onto another person to make them a direct report, or use Move. As admin you can reorganise anyone."
-    : myTeam.size > 0
-      ? `You manage ${myTeam.size} ${myTeam.size === 1 ? "person" : "people"}. Drag someone in your team onto a teammate, or use Move. People above or beside you can't be changed.`
-      : "View only: only people above you in the hierarchy can change reporting lines.";
+  const banner = !canEdit
+    ? "View only: only Admin, Project Manager and Team Lead can change reporting lines."
+    : isAdmin
+      ? "Drag a card onto another person to make them a direct report, or use Move. As admin you can reorganise anyone."
+      : myTeam.size > 0
+        ? `You manage ${myTeam.size} ${myTeam.size === 1 ? "person" : "people"}. Drag someone in your team onto a teammate, or use Move. People above or beside you can't be changed.`
+        : "You have nobody in your team yet, so there is nothing to move.";
 
   return (
     <div className="hx w-full text-white">
@@ -379,11 +407,27 @@ export default function HierarchyBoard({
         <p>{banner}</p>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Employees" value={index.byId.size} />
         <Stat label="Managers" value={managersCount} />
         <Stat label="Top level" value={(index.children.get(ROOT) || []).length} />
         <Stat label="Levels" value={depthOf(index.children)} />
+      </div>
+
+      {/* Colour legend: card border colour = position */}
+      <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-[#0f0f0f] px-4 py-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+          Card colours
+        </span>
+        {POSITION_LEGEND.map((item) => (
+          <span key={item.key} className="flex items-center gap-1.5 text-xs text-white/70">
+            <span
+              className="h-3 w-3 rounded-sm border-2"
+              style={{ borderColor: POSITION_COLORS[item.key] }}
+            />
+            {item.label}
+          </span>
+        ))}
       </div>
 
       {!teamView && directors.length > 0 && (

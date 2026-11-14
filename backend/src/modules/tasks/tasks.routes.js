@@ -1,6 +1,10 @@
+
 import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
-import { allowRoles } from "../../middlewares/role.middleware.js";
+import {
+  allowRoles,
+  allowTaskAssigners,
+} from "../../middlewares/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
 
 import {
@@ -60,18 +64,21 @@ router.patch(
   updateTaskStatus
 );
 
-/* Admin */
-router.get("/admin", allowRoles(ROLES.ADMIN), adminTasks);
-router.get("/admin/daily-updates", allowRoles(ROLES.ADMIN), adminDailyUpdates);
-router.get("/admin/activity", allowRoles(ROLES.ADMIN), adminActivity);
+/* Admin + Task Assigners */
+router.get("/admin", allowTaskAssigners, adminTasks);
+router.get("/admin/daily-updates", allowTaskAssigners, adminDailyUpdates);
+router.get("/admin/activity", allowTaskAssigners, adminActivity);
 router.get("/admin/report", allowRoles(ROLES.ADMIN), adminTaskReport);
-router.post("/", allowRoles(ROLES.ADMIN), adminCreateTask);
+
+router.post("/", allowTaskAssigners, adminCreateTask);
+
 router.patch(
   "/admin/:taskId/status",
-  allowRoles(ROLES.ADMIN),
+  allowTaskAssigners,
   adminUpdateTaskStatus
 );
-router.patch("/admin/:taskId", allowRoles(ROLES.ADMIN), adminUpdateTask);
-router.delete("/admin/:taskId", allowRoles(ROLES.ADMIN), adminDeleteTask);
+
+router.patch("/admin/:taskId", allowTaskAssigners, adminUpdateTask);
+router.delete("/admin/:taskId", allowTaskAssigners, adminDeleteTask);
 
 export default router;

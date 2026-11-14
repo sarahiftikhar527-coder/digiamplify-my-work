@@ -8,7 +8,9 @@ export function startMeetingReminders({ intervalMs = 60 * 1000 } = {}) {
 
   const tick = async () => {
     if (running) return;
+
     running = true;
+
     try {
       await runReminderSweep();
     } catch (error) {
@@ -20,6 +22,7 @@ export function startMeetingReminders({ intervalMs = 60 * 1000 } = {}) {
 
   timer = setInterval(tick, intervalMs);
   timer.unref?.();
+
   tick();
 }
 

@@ -1,28 +1,50 @@
+
 import { prisma } from "../../config/db.js";
 import ApiError from "../../utils/ApiError.js";
+import { isFinanceUser } from "../../utils/permissions.js";
 import { notifyUsers } from "../notifications/notifications.events.js";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
 const STATUSES = ["Pending", "Completed"];
 const METHODS = ["Bank Transfer", "Cash", "Cheque", "Online Wallet"];
 const NUM = ["basic", "allowance", "overtime", "bonus", "tax", "deduction"];
+
 const FIELDS = [
   ...NUM, "method", "reference", "bank", "account",
   "paymentDate", "status", "remarks", "month", "year",
 ];
+
 const LABELS = {
-  basic: "Basic salary", allowance: "Allowances", overtime: "Overtime",
-  bonus: "Bonus", tax: "Tax", deduction: "Other deductions",
-  method: "Payment method", reference: "Reference no.", bank: "Bank",
-  account: "Account no.", paymentDate: "Payment date", status: "Status",
-  remarks: "Remarks", month: "Month", year: "Year",
+  basic: "Basic salary",
+  allowance: "Allowances",
+  overtime: "Overtime",
+  bonus: "Bonus",
+  tax: "Tax",
+  deduction: "Other deductions",
+  method: "Payment method",
+  reference: "Reference no.",
+  bank: "Bank",
+  account: "Account no.",
+  paymentDate: "Payment date",
+  status: "Status",
+  remarks: "Remarks",
+  month: "Month",
+  year: "Year",
 };
+
 const INCLUDE = {
   employee: {
-    select: { id: true, name: true, email: true, department: true, designation: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      department: true,
+      designation: true,
+    },
   },
 };
 
@@ -30,8 +52,9 @@ const num = (v) => Number(v || 0);
 const round = (v) => Math.round(v * 100) / 100;
 const isoDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
 const text = (v, max) => String(v ?? "").trim().slice(0, max);
-const isAdmin = (user) =>
-  ["admin", "superadmin"].includes(String(user?.role || "").toLowerCase());
+
+// Admin and Finance Manager can see every receipt.
+const isAdmin = (user) => isFinanceUser(user);
 
 const receiptNo = (row) => {
   const d = new Date(row.createdAt);
@@ -39,7 +62,7 @@ const receiptNo = (row) => {
   return `RCP-${ym}-${row.id.slice(0, 6).toUpperCase()}`;
 };
 
-// DB row -> editable flat values (breakdown meta.receiptMeta se aata hai)
+// DB row -> editable flat values (the breakdown comes from meta.receiptMeta)
 const flatten = (row) => {
   const m = row.receiptMeta || {};
   const allowance = num(m.allowance);
@@ -101,34 +124,55 @@ const build = (v) => {
 
   for (const key of NUM) {
     const x = Number(v[key] ?? 0);
+
     if (!Number.isFinite(x) || x < 0) {
       throw new ApiError(400, `${LABELS[key]} must be a non-negative number.`);
     }
+
     n[key] = round(x);
   }
 
-  if (n.basic <= 0) throw new ApiError(400, "Basic salary must be greater than zero.");
+  if (n.basic <= 0) {
+    throw new ApiError(400, "Basic salary must be greater than zero.");
+  }
 
   const month = Number(v.month);
   const year = Number(v.year);
+
   if (
-    !Number.isInteger(month) || month < 1 || month > 12 ||
-    !Number.isInteger(year) || year < 2000 || year > 9999
+    !Number.isInteger(month) ||
+    month < 1 ||
+    month > 12 ||
+    !Number.isInteger(year) ||
+    year < 2000 ||
+    year > 9999
   ) {
     throw new ApiError(400, "A valid month and year are required.");
   }
 
-  if (!STATUSES.includes(v.status)) throw new ApiError(400, "Invalid payment status.");
+  if (!STATUSES.includes(v.status)) {
+    throw new ApiError(400, "Invalid payment status.");
+  }
 
   const method = v.method || "Bank Transfer";
-  if (!METHODS.includes(method)) throw new ApiError(400, "Invalid payment method.");
+
+  if (!METHODS.includes(method)) {
+    throw new ApiError(400, "Invalid payment method.");
+  }
 
   let paymentDate = null;
+
   if (v.paymentDate) {
     paymentDate = new Date(v.paymentDate);
-    if (Number.isNaN(paymentDate.getTime())) throw new ApiError(400, "Invalid payment date.");
+
+    if (Number.isNaN(paymentDate.getTime())) {
+      throw new ApiError(400, "Invalid payment date.");
+    }
   }
-  if (v.status === "Completed" && !paymentDate) paymentDate = new Date();
+
+  if (v.status === "Completed" && !paymentDate) {
+    paymentDate = new Date();
+  }
 
   return {
     cols: {
@@ -161,7 +205,9 @@ const diff = (before, after) =>
   }));
 
 const pick = (body = {}) =>
-  Object.fromEntries(FIELDS.filter((k) => body[k] !== undefined).map((k) => [k, body[k]]));
+  Object.fromEntries(
+    FIELDS.filter((k) => body[k] !== undefined).map((k) => [k, body[k]])
+  );
 
 const notify = async (row, actor, title, message) => {
   try {
@@ -181,7 +227,10 @@ const notify = async (row, actor, title, message) => {
 };
 
 const conflict = () =>
-  new ApiError(409, "A payment already exists for this employee and period. Edit that receipt instead.");
+  new ApiError(
+    409,
+    "A payment already exists for this employee and period. Edit that receipt instead."
+  );
 
 export async function createReceipt(body, actor) {
   const user = await prisma.user.findFirst({
@@ -192,9 +241,15 @@ export async function createReceipt(body, actor) {
       role: { notIn: ["admin", "superadmin"] },
     },
   });
-  if (!user) throw new ApiError(404, "Active employee not found.");
 
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (!user) {
+    throw new ApiError(404, "Active employee not found.");
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { userId: user.id },
+  });
+
   const now = new Date();
 
   const values = {
@@ -204,6 +259,7 @@ export async function createReceipt(body, actor) {
     status: "Pending",
     ...pick(body),
   };
+
   if (!values.bank) values.bank = profile?.bankName || "";
   if (!values.account) values.account = profile?.accountNumber || "";
 
@@ -219,7 +275,13 @@ export async function createReceipt(body, actor) {
           ...meta,
           revision: 1,
           history: [
-            { rev: 1, at: now.toISOString(), by: actor?.name || "Admin", action: "Created", changes: [] },
+            {
+              rev: 1,
+              at: now.toISOString(),
+              by: actor?.name || "Admin",
+              action: "Created",
+              changes: [],
+            },
           ],
         },
         createdById: actor?.id,
@@ -228,10 +290,14 @@ export async function createReceipt(body, actor) {
     });
 
     const receipt = serialize(row);
+
     await notify(
-      row, actor, "New payment receipt",
+      row,
+      actor,
+      "New payment receipt",
       `Your receipt ${receipt.receiptNo} for ${receipt.periodLabel} is ready. Net pay: PKR ${receipt.netPay.toLocaleString("en-PK")}.`
     );
+
     return receipt;
   } catch (error) {
     if (error.code === "P2002") throw conflict();
@@ -240,8 +306,14 @@ export async function createReceipt(body, actor) {
 }
 
 export async function updateReceipt(id, body, actor) {
-  const row = await prisma.finance.findUnique({ where: { id: String(id) }, include: INCLUDE });
-  if (!row) throw new ApiError(404, "Receipt not found.");
+  const row = await prisma.finance.findUnique({
+    where: { id: String(id) },
+    include: INCLUDE,
+  });
+
+  if (!row) {
+    throw new ApiError(404, "Receipt not found.");
+  }
 
   const before = flatten(row);
   const { cols, meta } = build({ ...before, ...pick(body) });
@@ -251,23 +323,38 @@ export async function updateReceipt(id, body, actor) {
 
   const old = row.receiptMeta || {};
   const revision = (old.revision || 1) + 1;
+
   const history = [
     ...(Array.isArray(old.history) ? old.history : []),
-    { rev: revision, at: new Date().toISOString(), by: actor?.name || "Admin", action: "Edited", changes },
+    {
+      rev: revision,
+      at: new Date().toISOString(),
+      by: actor?.name || "Admin",
+      action: "Edited",
+      changes,
+    },
   ].slice(-50);
 
   try {
     const saved = await prisma.finance.update({
       where: { id: row.id },
-      data: { ...cols, receiptMeta: { ...meta, revision, history }, updatedById: actor?.id },
+      data: {
+        ...cols,
+        receiptMeta: { ...meta, revision, history },
+        updatedById: actor?.id,
+      },
       include: INCLUDE,
     });
 
     const receipt = serialize(saved);
+
     await notify(
-      saved, actor, "Payment receipt updated",
+      saved,
+      actor,
+      "Payment receipt updated",
       `Your receipt ${receipt.receiptNo} (${receipt.periodLabel}) was updated. Net pay: PKR ${receipt.netPay.toLocaleString("en-PK")}.`
     );
+
     return receipt;
   } catch (error) {
     if (error.code === "P2002") throw conflict();
@@ -275,20 +362,35 @@ export async function updateReceipt(id, body, actor) {
   }
 }
 
-export const markReceiptPaid = (id, actor) => updateReceipt(id, { status: "Completed" }, actor);
+export const markReceiptPaid = (id, actor) =>
+  updateReceipt(id, { status: "Completed" }, actor);
 
 export async function deleteReceipt(id) {
-  const row = await prisma.finance.findUnique({ where: { id: String(id) } });
-  if (!row) throw new ApiError(404, "Receipt not found.");
-  await prisma.finance.delete({ where: { id: row.id } });
+  const row = await prisma.finance.findUnique({
+    where: { id: String(id) },
+  });
+
+  if (!row) {
+    throw new ApiError(404, "Receipt not found.");
+  }
+
+  await prisma.finance.delete({
+    where: { id: row.id },
+  });
+
   return { id: row.id };
 }
 
 export async function getReceipt(id, user) {
-  const row = await prisma.finance.findUnique({ where: { id: String(id) }, include: INCLUDE });
+  const row = await prisma.finance.findUnique({
+    where: { id: String(id) },
+    include: INCLUDE,
+  });
+
   if (!row || (!isAdmin(user) && row.employeeId !== user.id)) {
     throw new ApiError(404, "Receipt not found.");
   }
+
   return serialize(row);
 }
 
@@ -297,16 +399,23 @@ export async function listReceipts(query = {}, forEmployeeId) {
   const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 10));
   const where = {};
 
-  if (forEmployeeId) where.employeeId = forEmployeeId;
-  else if (query.employeeId) where.employeeId = String(query.employeeId);
+  if (forEmployeeId) {
+    where.employeeId = forEmployeeId;
+  } else if (query.employeeId) {
+    where.employeeId = String(query.employeeId);
+  }
 
   if (query.status && query.status !== "All") {
-    if (!STATUSES.includes(query.status)) throw new ApiError(400, "Invalid payment status.");
+    if (!STATUSES.includes(query.status)) {
+      throw new ApiError(400, "Invalid payment status.");
+    }
+
     where.status = query.status;
   }
 
   const month = parseInt(query.month, 10);
   const year = parseInt(query.year, 10);
+
   if (month) where.periodMonth = month;
   if (year) where.periodYear = year;
 
@@ -315,33 +424,55 @@ export async function listReceipts(query = {}, forEmployeeId) {
   }
 
   const q = String(query.search || "").trim();
+
   if (q) {
     const code = q.replace(/^rcp-\d{6}-/i, "").toLowerCase();
-    where.OR = [{ employee: { name: { contains: q } } }, { id: { startsWith: code } }];
+
+    where.OR = [
+      { employee: { name: { contains: q } } },
+      { id: { startsWith: code } },
+    ];
   }
 
   const [total, rows, all] = await Promise.all([
     prisma.finance.count({ where }),
+
     prisma.finance.findMany({
       where,
       include: INCLUDE,
-      orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }, { createdAt: "desc" }],
+      orderBy: [
+        { periodYear: "desc" },
+        { periodMonth: "desc" },
+        { createdAt: "desc" },
+      ],
       skip: (page - 1) * limit,
       take: limit,
     }),
+
     prisma.finance.findMany({
       where,
-      select: { salary: true, bonus: true, deduction: true, status: true },
+      select: {
+        salary: true,
+        bonus: true,
+        deduction: true,
+        status: true,
+      },
     }),
   ]);
 
   const summary = all.reduce(
     (acc, r) => {
       const net = num(r.salary) + num(r.bonus) - num(r.deduction);
+
       acc.count += 1;
       acc.net += net;
-      if (r.status === "Completed") acc.paid += net;
-      else acc.pending += net;
+
+      if (r.status === "Completed") {
+        acc.paid += net;
+      } else {
+        acc.pending += net;
+      }
+
       return acc;
     },
     { count: 0, net: 0, paid: 0, pending: 0 }
@@ -350,6 +481,11 @@ export async function listReceipts(query = {}, forEmployeeId) {
   return {
     receipts: rows.map(serialize),
     summary,
-    pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
   };
 }

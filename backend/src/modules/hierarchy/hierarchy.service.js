@@ -7,6 +7,11 @@ export const HOLIDAY_ALLOWANCE = 33;
 
 const ACTIVE = { isDeleted: false, status: "active" };
 
+// Employee positions that may change reporting lines (besides admins).
+const HIERARCHY_MANAGER_POSITIONS = ["project_manager", "team_lead"];
+
+const clean = (value) => String(value || "").trim().toLowerCase();
+
 // managerId -> [employee ids]
 function buildChildren(people) {
   const map = new Map();
@@ -47,6 +52,7 @@ export async function getHierarchy(actor) {
         name: true,
         email: true,
         role: true,
+        position: true,
         department: true,
         designation: true,
         avatarUrl: true,
@@ -77,6 +83,7 @@ export async function getHierarchy(actor) {
     name: p.name,
     email: p.email,
     role: p.role,
+    position: clean(p.position) || "employee",
     department: p.department || "",
     designation: p.designation || "",
     avatarUrl: p.avatarUrl || "",
@@ -86,8 +93,14 @@ export async function getHierarchy(actor) {
     holidayTotal: HOLIDAY_ALLOWANCE,
   });
 
+  const self = people.find((p) => p.id === actor.id);
+
   return {
-    me: { id: actor.id, role: actor.role },
+    me: {
+      id: actor.id,
+      role: actor.role,
+      position: clean(self?.position) || "employee",
+    },
     directors: people.filter((p) => p.role === ROLES.ADMIN).map(shape),
     employees: people.filter((p) => p.role === ROLES.EMPLOYEE).map(shape),
   };
@@ -96,11 +109,29 @@ export async function getHierarchy(actor) {
 /**
  * Change who an employee reports to.
  *  - Admin: can move anyone anywhere (managerId = null means "top").
- *  - Employee: can only move people BELOW them, and only to themselves
- *    or to somebody else in their own team.
+ *  - Project Manager / Team Lead: can only move people BELOW them, and only
+ *    to themselves or to somebody else in their own team.
+ *  - Every other employee position: not allowed (403).
  *  - Nobody can be moved under their own team (no loops).
  */
 export async function setManager(actor, userId, managerId = null) {
+  // Read the actor from the database so the check never trusts the token alone.
+  const actorRow = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { id: true, role: true, position: true },
+  });
+
+  const actorRole = actorRow?.role ?? actor.role;
+  const actorIsAdmin = actorRole === ROLES.ADMIN;
+  const actorPosition = clean(actorRow?.position);
+
+  if (!actorIsAdmin && !HIERARCHY_MANAGER_POSITIONS.includes(actorPosition)) {
+    throw new ApiError(
+      403,
+      "Only Admin, Project Manager and Team Lead can change the hierarchy."
+    );
+  }
+
   const people = await prisma.user.findMany({
     where: { ...ACTIVE, role: ROLES.EMPLOYEE },
     select: { id: true, name: true, managerId: true },
@@ -131,7 +162,7 @@ export async function setManager(actor, userId, managerId = null) {
     throw new ApiError(400, "You cannot move someone under their own team.");
   }
 
-  if (actor.role !== ROLES.ADMIN) {
+  if (!actorIsAdmin) {
     const myTeam = teamOf(actor.id, childrenMap);
 
     if (!myTeam.has(userId)) {

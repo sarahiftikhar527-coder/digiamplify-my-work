@@ -1,3 +1,6 @@
+
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   CheckCheck,
@@ -14,28 +17,66 @@ export default function NotificationDetailModal({
   onMarkUnread,
   onDelete,
 }) {
+  useEffect(() => {
+    if (!notification) return;
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [notification, onClose]);
+
   if (!notification) return null;
 
   const Icon = getIcon(notification.type);
 
   const handleOpenLink = () => {
     if (!notification.link) return;
+
     onClose?.();
     window.location.assign(notification.link);
   };
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm">
-      <div className="my-auto w-full max-w-lg overflow-hidden rounded-2xl border border-[#292929] bg-[#0d0d0d] text-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#252525] px-5 py-4">
-          <span className="text-sm font-semibold text-gray-200">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[999999] flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose?.();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notification-modal-title"
+        className="relative z-[1000000] my-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#292929] bg-[#0d0d0d] text-white shadow-2xl"
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#252525] bg-[#0d0d0d] px-5 py-4">
+          <span
+            id="notification-modal-title"
+            className="text-sm font-semibold text-gray-200"
+          >
             Notification Details
           </span>
+
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded-lg p-2 text-gray-400 hover:bg-[#222] hover:text-white"
+            className="rounded-lg p-2 text-gray-400 transition hover:bg-[#222] hover:text-white"
           >
             <X size={18} />
           </button>
@@ -51,9 +92,11 @@ export default function NotificationDetailModal({
               <h2 className="text-lg font-semibold leading-6">
                 {notification.title}
               </h2>
+
               <p className="mt-2 text-xs text-gray-500">
                 {notification.time}
               </p>
+
               <span className="mt-2 inline-block rounded-md border border-[#303030] px-2 py-1 text-[11px] text-gray-400">
                 {notification.tag}
               </span>
@@ -61,7 +104,7 @@ export default function NotificationDetailModal({
           </div>
 
           <div className="mt-5 rounded-xl border border-[#252525] bg-[#111] p-4">
-            <p className="whitespace-pre-wrap text-sm leading-6 text-gray-300">
+            <p className="whitespace-pre-wrap break-words text-sm leading-6 text-gray-300">
               {notification.details || notification.message}
             </p>
           </div>
@@ -82,7 +125,7 @@ export default function NotificationDetailModal({
               <button
                 type="button"
                 onClick={() => onMarkUnread?.(notification.id)}
-                className="flex items-center gap-2 rounded-lg border border-[#333] px-3 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a]"
+                className="flex items-center gap-2 rounded-lg border border-[#333] px-3 py-2 text-xs text-gray-300 transition hover:bg-[#1a1a1a]"
               >
                 <MailOpen size={15} />
                 Mark unread
@@ -91,7 +134,7 @@ export default function NotificationDetailModal({
               <button
                 type="button"
                 onClick={() => onMarkRead?.(notification.id)}
-                className="flex items-center gap-2 rounded-lg border border-[#333] px-3 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a]"
+                className="flex items-center gap-2 rounded-lg border border-[#333] px-3 py-2 text-xs text-gray-300 transition hover:bg-[#1a1a1a]"
               >
                 <CheckCheck size={15} />
                 Mark as read
@@ -101,7 +144,7 @@ export default function NotificationDetailModal({
             <button
               type="button"
               onClick={() => onDelete?.(notification.id)}
-              className="flex items-center gap-2 rounded-lg border border-red-900/50 px-3 py-2 text-xs text-red-400 hover:bg-red-950/30"
+              className="flex items-center gap-2 rounded-lg border border-red-900/50 px-3 py-2 text-xs text-red-400 transition hover:bg-red-950/30"
             >
               <Trash2 size={15} />
               Delete
@@ -110,13 +153,14 @@ export default function NotificationDetailModal({
             <button
               type="button"
               onClick={onClose}
-              className="ml-auto rounded-lg border border-[#333] px-4 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a]"
+              className="ml-auto rounded-lg border border-[#333] px-4 py-2 text-xs text-gray-300 transition hover:bg-[#1a1a1a]"
             >
               Close
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

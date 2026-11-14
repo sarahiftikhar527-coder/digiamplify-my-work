@@ -1,3 +1,4 @@
+
 import axios from "axios";
 
 const API_URL = (
@@ -11,7 +12,13 @@ const getErrorMessage = (error, fallback) =>
   fallback;
 
 // Public signup. The account stays "pending" until an admin approves it.
-export const register = async ({ name, email, password, pin }) => {
+export const register = async ({
+  name,
+  email,
+  password,
+  pin,
+  position,
+}) => {
   try {
     const response = await axios.post(
       `${API_URL}/auth/register`,
@@ -20,6 +27,7 @@ export const register = async ({ name, email, password, pin }) => {
         email: email.trim().toLowerCase(),
         password,
         pin,
+        position,
       },
       {
         withCredentials: true,

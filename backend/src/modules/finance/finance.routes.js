@@ -1,11 +1,15 @@
 
 import { Router } from "express";
+
 import { authenticate } from "../../middlewares/auth.middleware.js";
+import { isFinanceUser } from "../../utils/permissions.js";
+
 import {
   getDashboard,
   getPayroll,
   getMyFinanceDashboard,
   getMyPayroll,
+  getMyPendingPayrollCount,
   addPayroll,
   editPayroll,
   removePayroll,
@@ -21,12 +25,10 @@ const requireAdmin = (req, res, next) => {
     });
   }
 
-  const role = String(req.user.role || "").trim().toLowerCase();
-
-  if (!["admin", "superadmin"].includes(role)) {
+  if (!isFinanceUser(req.user)) {
     return res.status(403).json({
       success: false,
-      message: "Administrator access is required.",
+      message: "Finance access is required.",
     });
   }
 
@@ -35,9 +37,12 @@ const requireAdmin = (req, res, next) => {
 
 router.use(authenticate);
 
+// Personal finance routes available to authenticated employees.
 router.get("/me/dashboard", getMyFinanceDashboard);
 router.get("/me/payroll", getMyPayroll);
+router.get("/me/pending-count", getMyPendingPayrollCount);
 
+// Full finance access for Admin and Finance Manager.
 router.use(requireAdmin);
 
 router.get("/dashboard", getDashboard);

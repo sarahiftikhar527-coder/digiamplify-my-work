@@ -1,7 +1,10 @@
+
 import { useContext, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
+
 import { AuthContext } from '@/context'
+import { getPositionLabel } from '@/constants'
 
 const UserCard = () => {
   const auth = useContext(AuthContext)
@@ -45,8 +48,11 @@ const UserCard = () => {
           <p className="truncate text-sm font-medium text-white">
             {user?.name || 'Jhon Ken'}
           </p>
+
           <p className="truncate pt-1 text-xs text-gray-400">
-            {user?.role || 'App Developer'}
+            {user?.position
+              ? getPositionLabel(user.position)
+              : user?.role || 'Employee'}
           </p>
         </div>
       </div>

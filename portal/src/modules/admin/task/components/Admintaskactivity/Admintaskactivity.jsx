@@ -1,6 +1,8 @@
+
 import { useCallback, useEffect, useState } from "react";
 import apiClient from "@/services/api/apiClient.js";
 import AdminTaskExport from "../Admintaskexport/Admintaskexport.jsx";
+import { useAuth } from "@/context/AuthContext/AuthContext/AuthContext.jsx";
 
 const field =
   "rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2 text-sm text-white outline-none focus:border-red-700";
@@ -67,6 +69,12 @@ function Th({ children }) {
 }
 
 export default function AdminTaskActivity({ employees = [], onNotice }) {
+  // The Excel report is for admins only.
+  const { user: currentUser } = useAuth();
+
+  const isAdminUser =
+    String(currentUser?.role || "").toLowerCase() === "admin";
+
   const [date, setDate] = useState(todayKey());
   const [employeeId, setEmployeeId] = useState("");
   const [data, setData] = useState(null);
@@ -132,17 +140,19 @@ export default function AdminTaskActivity({ employees = [], onNotice }) {
 
   return (
     <div className="space-y-5">
-      {/* Excel download: overall report or one employee at a time */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0d0d] px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-white">Excel report</h2>
-          <p className="text-xs text-neutral-500">
-            Download task progress, daily updates and time spent
-          </p>
-        </div>
+      {/* Excel download: admins only */}
+      {isAdminUser && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0d0d] px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Excel report</h2>
+            <p className="text-xs text-neutral-500">
+              Download task progress, daily updates and time spent
+            </p>
+          </div>
 
-        <AdminTaskExport employees={employees} onNotice={onNotice} />
-      </div>
+          <AdminTaskExport employees={employees} onNotice={onNotice} />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <input

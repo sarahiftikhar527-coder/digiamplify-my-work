@@ -9,9 +9,9 @@ async function start() {
   await connectDB()
   const server = http.createServer(app)
   initSocket(server)
+
   server.listen(env.PORT, () => {
     console.log(`API running on http://localhost:${env.PORT}/api/v1`)
-    // Sends meeting reminders (checks once a minute).
     startMeetingReminders()
   })
 }

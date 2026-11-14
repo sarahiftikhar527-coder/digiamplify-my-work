@@ -1,5 +1,13 @@
+
 import mongoose from "../../utils/mongooseCompat.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import ApiError from "../../utils/ApiError.js";
+import {
+  assertCanAssignTo,
+  assertCanManageTask,
+  getTaskScope,
+} from "../../utils/hierarchy.js";
+
 import {
   createTask,
   getEmployeeTaskStats,
@@ -16,6 +24,7 @@ import {
   getAdminDailyUpdates,
   getAdminActivity,
 } from "./tasks.service.js";
+
 import { getAllTasksForAdmin, getTeamTasks } from "./tasks.team.service.js";
 import { notifyUsers } from "../notifications/notifications.events.js";
 
@@ -184,10 +193,11 @@ export const employeeDeletePersonalTask = asyncHandler(
 
 /*
 |--------------------------------------------------------------------------
-| Admin
+| Task Assignment and Management
 |--------------------------------------------------------------------------
 */
 
+// Non-admin users can only assign tasks inside their own hierarchy.
 export const adminCreateTask = asyncHandler(async (req, res) => {
   const {
     title,
@@ -246,6 +256,8 @@ export const adminCreateTask = asyncHandler(async (req, res) => {
     });
   }
 
+  await assertCanAssignTo(req.user, employeeIds);
+
   const tasks = await Promise.all(
     employeeIds.map((employeeId) =>
       createTask({
@@ -262,9 +274,7 @@ export const adminCreateTask = asyncHandler(async (req, res) => {
     )
   );
 
-  // Tell every assigned employee right away. The notification is pushed over
-  // the socket ("notification:new"), so the employee hears a sound and sees a
-  // badge on the Task menu without refreshing the page.
+  // Notify every assigned employee.
   try {
     await Promise.all(
       tasks.map((task) =>
@@ -281,7 +291,6 @@ export const adminCreateTask = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
-    // A failed notification must never block the task from being created.
     console.error("Task notification failed:", error.message);
   }
 
@@ -296,17 +305,42 @@ export const adminCreateTask = asyncHandler(async (req, res) => {
   });
 });
 
+// Returns the IDs a non-admin user may manage.
+// A null scope means there is no employee restriction.
+const resolveEmployeeScope = async (user, employeeId) => {
+  const scope = await getTaskScope(user);
+
+  if (!scope) return null;
+
+  if (
+    employeeId &&
+    !scope.employeeIds.includes(String(employeeId))
+  ) {
+    throw new ApiError(403, "This employee does not report to you.");
+  }
+
+  return scope.employeeIds;
+};
+
 export const adminTasks = asyncHandler(async (req, res) => {
-  const tasks = await getAllTasksForAdmin();
+  const scope = await getTaskScope(req.user);
+  const tasks = await getAllTasksForAdmin(scope);
+
   res.json({ success: true, tasks });
 });
 
 export const adminDailyUpdates = asyncHandler(async (req, res) => {
+  const employeeIds = await resolveEmployeeScope(
+    req.user,
+    req.query.employeeId
+  );
+
   const result = await getAdminDailyUpdates({
     date: req.query.date ? String(req.query.date) : undefined,
     employeeId: req.query.employeeId
       ? String(req.query.employeeId)
       : undefined,
+    employeeIds,
     taskId: req.query.taskId ? String(req.query.taskId) : undefined,
     timeZone: req.user.timeZone,
   });
@@ -316,11 +350,17 @@ export const adminDailyUpdates = asyncHandler(async (req, res) => {
 
 // Query: ?date=YYYY-MM-DD&employeeId=...
 export const adminActivity = asyncHandler(async (req, res) => {
+  const employeeIds = await resolveEmployeeScope(
+    req.user,
+    req.query.employeeId
+  );
+
   const result = await getAdminActivity({
     date: req.query.date ? String(req.query.date) : undefined,
     employeeId: req.query.employeeId
       ? String(req.query.employeeId)
       : undefined,
+    employeeIds,
     timeZone: req.user.timeZone,
   });
 
@@ -341,8 +381,8 @@ export const adminUpdateTask = asyncHandler(async (req, res) => {
     priority,
     assignedTo,
     assignees,
-    startDate,
     dueDate,
+    startDate,
     status,
     isActive,
   } = req.body;
@@ -401,6 +441,12 @@ export const adminUpdateTask = asyncHandler(async (req, res) => {
     });
   }
 
+  await assertCanManageTask(req.user, taskId);
+
+  if (selectedAssignee !== undefined) {
+    await assertCanAssignTo(req.user, [String(selectedAssignee)]);
+  }
+
   const updates = {
     title,
     subtitle,
@@ -440,6 +486,8 @@ export const adminUpdateTaskStatus = asyncHandler(async (req, res) => {
     });
   }
 
+  await assertCanManageTask(req.user, taskId);
+
   const task = await updateAdminTaskStatus(taskId, status);
 
   res.json({
@@ -455,6 +503,8 @@ export const adminDeleteTask = asyncHandler(async (req, res) => {
   if (!mongoose.isValidObjectId(taskId)) {
     return invalidId(res);
   }
+
+  await assertCanManageTask(req.user, taskId);
 
   await deleteAdminTask(taskId);
 

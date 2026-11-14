@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "../Avatarstack/Avatarstack";
 import { CloseIcon } from "../Icons/Icons";
 import { PRIORITIES } from "../../Constants";
 
-const today = () => new Date().toLocaleDateString("en-CA");
+const today = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 const makeEmpty = () => ({
   taskType: "extra",
@@ -34,6 +42,80 @@ const TYPES = [
   },
 ];
 
+// Get employee ID from different API response formats.
+const getEmployeeId = (employee) => {
+  if (!employee) return "";
+
+  if (typeof employee === "string") {
+    return employee;
+  }
+
+  const id =
+    employee.id ||
+    employee._id ||
+    employee.userId ||
+    employee.user?.id ||
+    employee.user?._id;
+
+  return id ? String(id) : "";
+};
+
+// Convert incoming employee records into a consistent format.
+const normalizeEmployee = (employee) => {
+  if (!employee || typeof employee !== "object") {
+    return null;
+  }
+
+  const id = getEmployeeId(employee);
+
+  if (!id) {
+    return null;
+  }
+
+  const person = employee.user || employee;
+
+  return {
+    ...person,
+    ...employee,
+    id,
+    name:
+      employee.name ||
+      person.name ||
+      employee.fullName ||
+      person.fullName ||
+      "Unnamed employee",
+    email:
+      employee.email ||
+      person.email ||
+      "",
+    role:
+      employee.role ||
+      person.role ||
+      "Employee",
+    avatarUrl:
+      employee.avatarUrl ||
+      person.avatarUrl ||
+      employee.avatar ||
+      person.avatar ||
+      "",
+  };
+};
+
+// Convert assignees into an array of IDs.
+const normalizeAssignees = (assignees) => {
+  if (!Array.isArray(assignees)) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      assignees
+        .map((item) => getEmployeeId(item))
+        .filter(Boolean)
+    ),
+  ];
+};
+
 export default function AdminAddTaskModal({
   open,
   onClose,
@@ -44,8 +126,28 @@ export default function AdminAddTaskModal({
   const [form, setForm] = useState(makeEmpty());
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
   const isEdit = Boolean(task);
   const isDaily = form.taskType === "daily";
+
+  // Normalize employee records received from the parent component.
+  const employeeList = useMemo(() => {
+    const records = Array.isArray(employees)
+      ? employees
+      : [];
+
+    const uniqueEmployees = new Map();
+
+    records.forEach((employee) => {
+      const normalized = normalizeEmployee(employee);
+
+      if (normalized) {
+        uniqueEmployees.set(normalized.id, normalized);
+      }
+    });
+
+    return Array.from(uniqueEmployees.values());
+  }, [employees]);
 
   useEffect(() => {
     if (!open) return;
@@ -55,11 +157,13 @@ export default function AdminAddTaskModal({
         ? {
             ...makeEmpty(),
             ...task,
-            taskType: task.taskType === "daily" ? "daily" : "extra",
-            assignees: Array.isArray(task.assignees) ? task.assignees : [],
+            taskType:
+              task.taskType === "daily" ? "daily" : "extra",
+            assignees: normalizeAssignees(task.assignees),
           }
         : makeEmpty()
     );
+
     setErrors({});
     setSubmitting(false);
   }, [open, task]);
@@ -68,30 +172,49 @@ export default function AdminAddTaskModal({
     if (!open) return;
 
     const onKey = (event) => {
-      if (event.key === "Escape" && !submitting) onClose();
+      if (event.key === "Escape" && !submitting) {
+        onClose();
+      }
     };
 
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose, submitting]);
 
   if (!open) return null;
 
   const set = (key, value) => {
-    setForm((previous) => ({ ...previous, [key]: value }));
+    setForm((previous) => ({
+      ...previous,
+      [key]: value,
+    }));
   };
 
   const toggleAssignee = (id) => {
+    const employeeId = String(id);
+
     setForm((previous) => ({
       ...previous,
-      assignees: previous.assignees.includes(id)
-        ? previous.assignees.filter((item) => item !== id)
-        : [...previous.assignees, id],
+      assignees: previous.assignees.includes(employeeId)
+        ? previous.assignees.filter(
+            (item) => item !== employeeId
+          )
+        : [...previous.assignees, employeeId],
+    }));
+
+    setErrors((previous) => ({
+      ...previous,
+      assignees: "",
     }));
   };
 
   const submit = async (event) => {
     event.preventDefault();
+
+    if (submitting) return;
 
     const nextErrors = {};
 
@@ -103,17 +226,32 @@ export default function AdminAddTaskModal({
       nextErrors.dueDate = "Select a due date";
     }
 
-    if (isDaily && form.dueDate && form.dueDate < form.startDate) {
-      nextErrors.dueDate = "End date cannot be before the start date";
+    if (
+      isDaily &&
+      form.dueDate &&
+      form.dueDate < form.startDate
+    ) {
+      nextErrors.dueDate =
+        "End date cannot be before the start date";
     }
 
     if (!form.assignees.length) {
-      nextErrors.assignees = "Select at least one employee";
+      nextErrors.assignees =
+        "Select at least one employee";
+    }
+
+    const validAssignees = form.assignees.filter((id) =>
+      employeeList.some((employee) => employee.id === id)
+    );
+
+    if (validAssignees.length !== form.assignees.length) {
+      nextErrors.assignees =
+        "One or more selected employees are no longer available";
     }
 
     setErrors(nextErrors);
 
-    if (Object.keys(nextErrors).length || submitting) return;
+    if (Object.keys(nextErrors).length) return;
 
     setSubmitting(true);
 
@@ -126,7 +264,7 @@ export default function AdminAddTaskModal({
         priority: form.priority,
         startDate: isDaily ? form.startDate : undefined,
         dueDate: form.dueDate || undefined,
-        assignees: form.assignees,
+        assignees: validAssignees,
       });
     } finally {
       setSubmitting(false);
@@ -137,7 +275,12 @@ export default function AdminAddTaskModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !submitting) onClose();
+        if (
+          event.target === event.currentTarget &&
+          !submitting
+        ) {
+          onClose();
+        }
       }}
     >
       <form
@@ -181,6 +324,7 @@ export default function AdminAddTaskModal({
                   <span className="block text-sm font-medium text-white">
                     {type.title}
                   </span>
+
                   <span className="mt-0.5 block text-[11px] leading-snug text-neutral-500">
                     {type.hint}
                   </span>
@@ -193,25 +337,38 @@ export default function AdminAddTaskModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className={label}>Title</label>
+
             <input
               className={field}
               value={form.title}
-              onChange={(event) => set("title", event.target.value)}
-              placeholder={isDaily ? "Daily social media posting" : "Testing"}
+              onChange={(event) =>
+                set("title", event.target.value)
+              }
+              placeholder={
+                isDaily
+                  ? "Daily social media posting"
+                  : "Testing"
+              }
               maxLength={200}
               required
             />
+
             {errors.title && (
-              <p className="mt-1 text-xs text-red-500">{errors.title}</p>
+              <p className="mt-1 text-xs text-red-500">
+                {errors.title}
+              </p>
             )}
           </div>
 
           <div>
             <label className={label}>Sub title</label>
+
             <input
               className={field}
               value={form.subtitle}
-              onChange={(event) => set("subtitle", event.target.value)}
+              onChange={(event) =>
+                set("subtitle", event.target.value)
+              }
               placeholder="Authentication Screens"
               maxLength={200}
             />
@@ -219,11 +376,14 @@ export default function AdminAddTaskModal({
 
           <div className="sm:col-span-2">
             <label className={label}>Description</label>
+
             <textarea
               rows={3}
               className={field}
               value={form.description}
-              onChange={(event) => set("description", event.target.value)}
+              onChange={(event) =>
+                set("description", event.target.value)
+              }
               placeholder={
                 isDaily
                   ? "What the employee must do every day"
@@ -234,10 +394,13 @@ export default function AdminAddTaskModal({
 
           <div>
             <label className={label}>Priority</label>
+
             <select
               className={field}
               value={form.priority}
-              onChange={(event) => set("priority", event.target.value)}
+              onChange={(event) =>
+                set("priority", event.target.value)
+              }
             >
               {PRIORITIES.map((priority) => (
                 <option key={priority} value={priority}>
@@ -251,11 +414,14 @@ export default function AdminAddTaskModal({
             <>
               <div>
                 <label className={label}>Starts on</label>
+
                 <input
                   type="date"
                   className={field}
                   value={form.startDate}
-                  onChange={(event) => set("startDate", event.target.value)}
+                  onChange={(event) =>
+                    set("startDate", event.target.value)
+                  }
                   required
                 />
               </div>
@@ -264,13 +430,17 @@ export default function AdminAddTaskModal({
                 <label className={label}>
                   Ends on (optional, leave empty to keep it running)
                 </label>
+
                 <input
                   type="date"
                   className={field}
                   value={form.dueDate}
-                  onChange={(event) => set("dueDate", event.target.value)}
+                  onChange={(event) =>
+                    set("dueDate", event.target.value)
+                  }
                   min={form.startDate}
                 />
+
                 {errors.dueDate && (
                   <p className="mt-1 text-xs text-red-500">
                     {errors.dueDate}
@@ -281,16 +451,22 @@ export default function AdminAddTaskModal({
           ) : (
             <div>
               <label className={label}>Due date</label>
+
               <input
                 type="date"
                 className={field}
                 value={form.dueDate}
-                onChange={(event) => set("dueDate", event.target.value)}
+                onChange={(event) =>
+                  set("dueDate", event.target.value)
+                }
                 min={today()}
                 required
               />
+
               {errors.dueDate && (
-                <p className="mt-1 text-xs text-red-500">{errors.dueDate}</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.dueDate}
+                </p>
               )}
             </div>
           )}
@@ -301,21 +477,30 @@ export default function AdminAddTaskModal({
             Assign to ({form.assignees.length} selected)
           </label>
 
-          {employees.length === 0 ? (
-            <p className="rounded border border-[#2a2a2a] p-3 text-sm text-neutral-400">
-              No active employees were returned by the server. Check the users
-              API and make sure active employee accounts exist.
-            </p>
+          {employeeList.length === 0 ? (
+            <div className="rounded border border-[#2a2a2a] p-3">
+              <p className="text-sm text-neutral-400">
+                No active employee records were returned by the server.
+              </p>
+
+              <p className="mt-1 text-xs text-neutral-500">
+                Check the users API and employee account status.
+              </p>
+            </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {employees.map((employee, index) => {
-                const selected = form.assignees.includes(employee.id);
+              {employeeList.map((employee, index) => {
+                const selected = form.assignees.includes(
+                  employee.id
+                );
 
                 return (
                   <button
                     type="button"
                     key={employee.id}
-                    onClick={() => toggleAssignee(employee.id)}
+                    onClick={() =>
+                      toggleAssignee(employee.id)
+                    }
                     aria-pressed={selected}
                     className={`flex items-center gap-2 rounded border px-3 py-2 text-left text-xs transition-colors ${
                       selected
@@ -323,16 +508,29 @@ export default function AdminAddTaskModal({
                         : "border-[#2a2a2a] text-neutral-300 hover:border-neutral-600"
                     }`}
                   >
-                    <Avatar user={employee} size={24} index={index} />
+                    <Avatar
+                      user={employee}
+                      size={24}
+                      index={index}
+                    />
 
                     <span className="min-w-0">
                       <span className="block truncate text-white">
                         {employee.name}
                       </span>
+
                       <span className="block truncate text-neutral-500">
-                        {employee.email || employee.role || "Employee"}
+                        {employee.email ||
+                          employee.role ||
+                          "Employee"}
                       </span>
                     </span>
+
+                    {selected && (
+                      <span className="ml-auto text-red-400">
+                        ✓
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -340,7 +538,9 @@ export default function AdminAddTaskModal({
           )}
 
           {errors.assignees && (
-            <p className="mt-1 text-xs text-red-500">{errors.assignees}</p>
+            <p className="mt-1 text-xs text-red-500">
+              {errors.assignees}
+            </p>
           )}
         </div>
 
@@ -356,7 +556,9 @@ export default function AdminAddTaskModal({
 
           <button
             type="submit"
-            disabled={submitting || employees.length === 0}
+            disabled={
+              submitting || employeeList.length === 0
+            }
             className="rounded bg-gradient-to-r from-red-700 to-red-600 px-5 py-2 text-xs font-semibold text-white hover:from-red-600 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting

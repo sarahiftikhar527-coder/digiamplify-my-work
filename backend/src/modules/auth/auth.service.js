@@ -1,14 +1,19 @@
 import crypto from 'node:crypto'
+
 import ApiError from '../../utils/ApiError.js'
 import { sendEmail } from '../../utils/mailer.js'
 import { env } from '../../config/env.js'
+import { prisma } from '../../config/db.js'
 import User from '../../models/User.js'
 import Notification from '../../models/Notification.js'
 import RefreshToken from '../../models/RefreshToken.js'
 import { ROLES } from '../../constants/roles.js'
+import { POSITIONS, POSITION_VALUES } from '../../constants/positions.js'
 import { comparePassword, hashPassword } from '../../utils/password.js'
 import {
-  generateRefreshToken, hashToken, signAccessToken,
+  generateRefreshToken,
+  hashToken,
+  signAccessToken,
 } from '../../utils/jwt.js'
 
 // Account status values used by the signup approval flow.
@@ -19,40 +24,62 @@ export const USER_STATUS = Object.freeze({
   INACTIVE: 'inactive',
 })
 
+// Employee positions that review signup requests (besides admins).
+const SIGNUP_APPROVER_POSITIONS = ['project_manager', 'hr', 'team_lead', 'manager']
+
 // Never send hashes or reset tokens to the client.
 export function toPublicUser(user) {
   if (!user) return user
+
   const plain = typeof user.toJSON === 'function' ? user.toJSON() : { ...user }
+
   delete plain.passwordHash
   delete plain.pinHash
   delete plain.pinResetTokenHash
   delete plain.pinResetExpires
   delete plain.passwordResetTokenHash
   delete plain.passwordResetExpires
+
   return plain
 }
 
 async function issueTokens(user) {
   const refreshToken = generateRefreshToken()
+
   await RefreshToken.create({
     user: user.id,
     tokenHash: hashToken(refreshToken),
     expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_EXPIRES_DAYS * 86400000),
   })
-  return { accessToken: signAccessToken(user), refreshToken }
+
+  return {
+    accessToken: signAccessToken(user),
+    refreshToken,
+  }
 }
 
-// Tells every active admin that a new signup request is waiting.
+// Tells every active admin, project manager, HR, team lead and manager that a
+// new signup request is waiting.
 // Best effort only: a notification problem must never break the signup.
-async function notifyAdminsOfSignup(name, email) {
+async function notifyApproversOfSignup(name, email) {
   try {
-    const admins = await User.find({
-      role: ROLES.ADMIN,
-      status: USER_STATUS.ACTIVE,
-      isDeleted: false,
+    const approvers = await prisma.user.findMany({
+      where: {
+        status: USER_STATUS.ACTIVE,
+        isDeleted: false,
+        OR: [
+          { role: ROLES.ADMIN },
+          {
+            role: ROLES.EMPLOYEE,
+            position: { in: SIGNUP_APPROVER_POSITIONS },
+          },
+        ],
+      },
+      select: { id: true, role: true },
     })
 
     let emitToUser = null
+
     try {
       // Loaded lazily to avoid circular imports at startup.
       ;({ emitToUser } = await import('../../sockets/index.js'))
@@ -60,22 +87,26 @@ async function notifyAdminsOfSignup(name, email) {
       emitToUser = null
     }
 
-    for (const admin of admins) {
+    for (const person of approvers) {
+      const isAdmin = person.role === ROLES.ADMIN
+
       const doc = await Notification.create({
-        to: admin.id,
+        to: person.id,
         type: 'employee',
         tag: 'HR & Admin',
         title: 'New signup request',
         message: `${name} (${email}) is waiting for your approval.`,
-        details: 'Open Signup Approvals to approve or decline this employee.',
-        link: '/admin/approvals',
+        details: isAdmin
+          ? 'Open Signup Approvals to approve or decline this person and set their role and reporting line.'
+          : 'Open Approvals to approve or decline this person.',
+        link: isAdmin ? '/admin/approvals?section=signup' : '/approvals',
         linkLabel: 'Review Request',
         read: false,
       })
 
       if (emitToUser) {
         try {
-          emitToUser(String(admin.id), 'notification:new', doc.toJSON())
+          emitToUser(String(person.id), 'notification:new', doc.toJSON())
         } catch {
           // Socket server may not be running (for example in tests).
         }
@@ -87,7 +118,12 @@ async function notifyAdminsOfSignup(name, email) {
 }
 
 // Public signup: creates a PENDING employee. No tokens are issued here.
-export async function register({ name, email, password, pin }) {
+export async function register({ name, email, password, pin, position }) {
+  // Admin can never be chosen at signup. The admin reviews this choice on approval.
+  const cleanPosition = POSITION_VALUES.includes(position)
+    ? position
+    : POSITIONS.EMPLOYEE
+
   const cleanEmail = String(email).trim().toLowerCase()
   const cleanName = String(name).trim()
 
@@ -95,7 +131,10 @@ export async function register({ name, email, password, pin }) {
 
   if (existing) {
     if (existing.status === USER_STATUS.PENDING) {
-      throw new ApiError(409, 'A signup request for this email is already waiting for admin approval.')
+      throw new ApiError(
+        409,
+        'A signup request for this email is already waiting for admin approval.'
+      )
     }
 
     // A declined employee may apply again: reuse the same record.
@@ -112,9 +151,13 @@ export async function register({ name, email, password, pin }) {
       name: cleanName,
       passwordHash: await hashPassword(password),
       pinHash: await hashPassword(pin),
+      position: cleanPosition,
+      managerId: null,
       status: USER_STATUS.PENDING,
     })
-    await notifyAdminsOfSignup(cleanName, cleanEmail)
+
+    await notifyApproversOfSignup(cleanName, cleanEmail)
+
     return { status: USER_STATUS.PENDING }
   }
 
@@ -124,18 +167,22 @@ export async function register({ name, email, password, pin }) {
     passwordHash: await hashPassword(password),
     pinHash: await hashPassword(pin),
     role: ROLES.EMPLOYEE,
+    position: cleanPosition,
+    managerId: null,
     status: USER_STATUS.PENDING,
     isDeleted: false,
   })
 
-  await notifyAdminsOfSignup(cleanName, cleanEmail)
+  await notifyApproversOfSignup(cleanName, cleanEmail)
 
   return { status: USER_STATUS.PENDING }
 }
 
 export async function login(email, password) {
-  const user = await User.findOne({ email: email.toLowerCase(), isDeleted: false })
-    .select('+passwordHash')
+  const user = await User.findOne({
+    email: email.toLowerCase(),
+    isDeleted: false,
+  }).select('+passwordHash')
 
   if (!user || !(await comparePassword(password, user.passwordHash))) {
     throw new ApiError(401, 'Invalid email or password')
@@ -143,21 +190,38 @@ export async function login(email, password) {
 
   // Status is checked only AFTER the password is correct.
   if (user.status === USER_STATUS.PENDING) {
-    throw new ApiError(403, 'Your account is waiting for admin approval. Please try again after it is approved.')
+    throw new ApiError(
+      403,
+      'Your account is waiting for admin approval. Please try again after it is approved.'
+    )
   }
+
   if (user.status === USER_STATUS.REJECTED) {
-    throw new ApiError(403, 'Your signup request was declined by the admin. Please contact your administrator.')
+    throw new ApiError(
+      403,
+      'Your signup request was declined by the admin. Please contact your administrator.'
+    )
   }
-  if (user.status !== USER_STATUS.ACTIVE) throw new ApiError(403, 'Account is inactive')
+
+  if (user.status !== USER_STATUS.ACTIVE) {
+    throw new ApiError(403, 'Account is inactive')
+  }
 
   const tokens = await issueTokens(user)
-  return { user: toPublicUser(user), ...tokens }
+
+  return {
+    user: toPublicUser(user),
+    ...tokens,
+  }
 }
 
 export async function refresh(rawToken) {
   if (!rawToken) throw new ApiError(401, 'No refresh token')
 
-  const doc = await RefreshToken.findOne({ tokenHash: hashToken(rawToken) })
+  const doc = await RefreshToken.findOne({
+    tokenHash: hashToken(rawToken),
+  })
+
   if (!doc) throw new ApiError(401, 'Invalid refresh token')
 
   // An old (revoked) token was used again: treat it as suspicious and revoke all tokens of that user.
@@ -165,30 +229,49 @@ export async function refresh(rawToken) {
     await RefreshToken.updateMany({ user: doc.user }, { revoked: true })
     throw new ApiError(401, 'Refresh token reused')
   }
-  if (doc.expiresAt < new Date()) throw new ApiError(401, 'Refresh token expired')
 
-  const user = await User.findOne({ _id: doc.user, isDeleted: false, status: USER_STATUS.ACTIVE })
+  if (doc.expiresAt < new Date()) {
+    throw new ApiError(401, 'Refresh token expired')
+  }
+
+  const user = await User.findOne({
+    _id: doc.user,
+    isDeleted: false,
+    status: USER_STATUS.ACTIVE,
+  })
+
   if (!user) throw new ApiError(401, 'User not found or inactive')
 
   doc.revoked = true
   await doc.save()
 
   const tokens = await issueTokens(user)
-  return { user: toPublicUser(user), ...tokens }
+
+  return {
+    user: toPublicUser(user),
+    ...tokens,
+  }
 }
 
 export async function logout(rawToken) {
   if (!rawToken) return
-  await RefreshToken.updateOne({ tokenHash: hashToken(rawToken) }, { revoked: true })
+
+  await RefreshToken.updateOne(
+    { tokenHash: hashToken(rawToken) },
+    { revoked: true }
+  )
 }
 
 export async function changePassword(userId, currentPassword, newPassword) {
   const user = await User.findById(userId).select('+passwordHash')
+
   if (!user || !(await comparePassword(currentPassword, user.passwordHash))) {
     throw new ApiError(400, 'Current password is incorrect')
   }
+
   user.passwordHash = await hashPassword(newPassword)
   await user.save()
+
   // Revoke all sessions (the user must log in again everywhere).
   await RefreshToken.updateMany({ user: user.id }, { revoked: true })
 }
@@ -196,6 +279,7 @@ export async function changePassword(userId, currentPassword, newPassword) {
 /* ---------------- Forgot password ---------------- */
 
 const FORGOT_MIN_RESPONSE_MS = 250
+
 export const GENERIC_FORGOT_MESSAGE =
   'If an account exists for this email, a password reset link has been sent.'
 
@@ -204,17 +288,26 @@ const hashResetToken = (token) =>
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const resetExpiryMs = () => (env.PASSWORD_RESET_EXPIRES_MINUTES || 30) * 60 * 1000
+const resetExpiryMs = () =>
+  (env.PASSWORD_RESET_EXPIRES_MINUTES || 30) * 60 * 1000
 
 function buildResetUrl(token) {
-  const base = String(env.PORTAL_URL || env.FRONTEND_URL || '').trim().replace(/\/$/, '')
-  return base ? `${base}/reset-password?token=${encodeURIComponent(token)}` : ''
+  const base = String(env.PORTAL_URL || env.FRONTEND_URL || '')
+    .trim()
+    .replace(/\/+$/, '')
+
+  return base
+    ? `${base}/reset-password?token=${encodeURIComponent(token)}`
+    : ''
 }
 
 async function sendPasswordResetEmail(user, token) {
   const resetUrl = buildResetUrl(token)
+
   if (!resetUrl) {
-    console.error('Password reset link not built: set PORTAL_URL (or FRONTEND_URL) in .env.')
+    console.error(
+      'Password reset link not built: set PORTAL_URL (or FRONTEND_URL) in .env.'
+    )
     return
   }
 
@@ -269,7 +362,10 @@ export async function requestPasswordReset(email) {
   }
 
   const elapsed = Date.now() - startedAt
-  if (elapsed < FORGOT_MIN_RESPONSE_MS) await wait(FORGOT_MIN_RESPONSE_MS - elapsed)
+
+  if (elapsed < FORGOT_MIN_RESPONSE_MS) {
+    await wait(FORGOT_MIN_RESPONSE_MS - elapsed)
+  }
 
   return { message: GENERIC_FORGOT_MESSAGE }
 }
@@ -283,7 +379,10 @@ export async function resetPassword(token, newPassword) {
   }).select('+passwordResetTokenHash +passwordResetExpires +passwordHash')
 
   if (!user) {
-    throw new ApiError(400, 'This reset link is invalid or has expired. Please request a new one.')
+    throw new ApiError(
+      400,
+      'This reset link is invalid or has expired. Please request a new one.'
+    )
   }
 
   user.passwordHash = await hashPassword(newPassword)

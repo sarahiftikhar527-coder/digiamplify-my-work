@@ -1,10 +1,5 @@
 
-import mongoose from "../../utils/mongooseCompat.js";
-import Finance from "../../models/finance.js";
-import User from "../../models/User.js";
-import Profile from "../../models/Profile.js";
-
-const getActorId = (req) => req.user?._id;
+import { prisma } from "../../config/db.js";
 
 const fail = (statusCode, message) => {
   const error = new Error(message);
@@ -35,28 +30,6 @@ const getNetPay = (record) =>
   Number(record.bonus || 0) -
   Number(record.deduction || 0);
 
-const getProfile = (userId) =>
-  Profile.findOne({ user: userId }).lean();
-
-const getEmployeeName = (user, profile) =>
-  profile?.fullName ||
-  user?.name ||
-  profile?.userName ||
-  user?.email ||
-  "Unknown Employee";
-
-const getEmployeeRole = (user, profile) =>
-  profile?.jobTitle ||
-  user?.designation ||
-  user?.role ||
-  "Employee";
-
-const getDepartment = (user, profile, record) =>
-  record?.department ||
-  user?.department ||
-  profile?.department ||
-  "Unassigned";
-
 const formatDate = (date) => {
   if (!date) return "Not scheduled";
 
@@ -68,33 +41,50 @@ const formatDate = (date) => {
   });
 };
 
-const serializePayroll = async (record) => {
-  const employeeId = record.employee?._id || record.employee;
+const employeeInclude = {
+  employee: {
+    include: {
+      profile: true,
+    },
+  },
+};
 
-  const user =
-    record.employee && typeof record.employee === "object"
-      ? record.employee
-      : await User.findOne({
-          _id: employeeId,
-          isDeleted: false,
-        }).lean();
+const getEmployeeName = (user) =>
+  user?.profile?.fullName ||
+  user?.name ||
+  user?.profile?.userName ||
+  user?.email ||
+  "Unknown Employee";
+
+const getEmployeeRole = (user) =>
+  user?.profile?.jobTitle ||
+  user?.designation ||
+  user?.role ||
+  "Employee";
+
+const getDepartment = (user, record) =>
+  record?.department ||
+  user?.department ||
+  user?.profile?.department ||
+  "Unassigned";
+
+const serializePayroll = (record) => {
+  const user = record.employee;
 
   if (!user) return null;
 
-  const profile = await getProfile(user._id);
-
   return {
-    id: String(record._id),
-    employeeId: String(user._id),
-    name: getEmployeeName(user, profile),
-    role: getEmployeeRole(user, profile),
-    department: getDepartment(user, profile, record),
+    id: String(record.id),
+    employeeId: String(record.employeeId),
+    name: getEmployeeName(user),
+    role: getEmployeeRole(user),
+    department: getDepartment(user, record),
     salary: Number(record.salary || 0),
     bonus: Number(record.bonus || 0),
     deduction: Number(record.deduction || 0),
     netPay: getNetPay(record),
-    bank: record.bank || profile?.bankName || "",
-    account: record.account || profile?.accountNumber || "",
+    bank: record.bank || user.profile?.bankName || "",
+    account: record.account || user.profile?.accountNumber || "",
     date: formatDate(record.paymentDate),
     paymentDate: record.paymentDate,
     periodMonth: record.periodMonth,
@@ -177,12 +167,21 @@ const getRangeSeries = async (range, year, month) => {
     }
   }
 
-  const records = await Finance.find({
-    paymentDate: { $gte: start, $lt: end },
-    status: "Completed",
-  })
-    .select("salary bonus deduction paymentDate periodMonth periodYear")
-    .lean();
+  const records = await prisma.finance.findMany({
+    where: {
+      paymentDate: {
+        gte: start,
+        lt: end,
+      },
+      status: "Completed",
+    },
+    select: {
+      salary: true,
+      bonus: true,
+      deduction: true,
+      paymentDate: true,
+    },
+  });
 
   const totals = new Map(
     periods.map((period) => [period.key, 0])
@@ -223,16 +222,16 @@ export const getFinanceDashboard = async (query = {}) => {
     query.year || now.getFullYear()
   );
 
-  const records = await Finance.find({
-    periodMonth: month,
-    periodYear: year,
-  })
-    .populate(
-      "employee",
-      "name email role department designation isDeleted status"
-    )
-    .sort({ createdAt: -1 })
-    .lean();
+  const records = await prisma.finance.findMany({
+    where: {
+      periodMonth: month,
+      periodYear: year,
+    },
+    include: employeeInclude,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
   const validRecords = records.filter(
     (record) =>
@@ -283,10 +282,12 @@ export const getFinanceDashboard = async (query = {}) => {
     getRangeSeries("Week", year, month),
     getRangeSeries("Month", year, month),
     getRangeSeries("Year", year, month),
-    User.countDocuments({
-      role: { $nin: ["admin", "superadmin"] },
-      isDeleted: false,
-      status: "active",
+    prisma.user.count({
+      where: {
+        role: { notIn: ["admin", "superadmin"] },
+        isDeleted: false,
+        status: "active",
+      },
     }),
   ]);
 
@@ -297,7 +298,7 @@ export const getFinanceDashboard = async (query = {}) => {
         new Date(record.paymentDate) < now
     )
     .map((record) => ({
-      id: String(record._id),
+      id: String(record.id),
       text: `Overdue payroll payment: PKR ${getNetPay(
         record
       ).toLocaleString("en-PK")}`,
@@ -365,14 +366,14 @@ export const getPayrollRecords = async (query = {}) => {
     Math.max(1, Number.parseInt(query.limit, 10) || 5)
   );
 
-  const filter = {};
+  const where = {};
 
   if (query.status && query.status !== "All") {
     if (!["Pending", "Completed"].includes(query.status)) {
       fail(400, "Invalid payroll status.");
     }
 
-    filter.status = query.status;
+    where.status = query.status;
   }
 
   if (query.month || query.year) {
@@ -383,31 +384,30 @@ export const getPayrollRecords = async (query = {}) => {
       query.year || now.getFullYear()
     );
 
-    filter.periodMonth = period.month;
-    filter.periodYear = period.year;
+    where.periodMonth = period.month;
+    where.periodYear = period.year;
   }
 
   if (query.employeeId) {
-    if (!mongoose.isValidObjectId(query.employeeId)) {
-      fail(400, "Invalid employee ID.");
-    }
-
-    filter.employee = query.employeeId;
+    where.employeeId = String(query.employeeId);
   }
 
-  const records = await Finance.find(filter)
-    .populate(
-      "employee",
-      "name email role department designation isDeleted status"
+  const records = await prisma.finance.findMany({
+    where,
+    include: employeeInclude,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  let employees = records
+    .filter(
+      (record) =>
+        record.employee &&
+        !record.employee.isDeleted
     )
-    .sort({ createdAt: -1 })
-    .lean();
-
-  let employees = await Promise.all(
-    records.map(serializePayroll)
-  );
-
-  employees = employees.filter(Boolean);
+    .map(serializePayroll)
+    .filter(Boolean);
 
   const search = String(query.search || "")
     .trim()
@@ -431,10 +431,7 @@ export const getPayrollRecords = async (query = {}) => {
   }
 
   const total = employees.length;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(total / limit)
-  );
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   employees = employees.slice(
     (page - 1) * limit,
@@ -443,19 +440,12 @@ export const getPayrollRecords = async (query = {}) => {
 
   const departments = [
     ...new Set(
-      (
-        await Promise.all(
-          records.map(async (record) => {
-            const user = record.employee;
-
-            if (!user) return null;
-
-            const profile = await getProfile(user._id);
-
-            return getDepartment(user, profile, record);
-          })
+      records
+        .filter((record) => record.employee)
+        .map((record) =>
+          getDepartment(record.employee, record)
         )
-      ).filter(Boolean)
+        .filter(Boolean)
     ),
   ];
 
@@ -486,7 +476,7 @@ export const createPayroll = async (payload, req) => {
     notes = "",
   } = payload;
 
-  if (!mongoose.isValidObjectId(employeeId)) {
+  if (!employeeId || typeof employeeId !== "string") {
     fail(400, "A valid employee ID is required.");
   }
 
@@ -502,10 +492,7 @@ export const createPayroll = async (payload, req) => {
       !Number.isFinite(value) ||
       value < 0
     ) {
-      fail(
-        400,
-        `${field} must be a non-negative number.`
-      );
+      fail(400, `${field} must be a non-negative number.`);
     }
   }
 
@@ -520,50 +507,63 @@ export const createPayroll = async (payload, req) => {
     fail(400, "Invalid payment date.");
   }
 
-  const user = await User.findOne({
-    _id: employeeId,
-    isDeleted: false,
-    status: "active",
-    role: { $nin: ["admin", "superadmin"] },
-  }).lean();
+  const user = await prisma.user.findFirst({
+    where: {
+      id: employeeId,
+      isDeleted: false,
+      status: "active",
+      role: {
+        notIn: ["admin", "superadmin"],
+      },
+    },
+    include: {
+      profile: true,
+    },
+  });
 
   if (!user) {
     fail(404, "Active employee not found.");
   }
 
-  const profile = await getProfile(user._id);
-
-  const record = await Finance.create({
-    employee: user._id,
-    salary,
-    bonus,
-    deduction,
-    department: user.department || profile?.department || "",
-    bank: bank || profile?.bankName || "",
-    account: account || profile?.accountNumber || "",
-    paymentDate: paymentDate || null,
-    periodMonth: period.month,
-    periodYear: period.year,
-    status,
-    notes,
-    createdBy: getActorId(req),
+  const record = await prisma.finance.create({
+    data: {
+      employeeId: user.id,
+      salary,
+      bonus,
+      deduction,
+      department:
+        user.department || user.profile?.department || "",
+      bank: bank || user.profile?.bankName || "",
+      account: account || user.profile?.accountNumber || "",
+      paymentDate: paymentDate ? new Date(paymentDate) : null,
+      periodMonth: period.month,
+      periodYear: period.year,
+      status,
+      notes: notes || null,
+      createdById: req.user?.id || null,
+    },
+    include: employeeInclude,
   });
 
-  return serializePayroll(record.toObject());
+  return serializePayroll(record);
 };
 
 export const updatePayroll = async (id, payload, req) => {
-  if (!mongoose.isValidObjectId(id)) {
+  if (!id || typeof id !== "string") {
     fail(400, "Invalid payroll record ID.");
   }
 
-  const record = await Finance.findById(id);
+  const existing = await prisma.finance.findUnique({
+    where: { id },
+  });
 
-  if (!record) {
+  if (!existing) {
     fail(404, "Payroll record not found.");
   }
 
-  const fields = [
+  const data = {};
+
+  for (const field of [
     "salary",
     "bonus",
     "deduction",
@@ -574,73 +574,83 @@ export const updatePayroll = async (id, payload, req) => {
     "periodYear",
     "status",
     "notes",
-  ];
-
-  for (const field of fields) {
-    if (
-      Object.prototype.hasOwnProperty.call(payload, field)
-    ) {
-      record[field] = payload[field];
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      data[field] = payload[field];
     }
   }
 
   for (const field of ["salary", "bonus", "deduction"]) {
+    const value = data[field] ?? existing[field];
+
     if (
-      typeof record[field] !== "number" ||
-      !Number.isFinite(record[field]) ||
-      record[field] < 0
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      value < 0
     ) {
-      fail(
-        400,
-        `${field} must be a non-negative number.`
-      );
+      fail(400, `${field} must be a non-negative number.`);
     }
   }
 
-  if (!["Pending", "Completed"].includes(record.status)) {
+  const nextStatus = data.status ?? existing.status;
+
+  if (!["Pending", "Completed"].includes(nextStatus)) {
     fail(400, "Invalid payroll status.");
   }
 
-  if (
-    record.paymentDate &&
-    Number.isNaN(Date.parse(record.paymentDate))
-  ) {
-    fail(400, "Invalid payment date.");
+  if (data.paymentDate !== undefined) {
+    if (
+      data.paymentDate &&
+      Number.isNaN(Date.parse(data.paymentDate))
+    ) {
+      fail(400, "Invalid payment date.");
+    }
+
+    data.paymentDate = data.paymentDate
+      ? new Date(data.paymentDate)
+      : null;
   }
 
   const period = validatePeriod(
-    record.periodMonth,
-    record.periodYear
+    data.periodMonth ?? existing.periodMonth,
+    data.periodYear ?? existing.periodYear
   );
 
-  record.periodMonth = period.month;
-  record.periodYear = period.year;
-  record.updatedBy = getActorId(req);
+  data.periodMonth = period.month;
+  data.periodYear = period.year;
+  data.updatedById = req.user?.id || null;
 
-  await record.save();
+  const record = await prisma.finance.update({
+    where: { id },
+    data,
+    include: employeeInclude,
+  });
 
-  return serializePayroll(record.toObject());
+  return serializePayroll(record);
 };
 
 export const deletePayroll = async (id) => {
-  if (!mongoose.isValidObjectId(id)) {
+  if (!id || typeof id !== "string") {
     fail(400, "Invalid payroll record ID.");
   }
 
-  const record = await Finance.findByIdAndDelete(id);
+  try {
+    const record = await prisma.finance.delete({
+      where: { id },
+    });
 
-  if (!record) {
-    fail(404, "Payroll record not found.");
+    return { id: String(record.id) };
+  } catch (error) {
+    if (error.code === "P2025") {
+      fail(404, "Payroll record not found.");
+    }
+
+    throw error;
   }
-
-  return { id: String(record._id) };
 };
 
-export const getMyFinanceDashboard = async (
-  userId,
-  query = {}
-) => {
-  if (!mongoose.isValidObjectId(userId)) {
+export const getMyFinanceDashboard = async (userId, query = {}) => {
+  if (!userId || typeof userId !== "string") {
     fail(401, "Authenticated employee is invalid.");
   }
 
@@ -651,29 +661,29 @@ export const getMyFinanceDashboard = async (
     query.year || now.getFullYear()
   );
 
-  const currentRecords = await Finance.find({
-    employee: userId,
-    periodMonth: month,
-    periodYear: year,
-  })
-    .sort({ createdAt: -1 })
-    .lean();
+  const currentRecords = await prisma.finance.findMany({
+    where: {
+      employeeId: userId,
+      periodMonth: month,
+      periodYear: year,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
   const totalSalary = currentRecords.reduce(
-    (sum, record) =>
-      sum + Number(record.salary || 0),
+    (sum, record) => sum + Number(record.salary || 0),
     0
   );
 
   const totalBonus = currentRecords.reduce(
-    (sum, record) =>
-      sum + Number(record.bonus || 0),
+    (sum, record) => sum + Number(record.bonus || 0),
     0
   );
 
   const totalDeduction = currentRecords.reduce(
-    (sum, record) =>
-      sum + Number(record.deduction || 0),
+    (sum, record) => sum + Number(record.deduction || 0),
     0
   );
 
@@ -693,18 +703,19 @@ export const getMyFinanceDashboard = async (
     Date.UTC(year, month, 1)
   );
 
-  const historyRecords = await Finance.find({
-    employee: userId,
-    periodYear: {
-      $gte: startDate.getUTCFullYear(),
-      $lte: year,
+  const historyRecords = await prisma.finance.findMany({
+    where: {
+      employeeId: userId,
+      periodYear: {
+        gte: startDate.getUTCFullYear(),
+        lte: year,
+      },
     },
-  })
-    .sort({
-      periodYear: 1,
-      periodMonth: 1,
-    })
-    .lean();
+    orderBy: [
+      { periodYear: "asc" },
+      { periodMonth: "asc" },
+    ],
+  });
 
   const startKey =
     startDate.getUTCFullYear() * 12 +
@@ -732,8 +743,7 @@ export const getMyFinanceDashboard = async (
 
     monthlyTotals.set(
       key,
-      (monthlyTotals.get(key) || 0) +
-        getNetPay(record)
+      (monthlyTotals.get(key) || 0) + getNetPay(record)
     );
   }
 
@@ -766,8 +776,7 @@ export const getMyFinanceDashboard = async (
       monthlySalary: totalSalary,
       bonus: totalBonus,
       deduction: totalDeduction,
-      netSalary:
-        totalSalary + totalBonus - totalDeduction,
+      netSalary: totalSalary + totalBonus - totalDeduction,
       paidAmount: completed.reduce(
         (sum, record) => sum + getNetPay(record),
         0
@@ -780,7 +789,7 @@ export const getMyFinanceDashboard = async (
     },
     earnings,
     payroll: currentRecords.map((record) => ({
-      id: String(record._id),
+      id: String(record.id),
       salary: Number(record.salary || 0),
       bonus: Number(record.bonus || 0),
       deduction: Number(record.deduction || 0),
@@ -794,16 +803,26 @@ export const getMyFinanceDashboard = async (
   };
 };
 
-export const getMyPayrollRecords = async (
-  userId,
-  query = {}
-) => {
-  if (!mongoose.isValidObjectId(userId)) {
+export const getMyPayrollRecords = async (userId, query = {}) => {
+  if (!userId || typeof userId !== "string") {
     fail(401, "Authenticated employee is invalid.");
   }
 
   return getPayrollRecords({
     ...query,
-    employeeId: String(userId),
+    employeeId: userId,
+  });
+};
+
+export const getMyPendingPayrollCount = async (userId) => {
+  if (!userId || typeof userId !== "string") {
+    fail(401, "Authenticated employee is invalid.");
+  }
+
+  return prisma.finance.count({
+    where: {
+      employeeId: userId,
+      status: "Pending",
+    },
   });
 };

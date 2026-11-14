@@ -4,9 +4,9 @@ export default function EmployeeHierarchyPage() {
   return (
     <HierarchyBoard
       mode="employee"
-      eyebrow="Dashboard / Team"
-      title="Team Hierarchy"
-      subtitle="See who reports to whom. Managers can organise the people below them."
+      eyebrow="Dashboard / Employees"
+      title="Employee Hierarchy"
+      subtitle="See the reporting structure. Upper levels manage the levels below them."
     />
   );
 }

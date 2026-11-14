@@ -1,4 +1,6 @@
+
 import { z } from 'zod'
+import { POSITION_VALUES } from '../../constants/positions.js'
 
 export const loginSchema = z.object({
   body: z.object({
@@ -13,6 +15,7 @@ export const registerSchema = z.object({
     email: z.string().trim().email('Valid email required'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     role: z.string().trim().max(50).optional(),
+    position: z.enum(POSITION_VALUES).optional(),
     pin: z.string().regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
   }),
 })

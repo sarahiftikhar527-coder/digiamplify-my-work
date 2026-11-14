@@ -7,10 +7,11 @@ import {
   deletePayroll,
   getMyFinanceDashboard as getMyFinanceDashboardService,
   getMyPayrollRecords,
+  getMyPendingPayrollCount as getMyPendingPayrollCountService,
 } from "./finance.service.js";
 
 const handleError = (res, error) => {
-  if (error.code === 11000) {
+  if (error.code === "P2002" || error.code === 11000) {
     return res.status(409).json({
       success: false,
       message: "Payroll already exists for this employee and period.",
@@ -61,7 +62,7 @@ export const getPayroll = async (req, res) => {
 export const getMyFinanceDashboard = async (req, res) => {
   try {
     const data = await getMyFinanceDashboardService(
-      req.user._id,
+      req.user.id,
       req.query
     );
 
@@ -77,13 +78,26 @@ export const getMyFinanceDashboard = async (req, res) => {
 export const getMyPayroll = async (req, res) => {
   try {
     const data = await getMyPayrollRecords(
-      req.user._id,
+      req.user.id,
       req.query
     );
 
     return res.status(200).json({
       success: true,
       data,
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getMyPendingPayrollCount = async (req, res) => {
+  try {
+    const count = await getMyPendingPayrollCountService(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      data: { count },
     });
   } catch (error) {
     return handleError(res, error);
@@ -106,7 +120,11 @@ export const addPayroll = async (req, res) => {
 
 export const editPayroll = async (req, res) => {
   try {
-    const data = await updatePayroll(req.params.id, req.body, req);
+    const data = await updatePayroll(
+      req.params.id,
+      req.body,
+      req
+    );
 
     return res.status(200).json({
       success: true,

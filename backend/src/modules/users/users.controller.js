@@ -1,5 +1,6 @@
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ok } from "../../utils/ApiResponse.js";
+import { ROLES } from "../../constants/roles.js";
 import * as service from "./users.service.js";
 
 export const list = asyncHandler(async (req, res) => {
@@ -8,7 +9,9 @@ export const list = asyncHandler(async (req, res) => {
 });
 
 export const create = asyncHandler(async (req, res) => {
-  const employee = await service.createEmployee(req.validated?.body ?? req.body);
+  const employee = await service.createEmployee(
+    req.validated?.body ?? req.body
+  );
   ok(res, { employee }, "Employee created successfully.", 201);
 });
 
@@ -34,11 +37,19 @@ export const deactivate = asyncHandler(async (req, res) => {
 
 export const listPending = asyncHandler(async (req, res) => {
   const requests = await service.listPendingEmployees();
-  ok(res, { requests, total: requests.length }, "Pending requests retrieved successfully.");
+  ok(
+    res,
+    { requests, total: requests.length },
+    "Pending requests retrieved successfully."
+  );
 });
 
 export const approve = asyncHandler(async (req, res) => {
-  const employee = await service.approveEmployee(req.params.id);
+  const employee = await service.approveEmployee(
+    req.params.id,
+    req.validated?.body ?? req.body ?? {},
+    { isAdmin: req.user?.role === ROLES.ADMIN }
+  );
   ok(res, { employee }, "Employee approved successfully.");
 });
 
@@ -51,5 +62,38 @@ export const reject = asyncHandler(async (req, res) => {
 
 export const liveStatus = asyncHandler(async (req, res) => {
   const employees = await service.getLiveStatus();
-  ok(res, { employees, total: employees.length }, "Live status retrieved successfully.");
+  ok(
+    res,
+    { employees, total: employees.length },
+    "Live status retrieved successfully."
+  );
+});
+
+// ---- Roles and hierarchy ----
+
+export const assignable = asyncHandler(async (req, res) => {
+  const employees = await service.listAssignableUsers(req.user);
+
+  ok(
+    res,
+    {
+      employees: {
+        employees,
+        total: employees.length,
+        page: 1,
+        limit: employees.length,
+        totalPages: 1,
+      },
+    },
+    "Assignable employees retrieved successfully."
+  );
+});
+
+export const setStructure = asyncHandler(async (req, res) => {
+  const employee = await service.updateStructure(
+    req.params.id,
+    req.validated?.body ?? req.body
+  );
+
+  ok(res, { employee }, "Role and reporting line updated successfully.");
 });

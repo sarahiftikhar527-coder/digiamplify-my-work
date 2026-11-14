@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRightLeft, ChevronDown } from "lucide-react";
-import { initials } from "./hierarchyUtils";
+import { initials, positionColorOf, positionLabelOf } from "./hierarchyUtils";
 
 export function PersonAvatar({ person, size = 40 }) {
   const [failed, setFailed] = useState(false);
@@ -59,13 +59,15 @@ export default function EmployeeCard({
 }) {
   const left = Math.max(0, (person.holidayTotal || 0) - (person.holidayUsed || 0));
 
+  // Border colour + badge show the person's position.
+  const accent = positionColorOf(person);
+  const positionLabel = positionLabelOf(person);
+
   const cls = [
-    "relative w-[224px] rounded-xl border p-3 text-left transition-all duration-200",
+    "relative w-[224px] rounded-xl border-2 p-3 text-left transition-all duration-200",
     teamSize > 0 ? "mb-3" : "",
-    director
-      ? "border-dashed border-white/15 bg-white/[0.02]"
-      : "border-white/10 bg-[#101010] hover:border-white/25",
-    isMe ? "!border-primary/70 shadow-[0_8px_30px_rgba(193,18,31,0.22)]" : "",
+    director ? "border-dashed bg-white/[0.02]" : "bg-[#101010] hover:brightness-125",
+    isMe ? "shadow-[0_8px_30px_rgba(193,18,31,0.22)]" : "",
     draggable ? "cursor-grab active:cursor-grabbing" : "",
     dragging || drop === "invalid" ? "opacity-40" : "",
     drop === "valid" ? "ring-1 ring-emerald-500/50" : "",
@@ -74,7 +76,7 @@ export default function EmployeeCard({
   ].join(" ");
 
   return (
-    <div draggable={draggable} {...handlers} className={cls}>
+    <div draggable={draggable} {...handlers} className={cls} style={{ borderColor: accent }}>
       <div className="flex items-center gap-2.5">
         <PersonAvatar person={person} />
 
@@ -94,6 +96,16 @@ export default function EmployeeCard({
       </div>
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <span
+          className="rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold"
+          style={{
+            color: accent,
+            borderColor: `${accent}66`,
+            backgroundColor: `${accent}1A`,
+          }}
+        >
+          {positionLabel}
+        </span>
         <Chip tone="amber">{person.weeklyHours || 0}h</Chip>
         {!director && (
           <Chip tone="green">

@@ -1,9 +1,14 @@
+
+import { useContext, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   PanelLeftClose,
   PanelLeft,
 } from 'lucide-react'
-import { navigation } from '@/constants'
+
+import { getEmployeeNavigation } from '@/constants'
+import { AuthContext } from '@/context'
+
 import Breadcrumb from '../Breadcrumb'
 import UserMenu from '../shared/UserMenu'
 import NotificationBell from '@/modules/notifications/components/NotificationBell/NotificationBell'
@@ -15,6 +20,12 @@ const Topbar = ({
   hidden = false,
 }) => {
   const { pathname } = useLocation()
+  const auth = useContext(AuthContext)
+
+  const navigation = useMemo(
+    () => getEmployeeNavigation(auth?.user),
+    [auth?.user]
+  )
 
   const current = navigation.find(
     (item) =>

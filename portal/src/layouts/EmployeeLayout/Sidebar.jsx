@@ -1,9 +1,12 @@
-import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
-import { X } from 'lucide-react'
-import { navigation } from '@/constants'
-import NavGroup, { NavItem } from '../shared/NavGroup'
-import UserCard from './UserCard'
+
+import { useContext, useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import { X } from "lucide-react";
+import { getEmployeeNavigation } from "@/constants";
+import { AuthContext } from "@/context";
+import useSidebarCounts from "@/hooks/useSidebarCounts";
+import NavGroup, { NavItem } from "../shared/NavGroup";
+import UserCard from "./UserCard";
 
 const Logo = () => (
   <div className="flex items-end whitespace-nowrap text-[23px] font-semibold leading-none tracking-tight text-white">
@@ -16,30 +19,60 @@ const Logo = () => (
     <span>plify</span>
     <span className="text-primary-light">.</span>
   </div>
-)
+);
 
-const Sidebar = ({ isOpen = false, onClose = () => {}, counts = {} }) => {
-  const { pathname } = useLocation()
+const Sidebar = ({
+  isOpen = false,
+  onClose = () => {},
+  counts = {},
+}) => {
+  const { pathname } = useLocation();
+  const auth = useContext(AuthContext);
+
+  const navigation = useMemo(
+    () => getEmployeeNavigation(auth?.user),
+    [auth?.user]
+  );
+
+  const showApprovals = navigation.some(
+    (item) =>
+      item.badgeKey === "pendingApprovals" ||
+      item.children?.some(
+        (child) => child.badgeKey === "pendingApprovals"
+      )
+  );
+
+  const liveCounts = useSidebarCounts({
+    isAdmin: false,
+    showApprovals,
+  });
+
+  const sidebarCounts = {
+    ...liveCounts,
+    ...counts,
+    meetingInvitations: liveCounts.meetingInvitations,
+    pendingApprovals: liveCounts.pendingApprovals,
+  };
 
   useEffect(() => {
     if (window.innerWidth < 1024 && isOpen) {
-      onClose()
+      onClose();
     }
-  }, [pathname])
+  }, [pathname]);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
-    }
+      if (event.key === "Escape") onClose();
+    };
 
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, onClose])
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   return (
     <>
@@ -54,63 +87,63 @@ const Sidebar = ({ isOpen = false, onClose = () => {}, counts = {} }) => {
 
       <div
         className={`fixed left-0 top-0 z-50 h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out lg:relative ${
-          isOpen ? 'w-[225px]' : 'w-0'
+          isOpen ? "w-[225px]" : "w-0"
         }`}
       >
-      <aside
-        className="flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)]"
-        onMouseLeave={onClose}
-      >
-        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between gap-2 px-4 pb-9 pt-8">
-            <Logo />
+        <aside
+          className="flex h-full w-[225px] shrink-0 flex-col justify-between overflow-hidden bg-[linear-gradient(90deg,#000_0%,#000_84%,#1c0307_93%,#4a0a10_100%)]"
+          onMouseLeave={onClose}
+        >
+          <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
+            <div className="flex items-center justify-between gap-2 px-4 pb-9 pt-8">
+              <Logo />
 
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close sidebar"
-              title="Close sidebar"
-              className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close sidebar"
+                title="Close sidebar"
+                className="relative z-[60] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <X size={18} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <nav
+              aria-label="Main navigation"
+              className="flex flex-col gap-1 px-3"
             >
-              <X size={18} strokeWidth={1.5} />
-            </button>
-          </div>
+              {navigation.map((item) => {
+                if (item.children?.length) {
+                  return (
+                    <NavGroup
+                      key={item.path}
+                      item={item}
+                      counts={sidebarCounts}
+                      onNavigate={onClose}
+                    />
+                  );
+                }
 
-          <nav
-            aria-label="Main navigation"
-            className="flex flex-col gap-1 px-3"
-          >
-            {navigation.map((item) => {
-              if (item.children?.length) {
                 return (
-                  <NavGroup
+                  <NavItem
                     key={item.path}
                     item={item}
-                    counts={counts}
+                    counts={sidebarCounts}
                     onNavigate={onClose}
                   />
-                )
-              }
+                );
+              })}
+            </nav>
+          </div>
 
-              return (
-                <NavItem
-                  key={item.path}
-                  item={item}
-                  counts={counts}
-                  onNavigate={onClose}
-                />
-              )
-            })}
-          </nav>
-        </div>
-
-        <div className="shrink-0">
-          <UserCard />
-        </div>
-      </aside>
+          <div className="shrink-0">
+            <UserCard />
+          </div>
+        </aside>
       </div>
     </>
-  )
-}
+  );
+};
 
-export default Sidebar
+export default Sidebar;

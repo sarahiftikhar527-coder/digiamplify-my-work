@@ -17,15 +17,24 @@ import { buildProfileDocumentUrl } from "../../utils/fileUrls.js";
 const currentUserId = (req) =>
   req.user?._id || req.user?.id || req.user?.userId;
 
+const getRole = (req) =>
+  String(req.user?.role || "").toLowerCase();
+
+const getPosition = (req) =>
+  String(req.user?.position || "").toLowerCase();
+
 const isAdmin = (req) =>
-  ["admin", "superadmin"].includes(
-    String(req.user?.role || "").toLowerCase()
-  );
+  ["admin", "superadmin"].includes(getRole(req));
+
+const isFinanceManager = (req) =>
+  getRole(req) === "employee" &&
+  getPosition(req) === "finance_manager";
+
+const canViewEmployeeList = (req) =>
+  isAdmin(req) || isFinanceManager(req);
 
 const requireAdmin = (req, res, message) => {
-  if (isAdmin(req)) {
-    return true;
-  }
+  if (isAdmin(req)) return true;
 
   res.status(403).json({
     success: false,
@@ -93,9 +102,7 @@ const buildUploadedAvatar = (req) => {
 
 const saveUploadedDocument = async (userId, req) => {
   const document = buildUploadedDocument(req);
-
   const existingProfile = await getProfileByUserId(userId);
-
   const documents = getSavedDocuments(existingProfile);
 
   const updatedProfile = await updateProfileByUserId(
@@ -113,14 +120,12 @@ const saveUploadedDocument = async (userId, req) => {
 
 export const getEmployees = async (req, res, next) => {
   try {
-    if (
-      !requireAdmin(
-        req,
-        res,
-        "Only admins can view the employee list."
-      )
-    ) {
-      return;
+    if (!canViewEmployeeList(req)) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You do not have permission to view the employee list.",
+      });
     }
 
     const employees = await listEmployees();
@@ -168,9 +173,7 @@ export const getEmployeeProfile = async (req, res, next) => {
       return;
     }
 
-    const profile = await getProfileByUserId(
-      req.params.userId
-    );
+    const profile = await getProfileByUserId(req.params.userId);
 
     return res.status(200).json({
       success: true,
@@ -196,9 +199,7 @@ export const updateMyProfile = async (req, res, next) => {
       const profile = await updateProfileByUserId(
         userId,
         req.body,
-        {
-          selfService: true,
-        }
+        { selfService: true }
       );
 
       return res.status(200).json({
@@ -208,10 +209,7 @@ export const updateMyProfile = async (req, res, next) => {
       });
     }
 
-    const request = await createChangeRequest(
-      userId,
-      req.body
-    );
+    const request = await createChangeRequest(userId, req.body);
 
     return res.status(202).json({
       success: true,
@@ -247,11 +245,7 @@ export const getMyChangeRequest = async (req, res, next) => {
   }
 };
 
-export const updateEmployeeProfile = async (
-  req,
-  res,
-  next
-) => {
+export const updateEmployeeProfile = async (req, res, next) => {
   try {
     if (
       !requireAdmin(
@@ -309,10 +303,7 @@ export const uploadMyDocument = async (req, res, next) => {
       });
     }
 
-    const result = await saveUploadedDocument(
-      userId,
-      req
-    );
+    const result = await saveUploadedDocument(userId, req);
 
     return res.status(201).json({
       success: true,
@@ -329,11 +320,7 @@ export const uploadMyDocument = async (req, res, next) => {
   }
 };
 
-export const uploadEmployeeDocument = async (
-  req,
-  res,
-  next
-) => {
+export const uploadEmployeeDocument = async (req, res, next) => {
   try {
     if (
       !requireAdmin(
@@ -356,8 +343,8 @@ export const uploadEmployeeDocument = async (
         "Employee document uploaded and saved successfully.",
       data: {
         ...result.document,
-        size: req.file.size,
-        mimeType: req.file.mimetype,
+        size: req.file?.size,
+        mimeType: req.file?.mimetype,
         profile: result.profile,
       },
     });
@@ -382,12 +369,8 @@ export const uploadMyAvatar = async (req, res, next) => {
     if (isAdmin(req)) {
       const profile = await updateProfileByUserId(
         userId,
-        {
-          avatarUrl: avatar.url,
-        },
-        {
-          selfService: true,
-        }
+        { avatarUrl: avatar.url },
+        { selfService: true }
       );
 
       return res.status(200).json({
@@ -413,11 +396,7 @@ export const uploadMyAvatar = async (req, res, next) => {
   }
 };
 
-export const uploadEmployeeAvatar = async (
-  req,
-  res,
-  next
-) => {
+export const uploadEmployeeAvatar = async (req, res, next) => {
   try {
     if (
       !requireAdmin(
@@ -433,9 +412,7 @@ export const uploadEmployeeAvatar = async (
 
     const profile = await updateProfileByUserId(
       req.params.userId,
-      {
-        avatarUrl: avatar.url,
-      }
+      { avatarUrl: avatar.url }
     );
 
     return res.status(200).json({
@@ -452,11 +429,7 @@ export const uploadEmployeeAvatar = async (
   }
 };
 
-export const getChangeRequests = async (
-  req,
-  res,
-  next
-) => {
+export const getChangeRequests = async (req, res, next) => {
   try {
     if (
       !requireAdmin(
@@ -481,11 +454,7 @@ export const getChangeRequests = async (
   }
 };
 
-export const getChangeRequestCount = async (
-  req,
-  res,
-  next
-) => {
+export const getChangeRequestCount = async (req, res, next) => {
   try {
     if (
       !requireAdmin(
@@ -501,9 +470,7 @@ export const getChangeRequestCount = async (
 
     return res.status(200).json({
       success: true,
-      data: {
-        count,
-      },
+      data: { count },
     });
   } catch (error) {
     next(error);
@@ -544,5 +511,4 @@ const handleReview = (approve) => async (req, res, next) => {
 };
 
 export const approveChangeRequest = handleReview(true);
-
 export const rejectChangeRequest = handleReview(false);

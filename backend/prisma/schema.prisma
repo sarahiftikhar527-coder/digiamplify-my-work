@@ -8,66 +8,68 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(uuid())
-  name               String    @db.VarChar(100)
-  email              String    @unique @db.VarChar(191)
-  passwordHash       String    @db.VarChar(255)
-  role               String    @default("employee") @db.VarChar(50)
-  phone              String    @default("") @db.VarChar(50)
-  department         String    @default("") @db.VarChar(100)
-  designation        String    @default("") @db.VarChar(100)
-  avatarUrl          String?   @db.Text
-  timeZone           String    @default("UTC") @db.VarChar(100)
-  status             String    @default("active") @db.VarChar(50)
-  isDeleted          Boolean   @default(false)
-  pinHash            String?   @db.VarChar(255)
-  pinResetTokenHash  String?   @db.VarChar(255)
-  pinResetExpires    DateTime?
-    passwordResetTokenHash String?   @db.VarChar(255)
+  id                     String    @id @default(uuid())
+  name                   String    @db.VarChar(100)
+  email                  String    @unique @db.VarChar(191)
+  passwordHash           String    @db.VarChar(255)
+  role                   String    @default("employee") @db.VarChar(50)
+  position               String    @default("employee") @db.VarChar(50)
+  phone                  String    @default("") @db.VarChar(50)
+  department             String    @default("") @db.VarChar(100)
+  designation            String    @default("") @db.VarChar(100)
+  avatarUrl              String?   @db.Text
+  timeZone               String    @default("UTC") @db.VarChar(100)
+  status                 String    @default("active") @db.VarChar(50)
+  isDeleted              Boolean   @default(false)
+  pinHash                String?   @db.VarChar(255)
+  pinResetTokenHash      String?   @db.VarChar(255)
+  pinResetExpires        DateTime?
+  passwordResetTokenHash String?   @db.VarChar(255)
   passwordResetExpires   DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-    managerId               String?                 @db.VarChar(191)
-  manager                 User?                   @relation("UserHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
-  reports                 User[]                  @relation("UserHierarchy")
+  managerId String? @db.VarChar(191)
+  manager   User?   @relation("UserHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
+  reports   User[]  @relation("UserHierarchy")
 
-  profile                 Profile?
-  refreshTokens           RefreshToken[]
-  attendances             Attendance[]
-  assignedShifts          ShiftAssignment[]       @relation("AssignedToShift")
-  createdShifts           ShiftAssignment[]       @relation("CreatedShift")
-  leaves                  Leave[]                 @relation("EmployeeLeaves")
-  reviewedLeaves          Leave[]                 @relation("ReviewedLeaves")
-  assignedTasks           Task[]                  @relation("AssignedTasks")
-  createdTasks            Task[]                  @relation("CreatedTasks")
-  calendarEvents          Calendar[]              @relation("EmployeeCalendar")
-  createdCalendarEvents   Calendar[]              @relation("CreatedCalendar")
-  reviewedCalendarEvents  Calendar[]              @relation("ReviewedCalendar")
-  createdChats            Chat[]                  @relation("CreatedChats")
-    chatConversationsCreated ChatConversation[]     @relation("ChatConversationCreator")
-  chatMemberships         ChatMember[]            @relation("ChatMemberUser")
-  chatMessagesSent        ChatMessage[]           @relation("ChatMessageSender")
-  chatAttachmentsUploaded ChatAttachment[]        @relation("ChatAttachmentUploader")
-  chatReactions           ChatReaction[]          @relation("ChatReactionUser")
-  finances                Finance[]               @relation("EmployeeFinances")
-  createdFinances         Finance[]               @relation("CreatedFinances")
-  updatedFinances         Finance[]               @relation("UpdatedFinances")
-  receivedNotifications   Notification[]          @relation("ReceivedNotifications")
-  sentNotifications       Notification[]          @relation("SentNotifications")
-  notificationPreferences NotificationPreference[]
-  createdAnnouncements    Announcement[]          @relation("CreatedAnnouncements")
-  progressReports         ProgressReport[]        @relation("EmployeeProgressReports")
-  reviewedProgressReports ProgressReport[]        @relation("ReviewedProgressReports")
-  profileChangeRequests   ProfileChangeRequest[]  @relation("RequestedProfileChanges")
-  reviewedProfileChanges  ProfileChangeRequest[]  @relation("ReviewedProfileChanges")
-  organizedMeetings       Meeting[]               @relation("MeetingOrganizer")
-  meetingAttendances      MeetingAttendee[]       @relation("MeetingAttendee")
+  profile                  Profile?
+  refreshTokens            RefreshToken[]
+  attendances              Attendance[]
+  assignedShifts           ShiftAssignment[]        @relation("AssignedToShift")
+  createdShifts            ShiftAssignment[]        @relation("CreatedShift")
+  leaves                   Leave[]                  @relation("EmployeeLeaves")
+  reviewedLeaves           Leave[]                  @relation("ReviewedLeaves")
+  assignedTasks            Task[]                   @relation("AssignedTasks")
+  createdTasks             Task[]                   @relation("CreatedTasks")
+  calendarEvents           Calendar[]               @relation("EmployeeCalendar")
+  createdCalendarEvents    Calendar[]               @relation("CreatedCalendar")
+  reviewedCalendarEvents   Calendar[]               @relation("ReviewedCalendar")
+  createdChats             Chat[]                   @relation("CreatedChats")
+  chatConversationsCreated ChatConversation[]       @relation("ChatConversationCreator")
+  chatMemberships          ChatMember[]             @relation("ChatMemberUser")
+  chatMessagesSent         ChatMessage[]            @relation("ChatMessageSender")
+  chatAttachmentsUploaded  ChatAttachment[]         @relation("ChatAttachmentUploader")
+  chatReactions            ChatReaction[]           @relation("ChatReactionUser")
+  finances                 Finance[]                @relation("EmployeeFinances")
+  createdFinances          Finance[]                @relation("CreatedFinances")
+  updatedFinances          Finance[]                @relation("UpdatedFinances")
+  receivedNotifications    Notification[]           @relation("ReceivedNotifications")
+  sentNotifications        Notification[]           @relation("SentNotifications")
+  notificationPreferences  NotificationPreference[]
+  createdAnnouncements     Announcement[]           @relation("CreatedAnnouncements")
+  progressReports          ProgressReport[]         @relation("EmployeeProgressReports")
+  reviewedProgressReports  ProgressReport[]         @relation("ReviewedProgressReports")
+  profileChangeRequests    ProfileChangeRequest[]   @relation("RequestedProfileChanges")
+  reviewedProfileChanges   ProfileChangeRequest[]   @relation("ReviewedProfileChanges")
+  organizedMeetings        Meeting[]                @relation("MeetingOrganizer")
+  meetingAttendances       MeetingAttendee[]        @relation("MeetingAttendee")
 
   @@index([role])
+  @@index([position])
   @@index([isDeleted])
-    @@index([managerId])
-      @@index([passwordResetTokenHash])
+  @@index([managerId])
+  @@index([passwordResetTokenHash])
   @@map("users")
 }
 
@@ -123,7 +125,6 @@ model Profile {
   @@map("profiles")
 }
 
-// Employee profile edits wait here until an admin approves them.
 model ProfileChangeRequest {
   id           String    @id @default(uuid())
   userId       String
@@ -219,25 +220,25 @@ model Leave {
 }
 
 model Task {
-  id               String    @id @default(uuid())
-  title            String    @db.VarChar(200)
-  subtitle         String    @default("") @db.VarChar(200)
-  description      String?   @db.Text
-  priority         String    @default("Medium") @db.VarChar(50)
-  taskType         String    @default("extra") @db.VarChar(20)
+  id               String            @id @default(uuid())
+  title            String            @db.VarChar(200)
+  subtitle         String            @default("") @db.VarChar(200)
+  description      String?           @db.Text
+  priority         String            @default("Medium") @db.VarChar(50)
+  taskType         String            @default("extra") @db.VarChar(20)
   startDate        DateTime?
-  isActive         Boolean   @default(true)
+  isActive         Boolean           @default(true)
   assignedToId     String
-  assignedTo       User      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedTo       User              @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
   assignedById     String
-  assignedBy       User      @relation("CreatedTasks", fields: [assignedById], references: [id], onDelete: Cascade)
-  status           String    @default("pending") @db.VarChar(50)
+  assignedBy       User              @relation("CreatedTasks", fields: [assignedById], references: [id], onDelete: Cascade)
+  status           String            @default("pending") @db.VarChar(50)
   dueDate          DateTime
   startedAt        DateTime?
   completedAt      DateTime?
-  timeSpentMinutes Int       @default(0)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  timeSpentMinutes Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   dailyUpdates     TaskDailyUpdate[]
 
   @@index([assignedToId, status, dueDate])
@@ -261,7 +262,6 @@ model TaskDailyUpdate {
   @@index([employeeId, updateDate])
   @@map("task_daily_updates")
 }
-
 
 model Calendar {
   id           String    @id @default(uuid())
@@ -294,19 +294,19 @@ model Calendar {
 }
 
 model Chat {
-  id              String        @id @default(uuid())
-  type            String        @default("direct") @db.VarChar(50)
-  name            String        @default("") @db.VarChar(100)
+  id              String   @id @default(uuid())
+  type            String   @default("direct") @db.VarChar(50)
+  name            String   @default("") @db.VarChar(100)
   createdById     String
-  createdBy       User          @relation("CreatedChats", fields: [createdById], references: [id], onDelete: Cascade)
-  lastMessageAt   DateTime      @default(now())
-  lastMessageText String?       @db.Text
+  createdBy       User     @relation("CreatedChats", fields: [createdById], references: [id], onDelete: Cascade)
+  lastMessageAt   DateTime @default(now())
+  lastMessageText String?  @db.Text
   members         Json?
   messages        Json?
   admins          Json?
   clearedFor      Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("chats")
 }
@@ -476,31 +476,33 @@ model AttendanceBreak {
 }
 
 model Meeting {
-  id              String            @id @default(uuid())
-  title           String            @db.VarChar(200)
-  description     String?           @db.Text
-  agenda          String?           @db.Text
-  notes           String?           @db.Text
-  meetingType     String            @default("online") @db.VarChar(20)
-  category        String            @default("general") @db.VarChar(30)
-  priority        String            @default("normal") @db.VarChar(20)
-  location        String            @default("") @db.VarChar(255)
-  meetingLink     String            @default("") @db.VarChar(500)
-  startAt         DateTime
-  endAt           DateTime
-  tzOffset        Int               @default(0)
-  recurrence      String            @default("none") @db.VarChar(20)
-  recurrenceUntil DateTime?
-  skippedDates    Json?
-  reminderMinutes Int               @default(15)
-  lastReminderFor DateTime?
-  status          String            @default("scheduled") @db.VarChar(20)
-  cancelReason    String            @default("") @db.VarChar(500)
-  organizerId     String
-  organizer       User              @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  attendees       MeetingAttendee[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                        String            @id @default(uuid())
+  title                     String            @db.VarChar(200)
+  description               String?           @db.Text
+  agenda                    String?           @db.Text
+  notes                     String?           @db.Text
+  meetingType               String            @default("online") @db.VarChar(20)
+  category                  String            @default("general") @db.VarChar(30)
+  priority                  String            @default("normal") @db.VarChar(20)
+  location                  String            @default("") @db.VarChar(255)
+  meetingLink               String            @default("") @db.VarChar(500)
+  startAt                   DateTime
+  endAt                     DateTime
+  tzOffset                  Int               @default(0)
+  recurrence                String            @default("none") @db.VarChar(20)
+  recurrenceUntil           DateTime?
+  skippedDates              Json?
+  reminderMinutes           Int               @default(15)
+  lastReminderFor           DateTime?
+  reminderScheduleUpdatedAt DateTime          @default(now())
+  status                    String            @default("scheduled") @db.VarChar(20)
+  cancelReason              String            @default("") @db.VarChar(500)
+  organizerId               String
+  organizer                 User              @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  attendees                 MeetingAttendee[]
+  reminderDeliveries        MeetingReminder[]
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
 
   @@index([startAt, endAt])
   @@index([organizerId, startAt])
@@ -521,6 +523,19 @@ model MeetingAttendee {
   @@unique([meetingId, userId])
   @@index([userId])
   @@map("meeting_attendees")
+}
+
+model MeetingReminder {
+  id              String   @id @default(uuid())
+  meetingId       String
+  meeting         Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  occurrenceStart DateTime
+  minutesBefore   Int
+  sentAt          DateTime @default(now())
+
+  @@unique([meetingId, occurrenceStart, minutesBefore])
+  @@index([meetingId])
+  @@map("meeting_reminders")
 }
 
 model ChatConversation {

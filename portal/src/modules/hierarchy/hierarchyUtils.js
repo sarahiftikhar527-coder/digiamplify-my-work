@@ -1,4 +1,41 @@
+import { getPositionLabel } from "@/constants/positions";
+
 export const ROOT = "__root__";
+
+// Border colour of each card, so every position is easy to tell apart.
+export const POSITION_COLORS = {
+  admin: "#F0202F",
+  project_manager: "#A855F7",
+  manager: "#3B82F6",
+  team_lead: "#F59E0B",
+  hr: "#EC4899",
+  finance_manager: "#10B981",
+  employee: "#6B7280",
+};
+
+export const POSITION_LEGEND = [
+  { key: "admin", label: "Admin" },
+  { key: "project_manager", label: "Project Manager" },
+  { key: "manager", label: "Manager" },
+  { key: "team_lead", label: "Team Lead" },
+  { key: "hr", label: "HR" },
+  { key: "finance_manager", label: "Finance Manager" },
+  { key: "employee", label: "Employee" },
+];
+
+const clean = (value) => String(value || "").trim().toLowerCase();
+
+export const positionKeyOf = (person) => {
+  if (clean(person?.role) === "admin") return "admin";
+
+  const position = clean(person?.position);
+  return POSITION_COLORS[position] ? position : "employee";
+};
+
+export const positionColorOf = (person) => POSITION_COLORS[positionKeyOf(person)];
+
+export const positionLabelOf = (person) =>
+  positionKeyOf(person) === "admin" ? "Admin" : getPositionLabel(person?.position);
 
 export const initials = (name = "") =>
   name

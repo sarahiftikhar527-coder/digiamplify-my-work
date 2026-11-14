@@ -1,6 +1,8 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import apiClient from "@/services/api/apiClient.js";
+import { useAuth } from "@/context/AuthContext/AuthContext/AuthContext.jsx";
 import TaskBoardHeader from "../../components/Taskboardheader/Taskboardheader.jsx";
 import TaskColumn from "../../components/Taskcolumn/Taskcolumn.jsx";
 import AdminAddTaskModal from "../../components/Adminaddtaskmodal/Adminaddtaskmodal.jsx";
@@ -30,31 +32,37 @@ const TABS = [
 
 const getPayload = (response) => response?.data ?? response ?? {};
 
+const findArray = (value, preferredKeys = [], depth = 0) => {
+  if (Array.isArray(value)) return value;
+
+  if (!value || typeof value !== "object" || depth > 6) {
+    return [];
+  }
+
+  for (const key of preferredKeys) {
+    if (value[key] !== undefined) {
+      const result = findArray(value[key], preferredKeys, depth + 1);
+      if (result.length) return result;
+    }
+  }
+
+  for (const key of Object.keys(value)) {
+    const result = findArray(value[key], preferredKeys, depth + 1);
+    if (result.length) return result;
+  }
+
+  return [];
+};
+
 const getArray = (response, keys = []) => {
   const body = getPayload(response);
-
-  const candidates = [
-    ...keys.flatMap((key) => [
-      body?.[key],
-      body?.data?.[key],
-      body?.result?.[key],
-      body?.data?.data?.[key],
-    ]),
-    body?.data?.data,
-    body?.data?.results,
-    body?.results,
-    body?.result,
-    body?.data,
-    body,
-  ];
-
-  return candidates.find(Array.isArray) || [];
+  return findArray(body, keys);
 };
 
 const getEmployeesFromResponse = (response) => {
   const body = getPayload(response);
 
-  const candidates = [
+  const directCandidates = [
     body?.employees?.employees,
     body?.data?.employees?.employees,
     body?.result?.employees?.employees,
@@ -63,27 +71,35 @@ const getEmployeesFromResponse = (response) => {
     body?.data?.employees,
     body?.result?.employees,
     body?.data?.data?.employees,
-    body?.data?.data,
-    body?.data,
-    body,
   ];
 
-  return candidates.find(Array.isArray) || [];
+  for (const candidate of directCandidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  return findArray(body, ["employees", "items", "users", "records", "results"]);
 };
 
 const normalizeEmployee = (employee) => ({
   ...employee,
-  id: String(employee._id || employee.id || employee.userId || ""),
+  id: String(
+    employee?._id ||
+      employee?.id ||
+      employee?.userId ||
+      employee?.user?.id ||
+      employee?.user?._id ||
+      ""
+  ),
   name:
-    employee.name ||
-    employee.fullName ||
-    employee.username ||
-    employee.email ||
+    employee?.name ||
+    employee?.fullName ||
+    employee?.username ||
+    employee?.email ||
     "Employee",
   role:
-    employee.designation ||
-    employee.department ||
-    employee.role ||
+    employee?.designation ||
+    employee?.department ||
+    employee?.role ||
     "Employee",
 });
 
@@ -157,7 +173,9 @@ const normalizeTask = (task) => {
             employee.id ||
             employee.userId ||
             employee.user?._id ||
-            (typeof task.assignedToId === "string" ? task.assignedToId : "") ||
+            (typeof task.assignedToId === "string"
+              ? task.assignedToId
+              : "") ||
             ""
         ),
         name:
@@ -190,7 +208,9 @@ const normalizeTask = (task) => {
             assignedTo._id ||
               assignedTo.id ||
               assignedTo.userId ||
-              (typeof task.assignedToId === "string" ? task.assignedToId : "") ||
+              (typeof task.assignedToId === "string"
+                ? task.assignedToId
+                : "") ||
               ""
           )
         : String(assignedTo || task.assignedToId || ""),
@@ -211,13 +231,21 @@ const getTaskId = (taskOrId) => {
 };
 
 function AdminTaskPage() {
-  // The tab lives in the address (?view=board | activity) so the sidebar can open it.
+  const { user: currentUser } = useAuth();
+
+  const userRole = String(currentUser?.role || "").toLowerCase();
+
+  const isAdminUser = ["admin", "superadmin"].includes(userRole);
+
   const [searchParams, setSearchParams] = useSearchParams();
+
   const tab = searchParams.get("view") === "activity" ? "activity" : "board";
+
   const setTab = useCallback(
     (id) => setSearchParams({ view: id }, { replace: true }),
     [setSearchParams]
   );
+
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -241,14 +269,15 @@ function AdminTaskPage() {
     try {
       const [tasksResult, usersResult] = await Promise.allSettled([
         apiClient.get("/tasks/admin"),
-        apiClient.get("/users", {
-          params: { page: 1, limit: 100 },
-        }),
+        isAdminUser
+          ? apiClient.get("/users", {
+              params: { page: 1, limit: 100 },
+            })
+          : apiClient.get("/users/assignable"),
       ]);
 
       if (tasksResult.status === "fulfilled") {
         const taskList = getArray(tasksResult.value, ["tasks"]);
-        // Drop null entries returned by normalizeTask
         setTasks(taskList.map(normalizeTask).filter(Boolean));
       } else {
         setTasks([]);
@@ -264,13 +293,16 @@ function AdminTaskPage() {
 
         const activeEmployees = employeeList
           .filter((employee) => {
-            const role = String(employee.role || "").toLowerCase();
-            const status = String(employee.status || "active").toLowerCase();
+            const role = String(employee?.role || "").toLowerCase();
+            const status = String(employee?.status || "active").toLowerCase();
+            const isDeleted =
+              employee?.isDeleted === true ||
+              employee?.isDeleted === 1;
 
             return (
               role === "employee" &&
               status === "active" &&
-              employee.isDeleted !== true
+              !isDeleted
             );
           })
           .map(normalizeEmployee)
@@ -281,8 +313,8 @@ function AdminTaskPage() {
         if (activeEmployees.length === 0) {
           setEmployeeError(
             employeeList.length === 0
-              ? "No employee records were found in the users API response."
-              : "Employee records were returned, but none matched the active employee filters."
+              ? "No employees were returned by the assignable users API. Check employee reporting structure and API response."
+              : "Employees were returned, but none matched the active employee filters."
           );
         }
       } else {
@@ -305,7 +337,7 @@ function AdminTaskPage() {
       setLoading(false);
       setEmployeesLoading(false);
     }
-  }, []);
+  }, [isAdminUser]);
 
   useEffect(() => {
     loadData();
@@ -320,8 +352,6 @@ function AdminTaskPage() {
     [employees]
   );
 
-  // The board only shows extra tasks. Fixed daily tasks are managed in
-  // "Employee Activity", and employees' personal tasks stay private.
   const boardTasks = useMemo(
     () => tasks.filter((task) => task.taskType === "extra"),
     [tasks]
@@ -747,11 +777,6 @@ function AdminTaskPage() {
         onSubmit={saveTask}
       />
 
-      {/*
-        TaskDetailDrawer crashed when rendered with task={null}, so it is only
-        mounted when a task is selected. The key resets its internal form state
-        when a different task is opened.
-      */}
       {selectedTask && (
         <TaskDetailDrawer
           key={selectedTask.id}
