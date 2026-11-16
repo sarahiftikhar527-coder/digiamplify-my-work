@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { MessageSquare } from "lucide-react";
 
@@ -153,7 +152,7 @@ const ChatPage = () => {
               />
 
               <MessageList
-                key={conv.id}
+                key={`messages-${conv.id}`}
                 messages={chat.messages}
                 loading={chat.messagesLoading}
                 myId={myId}
@@ -163,7 +162,7 @@ const ChatPage = () => {
               />
 
               <MessageInput
-                key={conv.id}
+                key={`input-${conv.id}`}
                 me={me}
                 myId={myId}
                 conversationId={conv.id}

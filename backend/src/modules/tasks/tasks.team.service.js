@@ -1,3 +1,4 @@
+
 import { prisma } from "../../config/db.js";
 
 /*
@@ -5,8 +6,8 @@ import { prisma } from "../../config/db.js";
 | Task lists that need the assigned employee's details
 |--------------------------------------------------------------------------
 | The old admin list used the Mongo-style populate() helper. That helper
-| selected only "name email ..." and dropped the user "id", so the board could
-| not match a task with its employee and showed "Unassigned".
+| selected only "name email ..." and dropped the user "id", so the board
+| could not match a task with its employee and showed "Unassigned".
 | These queries use Prisma directly and always return the employee id.
 */
 
@@ -55,24 +56,41 @@ const withIds = (user) => (user ? { ...user, _id: user.id } : null);
 
 /*
 |--------------------------------------------------------------------------
-| Admin: every task except employees' private personal tasks
+| Admin / Task assigners: task list with scope support
 |--------------------------------------------------------------------------
+| scope is null for admins (no limit).
+| Other task assigners receive only tasks they created or tasks assigned
+| to employees within their hierarchy.
 */
 
-export async function getAllTasksForAdmin() {
+export async function getAllTasksForAdmin(scope = null) {
+  const where = {
+    taskType: { not: "personal" },
+    ...(scope
+      ? {
+          OR: [
+            { assignedById: String(scope.userId) },
+            { assignedToId: { in: scope.employeeIds.map(String) } },
+          ],
+        }
+      : {}),
+  };
+
   const rows = await prisma.task.findMany({
-    where: { taskType: { not: "personal" } },
+    where,
     include: {
       assignedTo: { select: USER_SELECT },
       assignedBy: { select: { id: true, name: true, email: true } },
+      _count: { select: { comments: true } },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return rows.map((row) => ({
+  return rows.map(({ _count, ...row }) => ({
     ...row,
     _id: row.id,
     status: normalizeSavedStatus(row.status),
+    commentCount: _count?.comments || 0,
     assignedTo: withIds(row.assignedTo),
     assignedBy: withIds(row.assignedBy),
   }));

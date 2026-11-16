@@ -25,7 +25,14 @@ import {
   adminUpdateTaskStatus,
   adminDeleteTask,
 } from "./tasks.controller.js";
+
 import { adminTaskReport } from "./tasks.report.controller.js";
+
+import {
+  listTaskComments,
+  addTaskComment,
+  deleteTaskComment,
+} from "./tasks.comments.js";
 
 const router = Router();
 
@@ -42,11 +49,13 @@ router.post(
   allowRoles(ROLES.EMPLOYEE),
   employeeCreatePersonalTask
 );
+
 router.patch(
   "/employee/personal/:taskId",
   allowRoles(ROLES.EMPLOYEE),
   employeeUpdatePersonalTask
 );
+
 router.delete(
   "/employee/personal/:taskId",
   allowRoles(ROLES.EMPLOYEE),
@@ -58,6 +67,7 @@ router.post(
   allowRoles(ROLES.EMPLOYEE),
   employeeDailyUpdate
 );
+
 router.patch(
   "/employee/:taskId/status",
   allowRoles(ROLES.EMPLOYEE),
@@ -80,5 +90,10 @@ router.patch(
 
 router.patch("/admin/:taskId", allowTaskAssigners, adminUpdateTask);
 router.delete("/admin/:taskId", allowTaskAssigners, adminDeleteTask);
+
+/* Comments: admin, assignee, creator and the assignee's leaders */
+router.get("/:taskId/comments", listTaskComments);
+router.post("/:taskId/comments", addTaskComment);
+router.delete("/:taskId/comments/:commentId", deleteTaskComment);
 
 export default router;

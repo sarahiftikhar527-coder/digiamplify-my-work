@@ -1,4 +1,3 @@
-
 import { useContext, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -11,12 +10,14 @@ import { AuthContext } from "@/context";
 
 import Breadcrumb from "../Breadcrumb";
 import UserMenu from "../shared/UserMenu";
+import { MenuButtonBadge } from "../shared/NavGroup";
 import NotificationBell from "@/modules/notifications/components/NotificationBell/NotificationBell";
 
 const Topbar = ({
   onMenuClick = () => {},
   onMenuHover = () => {},
   sidebarOpen = true,
+  menuBadge = 0,
   hidden = false,
 }) => {
   const { pathname } = useLocation();
@@ -70,6 +71,8 @@ const Topbar = ({
           ) : (
             <PanelLeft size={21} strokeWidth={1.5} />
           )}
+
+          {!sidebarOpen && <MenuButtonBadge count={menuBadge} />}
         </button>
 
         <div className="min-w-0">

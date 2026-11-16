@@ -1,0 +1,43 @@
+/*
+  Approval cards (Approvals hub page).
+
+  A card that has pending requests gets a red border that blinks softly,
+  with a glow that fades in and out, so it is clear where the new
+  request came in.
+*/
+
+@keyframes approval-alert-blink {
+  0%,
+  100% {
+    border-color: rgba(240, 32, 47, 0.95);
+    box-shadow:
+      0 0 0 0 rgba(240, 32, 47, 0.45),
+      0 0 22px rgba(240, 32, 47, 0.28);
+  }
+
+  50% {
+    border-color: rgba(240, 32, 47, 0.28);
+    box-shadow:
+      0 0 0 7px rgba(240, 32, 47, 0),
+      0 0 4px rgba(240, 32, 47, 0.08);
+  }
+}
+
+.approval-card.approval-card--alert {
+  border-color: rgba(240, 32, 47, 0.9);
+  animation: approval-alert-blink 1.5s ease-in-out infinite;
+}
+
+/* Hovering the card pauses the blink and keeps a steady red border. */
+.approval-card.approval-card--alert:hover {
+  animation: none;
+  border-color: rgba(240, 32, 47, 0.95);
+  box-shadow: 0 0 22px rgba(240, 32, 47, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .approval-card.approval-card--alert {
+    animation: none;
+    box-shadow: 0 0 0 1px rgba(240, 32, 47, 0.8);
+  }
+}

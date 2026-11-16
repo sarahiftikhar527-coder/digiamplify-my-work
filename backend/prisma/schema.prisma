@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -42,6 +43,7 @@ model User {
   reviewedLeaves           Leave[]                  @relation("ReviewedLeaves")
   assignedTasks            Task[]                   @relation("AssignedTasks")
   createdTasks             Task[]                   @relation("CreatedTasks")
+  taskComments             TaskComment[]            @relation("TaskCommentAuthor")
   calendarEvents           Calendar[]               @relation("EmployeeCalendar")
   createdCalendarEvents    Calendar[]               @relation("CreatedCalendar")
   reviewedCalendarEvents   Calendar[]               @relation("ReviewedCalendar")
@@ -240,6 +242,7 @@ model Task {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   dailyUpdates     TaskDailyUpdate[]
+  comments         TaskComment[]
 
   @@index([assignedToId, status, dueDate])
   @@index([taskType, isActive])
@@ -261,6 +264,21 @@ model TaskDailyUpdate {
   @@unique([taskId, updateDate])
   @@index([employeeId, updateDate])
   @@map("task_daily_updates")
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("TaskCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId, createdAt])
+  @@index([authorId])
+  @@map("task_comments")
 }
 
 model Calendar {

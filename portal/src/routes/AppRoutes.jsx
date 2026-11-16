@@ -1,3 +1,4 @@
+
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import EmployeeLayout from "@/layouts/EmployeeLayout/EmployeeLayout";
@@ -30,6 +31,7 @@ import AdminTeamStructurePage from "@/modules/admin/team/pages/AdminTeamStructur
 
 import AdminDashboardPage from "@/modules/admin/dashboard/pages/AdminDashboardPage/AdminDashboardPage.jsx";
 import AdminTaskPage from "@/modules/admin/task/page/AdminTaskPage/AdminTaskPage.jsx";
+import TeamLeadTasksPage from "@/modules/teamLead/pages/TeamLeadTasksPage/TeamLeadTasksPage.jsx";
 import AdminProfilePage from "@/modules/admin/profile/pages/AdminProfilePage/AdminProfilePage.jsx";
 import AdminFinancePage from "@/modules/admin/finance/pages/AdminFinancePage/AdminFinancePage.jsx";
 import AdminCalendarPage from "@/modules/admin/calendar/pages/AdminCalendarPage/AdminCalendarPage.jsx";
@@ -107,7 +109,7 @@ export default function AppRoutes() {
             <Route element={<PositionRoute check={canAssignTasks} />}>
               <Route
                 path="/team-tasks"
-                element={<AdminTaskPage />}
+                element={<TeamLeadTasksPage />}
               />
             </Route>
 

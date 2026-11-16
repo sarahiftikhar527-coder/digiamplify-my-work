@@ -1,4 +1,3 @@
-
 import {
   Home,
   ClipboardList,
@@ -77,7 +76,12 @@ export const employeeNavigation = [
     badgeKey: "newTasks",
   },
   { label: "Profile", path: "/profile", icon: User },
-  { label: "Finance", path: "/finance", icon: TrendingUp },
+  {
+    label: "Finance",
+    path: "/finance",
+    icon: TrendingUp,
+    badgeKey: "pendingFinance",
+  },
   {
     label: "Calendar",
     path: "/calendar",
@@ -142,6 +146,7 @@ export const adminNavigation = [
         path: "/admin/approvals",
         icon: UserCheck,
         badgeKey: "pendingApprovals",
+        pulse: true,
       },
     ],
   },
@@ -194,6 +199,7 @@ export const getEmployeeNavigation = (user) => {
       path: "/approvals",
       icon: UserCheck,
       badgeKey: "pendingApprovals",
+      pulse: true,
     });
   }
 

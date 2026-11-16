@@ -1,11 +1,15 @@
-
 import { Menu } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import UserMenu from "../shared/UserMenu";
+import { MenuButtonBadge } from "../shared/NavGroup";
 import NotificationBell from "@/modules/notifications/components/NotificationBell/NotificationBell";
 import { useAuth } from "@/context";
 
-export default function Topbar({ onMenu, hidden = false }) {
+export default function Topbar({
+  onMenu,
+  menuBadge = 0,
+  hidden = false,
+}) {
   const { pathname } = useLocation();
   const { user } = useAuth();
 
@@ -34,9 +38,10 @@ export default function Topbar({ onMenu, hidden = false }) {
           onClick={onMenu}
           aria-label="Open sidebar"
           title="Open sidebar"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-white transition-colors hover:bg-[#F0202F]/10 hover:text-[#F0202F]"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-white transition-colors hover:bg-[#F0202F]/10 hover:text-[#F0202F]"
         >
           <Menu size={21} strokeWidth={1.5} />
+          <MenuButtonBadge count={menuBadge} />
         </button>
 
         <p className="text-xs capitalize text-gray-300">

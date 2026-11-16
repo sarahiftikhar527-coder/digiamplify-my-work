@@ -1,11 +1,9 @@
-
 import { useContext, useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 
 import { getEmployeeNavigation } from "@/constants";
 import { AuthContext } from "@/context";
-import useSidebarCounts from "@/hooks/useSidebarCounts";
 import NavGroup, { NavItem } from "../shared/NavGroup";
 import UserCard from "./UserCard";
 
@@ -35,26 +33,6 @@ const Sidebar = ({
     () => getEmployeeNavigation(user),
     [user]
   );
-
-  const showApprovals = navigation.some(
-    (item) =>
-      item.badgeKey === "pendingApprovals" ||
-      item.children?.some(
-        (child) => child.badgeKey === "pendingApprovals"
-      )
-  );
-
-  const liveCounts = useSidebarCounts({
-    isAdmin: false,
-    showApprovals,
-  });
-
-  const sidebarCounts = {
-    ...liveCounts,
-    ...counts,
-    meetingInvitations: liveCounts.meetingInvitations,
-    pendingApprovals: liveCounts.pendingApprovals,
-  };
 
   const avatarUrl =
     user?.avatarUrl ||
@@ -131,7 +109,7 @@ const Sidebar = ({
                     <NavGroup
                       key={item.path}
                       item={item}
-                      counts={sidebarCounts}
+                      counts={counts}
                       onNavigate={onClose}
                     />
                   );
@@ -141,7 +119,7 @@ const Sidebar = ({
                   <NavItem
                     key={item.path}
                     item={item}
-                    counts={sidebarCounts}
+                    counts={counts}
                     onNavigate={onClose}
                   />
                 );

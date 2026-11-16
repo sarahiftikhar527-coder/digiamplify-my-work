@@ -4,7 +4,6 @@ import { LogOut, X } from "lucide-react";
 import NavGroup, { NavItem } from "../shared/NavGroup";
 import { getNavigationByRole } from "@/constants/navigation";
 import { useAuth } from "@/context";
-import useSidebarCounts from "@/hooks/useSidebarCounts";
 import ProtectedAvatar from "@/components/ProtectedAvatar";
 
 const Logo = () => (
@@ -31,21 +30,13 @@ const getAvatarUrl = (user) =>
 export default function Sidebar({
   open = false,
   onClose = () => {},
+  counts = {},
 }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
   const navigation = getNavigationByRole(user?.role) || [];
-
-  const isAdmin = ["admin", "superadmin"].includes(
-    String(user?.role || "").trim().toLowerCase()
-  );
-
-  const counts = useSidebarCounts({
-    isAdmin,
-    showApprovals: true,
-  });
 
   useEffect(() => {
     if (window.innerWidth < 1024 && open) {

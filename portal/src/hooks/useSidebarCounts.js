@@ -1,9 +1,8 @@
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient, { unwrap } from "@/services/api/apiClient";
 import { getSocket } from "@/services/socket";
-import { usersService } from "@/services/usersService";
+import useApprovalCounts from "@/hooks/useApprovalCounts";
 
 const CHAT_REFRESH_MS = 10000;
 const COUNTS_REFRESH_MS = 20000;
@@ -26,8 +25,33 @@ const isOpenTask = (task) => {
 
   return (
     task?.isDone !== true &&
-    !["completed", "approved", "cancelled", "canceled", "rejected"].includes(status)
+    ![
+      "completed",
+      "approved",
+      "cancelled",
+      "canceled",
+      "rejected",
+    ].includes(status)
   );
+};
+
+/*
+  Adds up every count badge that appears in the sidebar menu.
+  Used for the small number on the menu button, so people can see that
+  something is waiting even while the sidebar is closed.
+*/
+export const getBadgeTotal = (navigation = [], counts = {}) => {
+  let total = 0;
+
+  for (const item of navigation) {
+    if (item.badgeKey) total += Number(counts[item.badgeKey]) || 0;
+
+    for (const child of item.children || []) {
+      if (child.badgeKey) total += Number(counts[child.badgeKey]) || 0;
+    }
+  }
+
+  return total;
 };
 
 export default function useSidebarCounts({
@@ -37,13 +61,22 @@ export default function useSidebarCounts({
   const { pathname } = useLocation();
 
   const [chatUnread, setChatUnread] = useState(0);
-  const [pendingApprovals, setPendingApprovals] = useState(0);
   const [meetingInvitations, setMeetingInvitations] = useState(0);
   const [newTasks, setNewTasks] = useState(0);
   const [pendingFinance, setPendingFinance] = useState(0);
 
   const onChatPage = useRef(false);
+
   const canLoadApprovals = isAdmin || showApprovals;
+
+  // Signup approvals: admin + signup approvers.
+  // Profile approvals: admin only.
+  const approvals = useApprovalCounts({
+    canSignup: canLoadApprovals,
+    canProfile: isAdmin,
+  });
+
+  const refreshApprovals = approvals.refresh;
 
   onChatPage.current = /(^|\/)(admin\/)?chat(\/|$)/i.test(pathname);
 
@@ -52,27 +85,21 @@ export default function useSidebarCounts({
       const result = await unwrap(apiClient.get("/chat/unread"));
       const data = getData(result);
 
-      setChatUnread(Math.max(0, Number(data?.total) || 0));
+      // The server sends the total as "totalUnread" (also "unreadCount" and
+      // "count"). Older versions used "total", so all names are accepted.
+      const total = Number(
+        data?.totalUnread ??
+          data?.unreadCount ??
+          data?.count ??
+          data?.total ??
+          0
+      );
+
+      setChatUnread(Math.max(0, total || 0));
     } catch {
       // Keep the last available count.
     }
   }, []);
-
-  const loadApprovals = useCallback(async () => {
-    if (!canLoadApprovals) return;
-
-    try {
-      const result = await usersService.pending();
-
-      const rows = Array.isArray(result)
-        ? result
-        : result?.requests || result?.items || result?.users || [];
-
-      setPendingApprovals(rows.length);
-    } catch {
-      // Keep the last available count.
-    }
-  }, [canLoadApprovals]);
 
   const loadMeetings = useCallback(async () => {
     try {
@@ -122,14 +149,14 @@ export default function useSidebarCounts({
   const refreshCounts = useCallback(() => {
     loadMeetings();
 
-    if (canLoadApprovals) loadApprovals();
+    if (canLoadApprovals) refreshApprovals();
     if (isAdmin) loadAdminTasks();
     if (!isAdmin) loadFinance();
   }, [
     canLoadApprovals,
     isAdmin,
     loadMeetings,
-    loadApprovals,
+    refreshApprovals,
     loadAdminTasks,
     loadFinance,
   ]);
@@ -169,18 +196,6 @@ export default function useSidebarCounts({
   }, [loadChat]);
 
   useEffect(() => {
-    if (!canLoadApprovals) return undefined;
-
-    const onApprovalsChanged = () => loadApprovals();
-
-    window.addEventListener("approvals:changed", onApprovalsChanged);
-
-    return () => {
-      window.removeEventListener("approvals:changed", onApprovalsChanged);
-    };
-  }, [canLoadApprovals, loadApprovals]);
-
-  useEffect(() => {
     let socket;
 
     try {
@@ -208,12 +223,20 @@ export default function useSidebarCounts({
 
     socket.on("chat:notification", onChat);
     socket.on("chat:unread:changed", onChat);
+    socket.on("chat:message", onChat);
+    socket.on("chat:message:read", onChat);
+    socket.on("chat:conversation", onChat);
+    socket.on("chat:conversation:removed", onChat);
     socket.on("notification:new", onNotification);
     socket.on("connect", onConnect);
 
     return () => {
       socket.off("chat:notification", onChat);
       socket.off("chat:unread:changed", onChat);
+      socket.off("chat:message", onChat);
+      socket.off("chat:message:read", onChat);
+      socket.off("chat:conversation", onChat);
+      socket.off("chat:conversation:removed", onChat);
       socket.off("notification:new", onNotification);
       socket.off("connect", onConnect);
     };
@@ -221,7 +244,9 @@ export default function useSidebarCounts({
 
   return {
     chatUnread,
-    pendingApprovals,
+    pendingApprovals: approvals.total,
+    pendingSignupApprovals: approvals.signup,
+    pendingProfileApprovals: approvals.profile,
     meetingInvitations,
     newTasks,
     pendingFinance,
