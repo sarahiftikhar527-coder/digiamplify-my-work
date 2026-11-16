@@ -2,6 +2,19 @@ import apiClient from './apiClient';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
+// Fired after the profile / photo changes so the topbar and sidebar refresh.
+export const PROFILE_CHANGED_EVENT = 'digiamplify:profile-changed';
+
+function notifyProfileChanged() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
+  } catch {
+    // ignore
+  }
+}
+
 function getApiErrorMessage(error, fallback) {
   return (
     error?.response?.data?.message ||
@@ -81,6 +94,8 @@ export async function updateMyProfile(profileData) {
       profileData
     );
 
+    notifyProfileChanged();
+
     return response.data;
   } catch (error) {
     throw new Error(
@@ -100,6 +115,8 @@ export async function updateEmployeeProfile(userId, profileData) {
       profileData
     );
 
+    notifyProfileChanged();
+
     return response.data;
   } catch (error) {
     throw new Error(
@@ -116,6 +133,8 @@ export async function uploadMyAvatar(file) {
       '/profile/me/avatar',
       formData
     );
+
+    notifyProfileChanged();
 
     return response.data;
   } catch (error) {
@@ -137,6 +156,8 @@ export async function uploadEmployeeAvatar(userId, file) {
       `/profile/employees/${encodeId(userId)}/avatar`,
       formData
     );
+
+    notifyProfileChanged();
 
     return response.data;
   } catch (error) {

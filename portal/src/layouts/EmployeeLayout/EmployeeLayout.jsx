@@ -1,15 +1,18 @@
-
 import { useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import useHideOnScroll from "@/hooks/useHideOnScroll";
 import useTaskAlerts from "@/hooks/useTaskAlerts";
+import useSyncProfileAvatar from "@/hooks/useSyncProfileAvatar";
 
 const EmployeeLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { newTasks } = useTaskAlerts();
+
+  // Keeps the topbar + sidebar profile photo up to date.
+  useSyncProfileAvatar();
 
   const scrollRef = useRef(null);
   const topbarHidden = useHideOnScroll(scrollRef);

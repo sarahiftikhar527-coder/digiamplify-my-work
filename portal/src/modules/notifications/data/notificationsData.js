@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bell,
@@ -124,24 +125,6 @@ export function useNotificationEmployees() {
     refreshEmployees();
   }, [refreshEmployees]);
 
-    // Update the bell live when a new notification arrives, or when another part
-  // of the app marked notifications as read.
-  useEffect(() => {
-    if (!authenticatedId) return undefined;
-
-    const socket = getSocket();
-    const reload = () => refresh();
-
-    socket.on("notification:new", reload);
-    window.addEventListener("notifications:changed", reload);
-
-    return () => {
-      socket.off("notification:new", reload);
-      window.removeEventListener("notifications:changed", reload);
-    };
-  }, [authenticatedId, refresh]);
-  
-
   return {
     employees,
     loading,
@@ -234,6 +217,21 @@ export function useNotifications(userId) {
     refresh();
     refreshPreferences();
   }, [refresh, refreshPreferences]);
+
+  useEffect(() => {
+    if (!authenticatedId) return undefined;
+
+    const socket = getSocket();
+    const reload = () => refresh();
+
+    socket.on("notification:new", reload);
+    window.addEventListener("notifications:changed", reload);
+
+    return () => {
+      socket.off("notification:new", reload);
+      window.removeEventListener("notifications:changed", reload);
+    };
+  }, [authenticatedId, refresh]);
 
   const markRead = useCallback(
     async (id) => {

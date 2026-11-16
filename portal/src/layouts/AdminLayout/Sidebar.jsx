@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, X } from "lucide-react";
@@ -6,6 +5,7 @@ import NavGroup, { NavItem } from "../shared/NavGroup";
 import { getNavigationByRole } from "@/constants/navigation";
 import { useAuth } from "@/context";
 import useSidebarCounts from "@/hooks/useSidebarCounts";
+import ProtectedAvatar from "@/components/ProtectedAvatar";
 
 const Logo = () => (
   <div className="flex items-end whitespace-nowrap text-[23px] font-semibold leading-none tracking-tight text-white">
@@ -23,44 +23,10 @@ const Logo = () => (
 const getAvatarUrl = (user) =>
   user?.avatarUrl ||
   user?.profile?.avatarUrl ||
+  user?.avatar ||
   user?.profileImage ||
   user?.image ||
   "";
-
-const getInitials = (user) => {
-  const name = user?.name || user?.email || "User";
-
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-};
-
-function UserAvatar({ user, size = 36 }) {
-  const avatarUrl = getAvatarUrl(user);
-
-  return (
-    <div
-      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-[#2b1519] text-xs font-semibold text-white"
-      style={{ width: size, height: size }}
-    >
-      {avatarUrl ? (
-        <img
-          src={avatarUrl}
-          alt={`${user?.name || "User"} profile`}
-          className="h-full w-full rounded-full object-cover"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : (
-        getInitials(user)
-      )}
-    </div>
-  );
-}
 
 export default function Sidebar({
   open = false,
@@ -172,7 +138,13 @@ export default function Sidebar({
 
           <div className="shrink-0 border-t border-white/10 px-3 py-4">
             <div className="flex items-center gap-2">
-              <UserAvatar user={user} size={36} />
+              <ProtectedAvatar
+                src={getAvatarUrl(user)}
+                name={user?.name || user?.email || "User"}
+                className="h-9 w-9"
+                textClassName="text-xs"
+                fallbackClassName="bg-[#2b1519]"
+              />
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-white">

@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -9,16 +8,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "@/context";
-
-const getInitials = (name) =>
-  String(name || "User")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+import ProtectedAvatar from "@/components/ProtectedAvatar";
 
 const itemCls =
   "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] text-white/75 transition-colors hover:bg-[#F0202F]/10 hover:text-white";
@@ -31,33 +21,6 @@ const getAvatarUrl = (user, avatarUrl) =>
   user?.profileImage ||
   user?.image ||
   "";
-
-function UserAvatar({ src, name, size = "h-9 w-9" }) {
-  const [imgError, setImgError] = useState(false);
-
-  useEffect(() => {
-    setImgError(false);
-  }, [src]);
-
-  return (
-    <>
-      {src && !imgError ? (
-        <img
-          src={src}
-          alt={`${name} profile`}
-          onError={() => setImgError(true)}
-          className={`${size} shrink-0 rounded-full border border-white/15 object-cover`}
-        />
-      ) : (
-        <span
-          className={`${size} flex shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#C0111F] text-xs font-semibold text-white`}
-        >
-          {getInitials(name)}
-        </span>
-      )}
-    </>
-  );
-}
 
 export default function UserMenu({
   profilePath = "/profile",
@@ -124,7 +87,12 @@ export default function UserMenu({
           open ? "bg-[#F0202F]/10" : ""
         }`}
       >
-        <UserAvatar src={avatarUrl} name={name} />
+        <ProtectedAvatar
+          src={avatarUrl}
+          name={name}
+          className="h-9 w-9"
+          textClassName="text-xs"
+        />
 
         <ChevronDown
           size={16}
@@ -141,10 +109,11 @@ export default function UserMenu({
           className="absolute right-0 top-full z-[100] mt-3 w-60 overflow-hidden rounded-2xl border border-[#292929] bg-[#0d0d0d] p-2 text-white shadow-2xl"
         >
           <div className="flex items-center gap-3 border-b border-[#252525] px-3 pb-3 pt-2">
-            <UserAvatar
+            <ProtectedAvatar
               src={avatarUrl}
               name={name}
-              size="h-10 w-10"
+              className="h-10 w-10"
+              textClassName="text-xs"
             />
 
             <div className="min-w-0">

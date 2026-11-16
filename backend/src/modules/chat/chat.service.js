@@ -483,6 +483,14 @@ function serializeConversation(chat, currentUserId, users) {
     .filter((person) => person.id !== currentId)
     .map((person) => person.name);
 
+  // Direct chats show the other person's photo in the list, header, etc.
+  const otherMember = members.find(
+    (person) => person.id !== currentId
+  );
+
+  const conversationAvatar =
+    chat.type !== "group" ? otherMember?.avatar || "" : "";
+
   const visible = visibleMessages(chat, currentId);
 
   const latest = [...visible].sort(
@@ -514,6 +522,8 @@ function serializeConversation(chat, currentUserId, users) {
       users,
       otherNames
     ),
+    avatar: conversationAvatar,
+    avatarUrl: conversationAvatar,
     members,
     admins: chat.admins,
     lastMessage: latest
