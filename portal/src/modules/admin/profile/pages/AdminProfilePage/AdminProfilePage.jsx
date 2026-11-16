@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   ArrowLeft,
@@ -8,6 +9,7 @@ import {
   Users,
   UserRound,
 } from 'lucide-react';
+
 import ProfileHeader from '../../components/ProfileHeader';
 import ProfileTabs from '../../components/ProfileTabs';
 import PersonalDetailsForm from '../../components/PersonalDetailsForm';
@@ -17,13 +19,48 @@ import DocumentsTab from '../../components/DocumentsTab';
 import JobDetailsTab from '../../components/JobDetailsTab';
 import PaymentDetailsTab from '../../components/PaymentDetailsTab';
 import EditProfileModal from '../../components/EditProfileModal';
+
+import { useAuth } from '@/context';
+
 import {
   getEmployees,
   getEmployeeProfile,
+  getMyProfile,
   updateEmployeeProfile,
+  updateMyProfile,
   uploadEmployeeAvatar,
+  uploadMyAvatar,
 } from '@/services/api/profileService';
+
 import './profile.css';
+
+const SELF_ID = 'me';
+
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+const ALLOWED_AVATAR_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
+
+const SELF_FIELDS = [
+  'fullName',
+  'userName',
+  'dob',
+  'gender',
+  'nationality',
+  'language',
+  'workEmail',
+  'phone',
+  'emergencyNumber',
+  'currentAddress',
+  'permanentAddress',
+  'country',
+  'city',
+  'education',
+  'avatarUrl',
+];
 
 const INITIAL_PROFILE = {
   fullName: '',
@@ -71,70 +108,65 @@ const INITIAL_PROFILE = {
 };
 
 function normalizeDocuments(documents) {
-  if (Array.isArray(documents)) {
-    return documents.map((doc, index) => ({
-      ...doc,
-      id: doc?.id || doc?._id || `document-${index}`,
+  const normalize = (doc, fallbackId, fallbackName) => {
+    const item =
+      doc && typeof doc === 'object'
+        ? doc
+        : { url: doc };
+
+    return {
+      ...item,
+      id:
+        item.id ||
+        item._id ||
+        fallbackId,
       name:
-        doc?.name ||
-        doc?.fileName ||
-        doc?.originalName ||
-        doc?.label ||
-        `Document ${index + 1}`,
-      // viewUrl comes from the server and always points to the current
-      // file address, so it is preferred for opening a document.
+        item.name ||
+        item.fileName ||
+        item.originalName ||
+        item.label ||
+        fallbackName,
       url:
-        doc?.viewUrl ||
-        doc?.url ||
-        doc?.secure_url ||
-        doc?.dataUrl ||
-        doc?.fileUrl ||
+        item.viewUrl ||
+        item.url ||
+        item.secure_url ||
+        item.dataUrl ||
+        item.fileUrl ||
         '',
-      type: doc?.type || doc?.mimeType || '',
-      size: Number(doc?.size || 0),
+      type:
+        item.type ||
+        item.mimeType ||
+        '',
+      size: Number(item.size || 0),
       uploadedAt:
-        doc?.uploadedAt ||
-        doc?.uploadedOn ||
-        doc?.date ||
-        doc?.createdAt ||
+        item.uploadedAt ||
+        item.uploadedOn ||
+        item.date ||
+        item.createdAt ||
         '',
-      status: doc?.status || 'pending',
-    }));
+      status: item.status || 'pending',
+    };
+  };
+
+  if (Array.isArray(documents)) {
+    return documents.map((doc, index) =>
+      normalize(
+        doc,
+        `document-${index}`,
+        `Document ${index + 1}`
+      )
+    );
   }
 
   if (documents && typeof documents === 'object') {
-    return Object.entries(documents).map(([key, value], index) => {
-      const doc =
-        value && typeof value === 'object' ? value : { url: value };
-
-      return {
-        ...doc,
-        id: doc.id || doc._id || key || `document-${index}`,
-        name:
-          doc.name ||
-          doc.fileName ||
-          doc.originalName ||
-          doc.label ||
-          key ||
-          `Document ${index + 1}`,
-        url:
-          doc.viewUrl ||
-          doc.url ||
-          doc.secure_url ||
-          doc.dataUrl ||
-          doc.fileUrl ||
-          '',
-        type: doc.type || doc.mimeType || '',
-        size: Number(doc.size || 0),
-        uploadedAt:
-          doc.uploadedAt ||
-          doc.uploadedOn ||
-          doc.date ||
-          doc.createdAt ||
-          '',
-        status: doc.status || 'pending',
-      };
-    });
+    return Object.entries(documents).map(
+      ([key, value], index) =>
+        normalize(
+          value,
+          key || `document-${index}`,
+          key || `Document ${index + 1}`
+        )
+    );
   }
 
   return [];
@@ -148,9 +180,19 @@ function normalizeProfile(response) {
     response?.data ??
     response;
 
-  return {
+  const merged = {
     ...INITIAL_PROFILE,
     ...(data && typeof data === 'object' ? data : {}),
+  };
+
+  Object.keys(INITIAL_PROFILE).forEach((key) => {
+    if (merged[key] === null || merged[key] === undefined) {
+      merged[key] = INITIAL_PROFILE[key];
+    }
+  });
+
+  return {
+    ...merged,
     documents: normalizeDocuments(data?.documents),
   };
 }
@@ -175,7 +217,12 @@ function getErrorMessage(error) {
 }
 
 function employeeId(employee) {
-  return employee?._id || employee?.id || employee?.userId || '';
+  return (
+    employee?._id ||
+    employee?.id ||
+    employee?.userId ||
+    ''
+  );
 }
 
 function employeeName(employee) {
@@ -200,10 +247,14 @@ function getInitials(name = '') {
 }
 
 export default function AdminProfilePage() {
+  const { user } = useAuth();
+
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+
   const [saved, setSaved] = useState(INITIAL_PROFILE);
   const [draft, setDraft] = useState(INITIAL_PROFILE);
+
   const [activeTab, setActiveTab] = useState('personal');
 
   const [isEditing, setIsEditing] = useState(false);
@@ -220,12 +271,31 @@ export default function AdminProfilePage() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
 
+  const isSelf = selectedEmployeeId === SELF_ID;
+
+  const selfName =
+    user?.name ||
+    user?.fullName ||
+    user?.email ||
+    'My Profile';
+
+  const clearAvatarPreview = useCallback(() => {
+    setAvatarPreview((previous) => {
+      if (previous?.startsWith('blob:')) {
+        URL.revokeObjectURL(previous);
+      }
+
+      return '';
+    });
+  }, []);
+
   const loadEmployees = useCallback(async () => {
     setLoadingEmployees(true);
     setError('');
 
     try {
       const response = await getEmployees();
+
       setEmployees(normalizeEmployees(response));
     } catch (err) {
       setError(getErrorMessage(err));
@@ -240,15 +310,22 @@ export default function AdminProfilePage() {
     setLoadingProfile(true);
     setError('');
     setSuccess('');
+
     setIsEditing(false);
     setShowEditModal(false);
+
     setAvatarFile(null);
     setAvatarPreview('');
+
     setSaved(INITIAL_PROFILE);
     setDraft(INITIAL_PROFILE);
 
     try {
-      const response = await getEmployeeProfile(id);
+      const response =
+        id === SELF_ID
+          ? await getMyProfile()
+          : await getEmployeeProfile(id);
+
       const profile = normalizeProfile(response);
 
       setSaved(profile);
@@ -267,19 +344,25 @@ export default function AdminProfilePage() {
 
   useEffect(() => {
     return () => {
-      if (avatarPreview?.startsWith('blob:')) {
-        URL.revokeObjectURL(avatarPreview);
-      }
+      setAvatarPreview((previous) => {
+        if (previous?.startsWith('blob:')) {
+          URL.revokeObjectURL(previous);
+        }
+
+        return previous;
+      });
     };
-  }, [avatarPreview]);
+  }, []);
 
   const handleEmployeeSelect = (id) => {
-    if (!id || saving) return;
+    if (!id || saving || loadingProfile) return;
 
     setSelectedEmployeeId(id);
     setActiveTab('personal');
+
     setIsEditing(false);
     setShowEditModal(false);
+
     setError('');
     setSuccess('');
 
@@ -287,16 +370,20 @@ export default function AdminProfilePage() {
   };
 
   const handleBackToEmployees = () => {
-    if (saving) return;
+    if (saving || loadingProfile) return;
 
     setSelectedEmployeeId('');
     setActiveTab('personal');
+
     setIsEditing(false);
     setShowEditModal(false);
+
     setAvatarFile(null);
-    setAvatarPreview('');
+    clearAvatarPreview();
+
     setDraft(INITIAL_PROFILE);
     setSaved(INITIAL_PROFILE);
+
     setError('');
     setSuccess('');
   };
@@ -315,19 +402,18 @@ export default function AdminProfilePage() {
   const handleAvatarSelect = (file) => {
     if (!file || !isEditing || saving) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file.');
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      setError('Please select a JPG, PNG or WEBP image.');
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('The profile image must be 5 MB or smaller.');
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError('The profile image must be 2 MB or smaller.');
       return;
     }
 
     setError('');
     setSuccess('');
-    setAvatarFile(file);
 
     const preview = URL.createObjectURL(file);
 
@@ -338,24 +424,47 @@ export default function AdminProfilePage() {
 
       return preview;
     });
+
+    setAvatarFile(file);
   };
 
   const handleStartEdit = () => {
-    if (!selectedEmployeeId || loadingProfile || saving) return;
+    if (
+      !selectedEmployeeId ||
+      loadingProfile ||
+      saving
+    ) {
+      return;
+    }
 
     setError('');
     setSuccess('');
+
+    if (isSelf) {
+      handleConfirmEdit();
+      return;
+    }
+
     setShowEditModal(true);
   };
 
   const handleConfirmEdit = () => {
-    if (!selectedEmployeeId || loadingProfile || saving) return;
+    if (
+      !selectedEmployeeId ||
+      loadingProfile ||
+      saving
+    ) {
+      return;
+    }
 
     setDraft({ ...saved });
+
     setAvatarFile(null);
     setAvatarPreview(saved.avatarUrl || '');
+
     setIsEditing(true);
     setShowEditModal(false);
+
     setError('');
     setSuccess('');
   };
@@ -364,23 +473,32 @@ export default function AdminProfilePage() {
     if (saving) return;
 
     setDraft({ ...saved });
+
     setAvatarFile(null);
     setAvatarPreview(saved.avatarUrl || '');
+
     setIsEditing(false);
     setShowEditModal(false);
+
     setError('');
     setSuccess('');
   };
 
   const handleSave = async () => {
-    if (!selectedEmployeeId || !isEditing || saving) return;
+    if (
+      !selectedEmployeeId ||
+      !isEditing ||
+      saving
+    ) {
+      return;
+    }
 
     setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      const payload = { ...draft };
+      let payload = { ...draft };
 
       delete payload._id;
       delete payload.__v;
@@ -388,36 +506,69 @@ export default function AdminProfilePage() {
       delete payload.updatedAt;
       delete payload.user;
 
-      // A new photo is uploaded first. The profile is then saved as plain
-      // JSON with the link of the uploaded photo (never as a multipart form).
-      if (avatarFile) {
-        const uploaded = await uploadEmployeeAvatar(
-          selectedEmployeeId,
-          avatarFile
-        );
+      if (isSelf) {
+        payload = SELF_FIELDS.reduce((result, field) => {
+          result[field] = draft[field] ?? '';
+          return result;
+        }, {});
+      }
 
-        const url = uploaded?.data?.url || uploaded?.url || '';
+      // Upload the avatar before saving the profile.
+      if (avatarFile) {
+        const uploaded = isSelf
+          ? await uploadMyAvatar(avatarFile)
+          : await uploadEmployeeAvatar(
+              selectedEmployeeId,
+              avatarFile
+            );
+
+        const url =
+          uploaded?.data?.url ||
+          uploaded?.data?.avatarUrl ||
+          uploaded?.url ||
+          uploaded?.avatarUrl ||
+          '';
 
         if (!url) {
-          throw new Error('Photo upload failed. Please try again.');
+          throw new Error(
+            'Photo upload failed. Please try again.'
+          );
         }
 
         payload.avatarUrl = url;
       }
 
-      await updateEmployeeProfile(selectedEmployeeId, payload);
+      // Save profile information.
+      if (isSelf) {
+        await updateMyProfile(payload);
+      } else {
+        await updateEmployeeProfile(
+          selectedEmployeeId,
+          payload
+        );
+      }
 
-      const response = await getEmployeeProfile(selectedEmployeeId);
+      // Reload the saved profile from the server.
+      const response = isSelf
+        ? await getMyProfile()
+        : await getEmployeeProfile(selectedEmployeeId);
+
       const updated = normalizeProfile(response);
 
       setSaved(updated);
       setDraft(updated);
-      setAvatarPreview(updated.avatarUrl || '');
+
       setAvatarFile(null);
+      setAvatarPreview(updated.avatarUrl || '');
+
       setIsEditing(false);
       setShowEditModal(false);
 
-      setSuccess('Employee profile saved successfully.');
+      setSuccess(
+        isSelf
+          ? 'Your profile was saved successfully.'
+          : 'Employee profile saved successfully.'
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -445,6 +596,11 @@ export default function AdminProfilePage() {
     editable: isEditing && !saving,
   };
 
+  const lockedFormProps = {
+    ...sharedFormProps,
+    editable: false,
+  };
+
   const tabContent = {
     personal: (
       <div className="pf-form-grid">
@@ -453,36 +609,60 @@ export default function AdminProfilePage() {
         <AddressEducationForm {...sharedFormProps} />
       </div>
     ),
+
     documents: (
       <DocumentsTab
-        {...sharedFormProps}
+        {...(isSelf ? lockedFormProps : sharedFormProps)}
         employeeId={selectedEmployeeId}
       />
     ),
-    job: <JobDetailsTab {...sharedFormProps} />,
-    payment: <PaymentDetailsTab {...sharedFormProps} />,
+
+    job: (
+      <JobDetailsTab
+        {...(isSelf ? lockedFormProps : sharedFormProps)}
+      />
+    ),
+
+    payment: (
+      <PaymentDetailsTab
+        {...(isSelf ? lockedFormProps : sharedFormProps)}
+      />
+    ),
   };
 
   return (
     <main className="profile-page">
+
       {error && (
-        <div className="pf-alert pf-alert--error" role="alert">
+        <div
+          className="pf-alert pf-alert--error"
+          role="alert"
+        >
           <span>{error}</span>
-          <button type="button" onClick={() => setError('')}>
+
+          <button
+            type="button"
+            onClick={() => setError('')}
+          >
             Dismiss
           </button>
         </div>
       )}
 
       {success && selectedEmployeeId && (
-        <div className="pf-alert pf-alert--success" role="status">
+        <div
+          className="pf-alert pf-alert--success"
+          role="status"
+        >
           {success}
         </div>
       )}
 
       {!selectedEmployeeId ? (
         <section className="pf-select-screen">
+
           <div className="pf-select-hero">
+
             <div className="pf-select-hero__icon">
               <Users size={25} />
             </div>
@@ -501,8 +681,10 @@ export default function AdminProfilePage() {
             </p>
 
             <div className="pf-select-stats">
+
               <div className="pf-select-stat">
                 <Users size={18} />
+
                 <div>
                   <strong>{employees.length}</strong>
                   <span>Employees</span>
@@ -513,19 +695,90 @@ export default function AdminProfilePage() {
 
               <div className="pf-select-stat">
                 <UserRound size={18} />
+
                 <div>
                   <strong>Profiles</strong>
                   <span>Management</span>
                 </div>
               </div>
+
             </div>
           </div>
 
           <div className="pf-employee-panel">
+
             <div className="pf-employee-panel__top">
               <div>
-                <span className="pf-select-eyebrow">YOUR TEAM</span>
+                <span className="pf-select-eyebrow">
+                  YOUR ACCOUNT
+                </span>
+
+                <h2>My Profile</h2>
+
+                <p>
+                  Set your own profile photo and update your
+                  personal details.
+                </p>
+              </div>
+            </div>
+
+            <div className="pf-employee-grid">
+
+              <button
+                type="button"
+                className="pf-employee-card"
+                onClick={() => handleEmployeeSelect(SELF_ID)}
+                disabled={loadingEmployees}
+              >
+                <div className="pf-employee-card__top">
+
+                  <div className="pf-employee-avatar">
+                    {getInitials(selfName)}
+                  </div>
+
+                  <span className="pf-employee-card__arrow">
+                    <ArrowRight size={17} />
+                  </span>
+
+                </div>
+
+                <h3>{selfName}</h3>
+
+                <div className="pf-employee-card__meta">
+                  <Mail size={15} />
+                  <span>
+                    {user?.email || 'No email available'}
+                  </span>
+                </div>
+
+                <div className="pf-employee-card__footer">
+
+                  <span className="pf-employee-role">
+                    <BriefcaseBusiness size={14} />
+                    {user?.role || 'Admin'}
+                  </span>
+
+                  <span className="pf-view-profile">
+                    Open my profile
+                  </span>
+
+                </div>
+              </button>
+
+            </div>
+          </div>
+
+          <div className="pf-employee-panel">
+
+            <div className="pf-employee-panel__top">
+
+              <div>
+                <span className="pf-select-eyebrow">
+                  YOUR TEAM
+                </span>
+
                 <h2>Employee Directory</h2>
+
                 <p>
                   Choose an employee to view their existing profile.
                 </p>
@@ -539,26 +792,34 @@ export default function AdminProfilePage() {
               >
                 {loadingEmployees ? 'Loading...' : 'Refresh'}
               </button>
+
             </div>
 
             <div className="pf-employee-search">
               <Search size={18} />
+
               <input
                 type="search"
                 placeholder="Search by name, email or role..."
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
                 aria-label="Search employees"
               />
             </div>
 
             {loadingEmployees ? (
-              <div className="pf-directory-state" role="status">
+              <div
+                className="pf-directory-state"
+                role="status"
+              >
                 <span className="pf-loading-spinner" />
                 <p>Loading employee directory...</p>
               </div>
             ) : filteredEmployees.length > 0 ? (
               <div className="pf-employee-grid">
+
                 {filteredEmployees.map((employee) => {
                   const id = employeeId(employee);
                   const name = employeeName(employee);
@@ -570,9 +831,12 @@ export default function AdminProfilePage() {
                       type="button"
                       className="pf-employee-card"
                       key={id}
-                      onClick={() => handleEmployeeSelect(id)}
+                      onClick={() =>
+                        handleEmployeeSelect(id)
+                      }
                     >
                       <div className="pf-employee-card__top">
+
                         <div className="pf-employee-avatar">
                           {getInitials(name)}
                         </div>
@@ -580,6 +844,7 @@ export default function AdminProfilePage() {
                         <span className="pf-employee-card__arrow">
                           <ArrowRight size={17} />
                         </span>
+
                       </div>
 
                       <h3>{name}</h3>
@@ -592,6 +857,7 @@ export default function AdminProfilePage() {
                       </div>
 
                       <div className="pf-employee-card__footer">
+
                         <span className="pf-employee-role">
                           <BriefcaseBusiness size={14} />
                           {employee.role || 'Employee'}
@@ -600,48 +866,69 @@ export default function AdminProfilePage() {
                         <span className="pf-view-profile">
                           View profile
                         </span>
+
                       </div>
                     </button>
                   );
                 })}
+
               </div>
             ) : (
               <div className="pf-directory-state">
+
                 <div className="pf-empty-icon">
                   <Users size={24} />
                 </div>
+
                 <h3>No employees found</h3>
+
                 <p>
                   {search
                     ? 'Try another name, email or role.'
                     : 'No employees are available in the directory.'}
                 </p>
+
               </div>
             )}
+
           </div>
         </section>
       ) : (
         <>
+
           <button
             className="pf-back-to-employees"
             type="button"
             onClick={handleBackToEmployees}
-            disabled={saving}
+            disabled={saving || loadingProfile}
           >
             <ArrowLeft size={17} />
-            Back to Employees
+            {isSelf ? 'Back' : 'Back to Employees'}
           </button>
 
           {loadingProfile ? (
-            <div className="pf-directory-state" role="status">
+            <div
+              className="pf-directory-state"
+              role="status"
+            >
               <span className="pf-loading-spinner" />
               <p>Loading employee profile...</p>
             </div>
           ) : (
             <>
+
               <ProfileHeader
-                profile={draft}
-                avatarUrl={avatarPreview || draft.avatarUrl}
+                profile={
+                  isSelf
+                    ? {
+                        ...draft,
+                        jobTitle: draft.jobTitle || 'Admin',
+                      }
+                    : draft
+                }
+                avatarUrl={
+                  avatarPreview || draft.avatarUrl
+                }
                 avatarError={error}
                 onAvatarSelect={handleAvatarSelect}
                 canEdit={true}
@@ -665,8 +952,10 @@ export default function AdminProfilePage() {
               >
                 {tabContent[activeTab] || tabContent.personal}
               </section>
+
             </>
           )}
+
         </>
       )}
 
@@ -675,6 +964,7 @@ export default function AdminProfilePage() {
         onClose={() => setShowEditModal(false)}
         onConfirm={handleConfirmEdit}
       />
+
     </main>
   );
 }

@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
-import ProfileBanner from '../ProfileBanner';
-import ProfileMeta from '../ProfileMeta';
+
+import { useCallback } from "react";
+import ProfileBanner from "../ProfileBanner";
+import ProfileMeta from "../ProfileMeta";
 
 export default function ProfileHeader({
   profile,
@@ -12,18 +13,29 @@ export default function ProfileHeader({
 }) {
   const handleAvatarSelect = useCallback(
     (...args) => {
-      if (!canEdit || typeof onAvatarSelect !== 'function') return;
+      if (!canEdit || typeof onAvatarSelect !== "function") {
+        return;
+      }
+
       return onAvatarSelect(...args);
     },
     [canEdit, onAvatarSelect]
   );
 
+  const currentAvatar =
+    avatarUrl ||
+    profile?.avatarUrl ||
+    profile?.profile?.avatarUrl ||
+    "";
+
   return (
     <header className="pf-header">
       <ProfileBanner
-        avatarUrl={avatarUrl || profile?.avatarUrl || ''}
+        avatarUrl={currentAvatar}
         onAvatarSelect={handleAvatarSelect}
-        canEditAvatar={canEdit && typeof onAvatarSelect === 'function'}
+        canEditAvatar={
+          canEdit && typeof onAvatarSelect === "function"
+        }
       />
 
       <ProfileMeta

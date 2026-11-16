@@ -1,11 +1,19 @@
+
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, ChevronDown, LifeBuoy, LogOut, User } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  LifeBuoy,
+  LogOut,
+  User,
+} from "lucide-react";
 import { useAuth } from "@/context";
 
 const getInitials = (name) =>
   String(name || "User")
-    .split(" ")
+    .trim()
+    .split(/\s+/)
     .filter(Boolean)
     .map((part) => part[0])
     .join("")
@@ -15,34 +23,78 @@ const getInitials = (name) =>
 const itemCls =
   "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] text-white/75 transition-colors hover:bg-[#F0202F]/10 hover:text-white";
 
-/*
-  Avatar button for the top bar. Click it to open a small menu with the
-  profile, notifications, help and logout. Used by both the employee and the
-  admin top bar, so only the paths are passed in.
-*/
+const getAvatarUrl = (user, avatarUrl) =>
+  avatarUrl ||
+  user?.avatarUrl ||
+  user?.profile?.avatarUrl ||
+  user?.avatar ||
+  user?.profileImage ||
+  user?.image ||
+  "";
+
+function UserAvatar({ src, name, size = "h-9 w-9" }) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  return (
+    <>
+      {src && !imgError ? (
+        <img
+          src={src}
+          alt={`${name} profile`}
+          onError={() => setImgError(true)}
+          className={`${size} shrink-0 rounded-full border border-white/15 object-cover`}
+        />
+      ) : (
+        <span
+          className={`${size} flex shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#C0111F] text-xs font-semibold text-white`}
+        >
+          {getInitials(name)}
+        </span>
+      )}
+    </>
+  );
+}
+
 export default function UserMenu({
   profilePath = "/profile",
   notificationsPath = "/notifications",
   supportPath = "/help-support",
+  avatarUrl: avatarUrlProp = "",
+  user: userProp,
 }) {
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = userProp || auth?.user;
+  const logout = auth?.logout;
+
   const navigate = useNavigate();
   const wrapperRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
-  // Close when the user clicks outside the menu or presses Escape.
+  const name = user?.name || user?.email || "User";
+  const role = user?.role || "Member";
+
+  const avatarUrl = getAvatarUrl(user, avatarUrlProp);
+
   useEffect(() => {
     if (!open) return undefined;
 
     const handlePointerDown = (event) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target)
+      ) {
         setOpen(false);
       }
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -60,26 +112,6 @@ export default function UserMenu({
     navigate("/login", { replace: true });
   };
 
-  const name = user?.name || user?.email || "User";
-  const role = user?.role || "Member";
-  const showImage = user?.avatar && !imgError;
-
-  const avatar = (size) =>
-    showImage ? (
-      <img
-        src={user.avatar}
-        alt={name}
-        onError={() => setImgError(true)}
-        className={`${size} shrink-0 rounded-full object-cover`}
-      />
-    ) : (
-      <span
-        className={`${size} flex shrink-0 items-center justify-center rounded-full bg-[#C0111F] text-xs font-semibold text-white`}
-      >
-        {getInitials(name)}
-      </span>
-    );
-
   return (
     <div ref={wrapperRef} className="relative">
       <button
@@ -92,7 +124,8 @@ export default function UserMenu({
           open ? "bg-[#F0202F]/10" : ""
         }`}
       >
-        {avatar("h-9 w-9")}
+        <UserAvatar src={avatarUrl} name={name} />
+
         <ChevronDown
           size={16}
           strokeWidth={1.5}
@@ -108,10 +141,20 @@ export default function UserMenu({
           className="absolute right-0 top-full z-[100] mt-3 w-60 overflow-hidden rounded-2xl border border-[#292929] bg-[#0d0d0d] p-2 text-white shadow-2xl"
         >
           <div className="flex items-center gap-3 border-b border-[#252525] px-3 pb-3 pt-2">
-            {avatar("h-10 w-10")}
+            <UserAvatar
+              src={avatarUrl}
+              name={name}
+              size="h-10 w-10"
+            />
+
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{name}</p>
-              <p className="truncate text-xs capitalize text-gray-400">{role}</p>
+              <p className="truncate text-sm font-medium text-white">
+                {name}
+              </p>
+
+              <p className="truncate text-xs capitalize text-gray-400">
+                {role}
+              </p>
             </div>
           </div>
 

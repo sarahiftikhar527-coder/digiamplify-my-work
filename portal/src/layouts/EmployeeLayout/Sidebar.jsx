@@ -2,6 +2,7 @@
 import { useContext, useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { X } from "lucide-react";
+
 import { getEmployeeNavigation } from "@/constants";
 import { AuthContext } from "@/context";
 import useSidebarCounts from "@/hooks/useSidebarCounts";
@@ -28,10 +29,11 @@ const Sidebar = ({
 }) => {
   const { pathname } = useLocation();
   const auth = useContext(AuthContext);
+  const user = auth?.user;
 
   const navigation = useMemo(
-    () => getEmployeeNavigation(auth?.user),
-    [auth?.user]
+    () => getEmployeeNavigation(user),
+    [user]
   );
 
   const showApprovals = navigation.some(
@@ -54,6 +56,14 @@ const Sidebar = ({
     pendingApprovals: liveCounts.pendingApprovals,
   };
 
+  const avatarUrl =
+    user?.avatarUrl ||
+    user?.profile?.avatarUrl ||
+    user?.avatar ||
+    user?.profileImage ||
+    user?.image ||
+    "";
+
   useEffect(() => {
     if (window.innerWidth < 1024 && isOpen) {
       onClose();
@@ -61,10 +71,12 @@ const Sidebar = ({
   }, [pathname]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -138,7 +150,10 @@ const Sidebar = ({
           </div>
 
           <div className="shrink-0">
-            <UserCard />
+            <UserCard
+              user={user}
+              avatarUrl={avatarUrl}
+            />
           </div>
         </aside>
       </div>

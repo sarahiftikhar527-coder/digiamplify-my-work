@@ -9,7 +9,6 @@ import useTaskAlerts from "@/hooks/useTaskAlerts";
 const EmployeeLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Keep the existing task alert and sound functionality.
   const { newTasks } = useTaskAlerts();
 
   const scrollRef = useRef(null);

@@ -1,3 +1,4 @@
+
 import fs from 'fs'
 import path from 'path'
 import Profile from '../../models/Profile.js'
@@ -8,13 +9,14 @@ import {
   PROFILE_DOCUMENTS_DIR,
 } from '../../config/uploads.js'
 import {
-  buildChatAttachmentId,
   extractProfileDocumentFileName,
 } from '../../utils/fileUrls.js'
 
 const ADMIN_ROLES = new Set(['admin', 'superadmin'])
 
-/** Safe stored upload names: UUID + extension (chat may truncate ext to 15 chars). */
+/**
+ * Stored upload filenames must use UUIDs followed by a safe extension.
+ */
 const SAFE_FILE_NAME =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[a-z0-9.]{1,15}$/i
 
@@ -44,20 +46,29 @@ const EXTENSION_MIME = {
   csv: 'text/csv',
   zip: 'application/zip',
   xls: 'application/vnd.ms-excel',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xlsx:
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ppt: 'application/vnd.ms-powerpoint',
   pptx:
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 }
 
+/**
+ * Validate a stored upload filename.
+ */
 export function sanitizeUploadFileName(fileName) {
   if (typeof fileName !== 'string') {
     throw new ApiError(400, 'Invalid file name.')
   }
 
-  const base = path.basename(fileName.trim())
+  const trimmedName = fileName.trim()
+  const base = path.basename(trimmedName)
 
-  if (!base || base !== fileName.trim() || base.includes('..')) {
+  if (
+    !base ||
+    base !== trimmedName ||
+    base.includes('..')
+  ) {
     throw new ApiError(400, 'Invalid file name.')
   }
 
@@ -68,33 +79,48 @@ export function sanitizeUploadFileName(fileName) {
   return base
 }
 
+/**
+ * Resolve a filename safely inside its upload directory.
+ */
 export function resolvePathUnderRoot(rootDirectory, fileName) {
   const safeName = sanitizeUploadFileName(fileName)
+
   const resolvedRoot = path.resolve(rootDirectory)
   const resolvedFile = path.resolve(resolvedRoot, safeName)
 
   if (
-    resolvedFile !== resolvedRoot &&
+    resolvedFile === resolvedRoot ||
     !resolvedFile.startsWith(`${resolvedRoot}${path.sep}`)
   ) {
     throw new ApiError(400, 'Invalid file path.')
   }
 
-  return { safeName, absolutePath: resolvedFile }
+  return {
+    safeName,
+    absolutePath: resolvedFile,
+  }
 }
 
+/**
+ * Extract a file extension.
+ */
 export function extensionFromFileName(fileName) {
   const ext = path.extname(fileName).slice(1).toLowerCase()
+
   return ext || ''
 }
 
+/**
+ * Determine MIME type using the stored file extension.
+ */
 export function mimeTypeForFileName(fileName) {
   const ext = extensionFromFileName(fileName)
+
   return EXTENSION_MIME[ext] || 'application/octet-stream'
 }
 
 /**
- * SVG and HTML are never inline. Other types inline only if in INLINE_EXTENSIONS.
+ * SVG and HTML files must never be served inline.
  */
 export function shouldServeInline(fileName) {
   const ext = extensionFromFileName(fileName)
@@ -106,9 +132,17 @@ export function shouldServeInline(fileName) {
   return INLINE_EXTENSIONS.has(ext)
 }
 
-export function buildServeHeaders(fileName, { forceAttachment = false } = {}) {
+/**
+ * Build secure response headers.
+ */
+export function buildServeHeaders(
+  fileName,
+  { forceAttachment = false } = {}
+) {
   const mimeType = mimeTypeForFileName(fileName)
-  const inline = !forceAttachment && shouldServeInline(fileName)
+
+  const inline =
+    !forceAttachment && shouldServeInline(fileName)
 
   return {
     'Content-Type': mimeType,
@@ -116,113 +150,182 @@ export function buildServeHeaders(fileName, { forceAttachment = false } = {}) {
       ? `inline; filename="${encodeURIComponent(fileName)}"`
       : `attachment; filename="${encodeURIComponent(fileName)}"`,
     'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'private, no-cache, no-store',
   }
 }
 
+/**
+ * Check whether a user has an administrator role.
+ */
 export function isAdminRole(role) {
-  return ADMIN_ROLES.has(String(role || '').trim().toLowerCase())
+  return ADMIN_ROLES.has(
+    String(role || '').trim().toLowerCase()
+  )
 }
 
+/**
+ * Check whether a profile document references a stored filename.
+ */
 function profileDocumentReferencesFileName(doc, fileName) {
   const urls = [doc?.url, doc?.backUrl].filter(Boolean)
 
   return urls.some((url) => {
-    const extracted = extractProfileDocumentFileName(url)
-    return extracted === fileName
+    return extractProfileDocumentFileName(url) === fileName
   })
 }
 
 /**
- * A document an employee added in a pending profile change request is not on
- * the profile yet. The employee who sent it and any admin may open it so the
- * request can be reviewed.
+ * Check whether a filename belongs to a currently saved profile avatar.
+ *
+ * Profile avatars are stored in Prisma profile.avatarUrl or
+ * user.avatarUrl, rather than in the profile documents collection.
+ *
+ * All authenticated users can view current profile avatars because
+ * they are displayed in employee directories, chat and hierarchy views.
+ */
+async function isCurrentAvatarFile(fileName) {
+  const profile = await prisma.profile.findFirst({
+    where: {
+      avatarUrl: {
+        contains: fileName,
+      },
+    },
+    select: {
+      id: true,
+    },
+  })
+
+  if (profile) {
+    return true
+  }
+
+  const owner = await prisma.user.findFirst({
+    where: {
+      avatarUrl: {
+        contains: fileName,
+      },
+    },
+    select: {
+      id: true,
+    },
+  })
+
+  return Boolean(owner)
+}
+
+/**
+ * Check access to a document or avatar uploaded in a pending
+ * profile change request.
+ *
+ * The requesting employee and administrators can access these files.
  */
 async function hasPendingRequestAccess(user, fileName) {
   const requesterId = String(user._id || user.id)
+
   const admin = isAdminRole(user.role)
 
-  const pending = await prisma.profileChangeRequest.findMany({
-    where: {
-      status: 'pending',
-      ...(admin ? {} : { userId: requesterId }),
-    },
-    select: { changes: true },
-    take: 200,
-  })
-
-  return pending.some((row) =>
-    JSON.stringify(row.changes || {}).includes(fileName)
-  )
-}
-
-export async function assertProfileDocumentAccess(user, fileName) {
-  sanitizeUploadFileName(fileName)
-
-  const profile = await Profile.findOne({
-    documents: {
-      $elemMatch: {
-        $or: [
-          { url: `/uploads/profile-documents/${fileName}` },
-          { url: `/api/v1/files/profile-documents/${fileName}` },
-          { backUrl: `/uploads/profile-documents/${fileName}` },
-          { backUrl: `/api/v1/files/profile-documents/${fileName}` },
-        ],
+  const pendingRequests =
+    await prisma.profileChangeRequest.findMany({
+      where: {
+        status: 'pending',
+        ...(admin ? {} : { userId: requesterId }),
       },
-    },
-  }).select('user')
-
-  if (!profile) {
-    const candidates = await Profile.find({
-      $or: [
-        { 'documents.url': { $regex: /profile-documents\// } },
-        { 'documents.backUrl': { $regex: /profile-documents\// } },
-      ],
+      select: {
+        changes: true,
+      },
+      take: 200,
     })
-      .select('user documents')
-      .limit(500)
 
-    const matched = candidates.find((entry) =>
-      (entry.documents || []).some((doc) =>
-        profileDocumentReferencesFileName(doc, fileName)
-      )
-    )
-
-    if (!matched) {
-      if (await hasPendingRequestAccess(user, fileName)) {
-        return
-      }
-
-      throw new ApiError(404, 'File not found.')
-    }
-
-    const ownerId = String(matched.user)
-    const requesterId = String(user._id || user.id)
-
-    if (ownerId === requesterId || isAdminRole(user.role)) {
-      return
-    }
-
-    throw new ApiError(403, 'You do not have permission to access this file.')
-  }
-
-  const ownerId = String(profile.user)
-  const requesterId = String(user._id || user.id)
-
-  if (ownerId === requesterId || isAdminRole(user.role)) {
-    return
-  }
-
-  throw new ApiError(403, 'You do not have permission to access this file.')
+  return pendingRequests.some((row) => {
+    return JSON.stringify(row.changes || {}).includes(fileName)
+  })
 }
 
 /**
- * A chat file can be opened by:
- *  - the person who uploaded it, and
- *  - any current member of a conversation where the file was sent.
- * Returns the stored attachment details (used for the download name).
+ * Verify access to a profile document or avatar.
+ *
+ * Access rules:
+ * 1. Current profile avatars: any authenticated user.
+ * 2. Saved profile documents: owner and administrators.
+ * 3. Pending profile request files: requester and administrators.
+ */
+export async function assertProfileDocumentAccess(user, fileName) {
+  sanitizeUploadFileName(fileName)
+
+  if (!user || !(user._id || user.id)) {
+    throw new ApiError(401, 'Authentication required.')
+  }
+
+  // 1. Allow access to currently saved profile avatars.
+  if (await isCurrentAvatarFile(fileName)) {
+    return
+  }
+
+  // 2. Find profiles containing the requested document.
+  const profiles = await Profile.find({
+    $or: [
+      {
+        'documents.url': {
+          $regex: /profile-documents/,
+        },
+      },
+      {
+        'documents.backUrl': {
+          $regex: /profile-documents/,
+        },
+      },
+    ],
+  })
+    .select('user documents')
+    .limit(5000)
+
+  const matchedProfile = profiles.find((entry) => {
+    return (entry.documents || []).some((doc) => {
+      return profileDocumentReferencesFileName(doc, fileName)
+    })
+  })
+
+  if (matchedProfile) {
+    const ownerId = String(matchedProfile.user)
+    const requesterId = String(user._id || user.id)
+
+    if (
+      ownerId === requesterId ||
+      isAdminRole(user.role)
+    ) {
+      return
+    }
+
+    throw new ApiError(
+      403,
+      'You do not have permission to access this file.'
+    )
+  }
+
+  // 3. Check files attached to pending profile change requests.
+  if (await hasPendingRequestAccess(user, fileName)) {
+    return
+  }
+
+  throw new ApiError(404, 'File not found.')
+}
+
+/**
+ * Verify access to a chat attachment.
+ *
+ * A chat attachment can be accessed by:
+ * - Its original uploader.
+ * - A current member of the conversation containing the attachment.
+ *
+ * Deleted messages and users who have left a conversation
+ * cannot access attachments through conversation membership.
  */
 export async function assertChatAttachmentAccess(user, fileName) {
   sanitizeUploadFileName(fileName)
+
+  if (!user || !(user._id || user.id)) {
+    throw new ApiError(401, 'Authentication required.')
+  }
 
   const userId = String(user._id || user.id)
 
@@ -230,34 +333,57 @@ export async function assertChatAttachmentAccess(user, fileName) {
     where: {
       fileName,
       OR: [
-        { uploaderId: userId },
+        {
+          uploaderId: userId,
+        },
         {
           message: {
             deleted: false,
             conversation: {
-              members: { some: { userId, leftAt: null } },
+              members: {
+                some: {
+                  userId,
+                  leftAt: null,
+                },
+              },
             },
           },
         },
       ],
     },
-    select: { originalName: true, mimeType: true },
+    select: {
+      originalName: true,
+      mimeType: true,
+    },
   })
 
-  if (allowed) return allowed
+  if (allowed) {
+    return allowed
+  }
 
+  // Determine whether the attachment exists but access is forbidden.
   const referenced = await prisma.chatAttachment.findFirst({
-    where: { fileName },
-    select: { id: true },
+    where: {
+      fileName,
+    },
+    select: {
+      id: true,
+    },
   })
 
   if (!referenced) {
     throw new ApiError(404, 'File not found.')
   }
 
-  throw new ApiError(403, 'You do not have permission to access this file.')
+  throw new ApiError(
+    403,
+    'You do not have permission to access this file.'
+  )
 }
 
+/**
+ * Stream a profile document or avatar.
+ */
 export async function streamProfileDocument(fileName, res) {
   const { absolutePath } = resolvePathUnderRoot(
     PROFILE_DOCUMENTS_DIR,
@@ -269,11 +395,22 @@ export async function streamProfileDocument(fileName, res) {
   }
 
   const headers = buildServeHeaders(fileName)
+
   res.set(headers)
-  res.sendFile(absolutePath)
+
+  return res.sendFile(absolutePath)
 }
 
-export async function streamChatAttachment(fileName, res, details = null) {
+/**
+ * Stream a chat attachment.
+ *
+ * Preserve the original filename when the user downloads the file.
+ */
+export async function streamChatAttachment(
+  fileName,
+  res,
+  details = null
+) {
   const { absolutePath } = resolvePathUnderRoot(
     CHAT_ATTACHMENTS_DIR,
     fileName
@@ -285,14 +422,20 @@ export async function streamChatAttachment(fileName, res, details = null) {
 
   const headers = buildServeHeaders(fileName)
 
-  // Show the original file name when the person saves the file.
   if (details?.originalName) {
-    const safeName = encodeURIComponent(details.originalName)
-    const disposition = shouldServeInline(fileName) ? 'inline' : 'attachment'
+    const safeName = String(details.originalName)
+      .replace(/[\r\n"\\]/g, '_')
+      .trim()
 
-    headers['Content-Disposition'] = `${disposition}; filename*=UTF-8''${safeName}`
+    const disposition = shouldServeInline(fileName)
+      ? 'inline'
+      : 'attachment'
+
+    headers['Content-Disposition'] =
+      `${disposition}; filename*=UTF-8''${encodeURIComponent(safeName)}`
   }
 
   res.set(headers)
-  res.sendFile(absolutePath)
+
+  return res.sendFile(absolutePath)
 }

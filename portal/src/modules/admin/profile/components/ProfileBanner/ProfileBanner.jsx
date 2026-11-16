@@ -4,8 +4,18 @@ import Icon from '../Icon';
 import apiClient from '@/services/api/apiClient';
 import heroImage from '../../../../../assets/images/profile/hero.webp';
 
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
 const getAvatarEndpoint = (url) => {
-  if (!url || typeof url !== 'string') return '';
+  if (!url || typeof url !== 'string') {
+    return '';
+  }
 
   const value = url.trim();
 
@@ -29,13 +39,15 @@ const getAvatarEndpoint = (url) => {
   const apiPrefix = '/api/v1';
 
   if (pathname.startsWith(`${apiPrefix}/files/`)) {
-    return pathname.slice(apiPrefix.length);
+    pathname = pathname.slice(apiPrefix.length);
   }
 
-  if (pathname.startsWith('/files/')) {
+  // Support existing protected file URLs.
+  if (/^\/files\/profile-documents\//i.test(pathname)) {
     return pathname;
   }
 
+  // Support older upload URLs.
   const uploadMatch = pathname.match(
     /\/uploads\/profile-documents\/([^/?#]+)$/i
   );
@@ -46,6 +58,7 @@ const getAvatarEndpoint = (url) => {
     )}`;
   }
 
+  // Support profile document URLs.
   const documentMatch = pathname.match(
     /\/profile-documents\/([^/?#]+)$/i
   );
@@ -66,16 +79,24 @@ export default function ProfileBanner({
 }) {
   const inputRef = useRef(null);
   const localPreviewRef = useRef('');
+  const remotePreviewRef = useRef('');
 
   const [remotePreview, setRemotePreview] = useState('');
   const [localPreview, setLocalPreview] = useState('');
 
+  // Load the protected profile image.
   useEffect(() => {
     let cancelled = false;
     let objectUrl = '';
 
     setRemotePreview('');
-    setLocalPreview('');
+
+    // Clear the previous local preview when the saved avatar changes.
+    if (localPreviewRef.current) {
+      URL.revokeObjectURL(localPreviewRef.current);
+      localPreviewRef.current = '';
+      setLocalPreview('');
+    }
 
     if (
       typeof avatarUrl === 'string' &&
@@ -98,20 +119,28 @@ export default function ProfileBanner({
           responseType: 'blob',
         });
 
-        if (!response.data || response.data.size === 0) {
+        if (cancelled) {
+          return;
+        }
+
+        if (
+          !response.data ||
+          response.data.size === 0
+        ) {
           return;
         }
 
         objectUrl = URL.createObjectURL(response.data);
 
-        if (!cancelled) {
-          setRemotePreview(objectUrl);
-        }
+        remotePreviewRef.current = objectUrl;
+        setRemotePreview(objectUrl);
       } catch (error) {
-        console.error(
-          'Unable to load profile image:',
-          error?.response?.status || error.message
-        );
+        if (!cancelled) {
+          console.error(
+            'Unable to load profile image:',
+            error?.response?.status || error.message
+          );
+        }
       }
     };
 
@@ -122,35 +151,66 @@ export default function ProfileBanner({
 
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
+
+        if (remotePreviewRef.current === objectUrl) {
+          remotePreviewRef.current = '';
+        }
       }
     };
   }, [avatarUrl]);
 
+  // Clean up remaining object URLs when the component unmounts.
   useEffect(() => {
     return () => {
       if (localPreviewRef.current) {
         URL.revokeObjectURL(localPreviewRef.current);
+        localPreviewRef.current = '';
+      }
+
+      if (remotePreviewRef.current) {
+        URL.revokeObjectURL(remotePreviewRef.current);
+        remotePreviewRef.current = '';
       }
     };
   }, []);
 
+  // Handle profile image selection.
   const handleFile = (event) => {
     const file = event.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
-    if (!file.type.startsWith('image/')) {
+    if (!canEditAvatar) {
       event.target.value = '';
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
+    // Validate image format.
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      console.error(
+        'Only JPG, JPEG, PNG and WEBP images are allowed.'
+      );
+
       event.target.value = '';
       return;
     }
 
+    // Validate image size.
+    if (file.size > MAX_FILE_SIZE) {
+      console.error(
+        'Profile image must not exceed 2 MB.'
+      );
+
+      event.target.value = '';
+      return;
+    }
+
+    // Create an instant local preview.
     const preview = URL.createObjectURL(file);
 
+    // Revoke the previous local preview.
     if (localPreviewRef.current) {
       URL.revokeObjectURL(localPreviewRef.current);
     }
@@ -158,10 +218,12 @@ export default function ProfileBanner({
     localPreviewRef.current = preview;
     setLocalPreview(preview);
 
+    // Send the selected file and preview to the parent.
     if (typeof onAvatarSelect === 'function') {
       onAvatarSelect(file, preview);
     }
 
+    // Allow selecting the same file again.
     event.target.value = '';
   };
 
@@ -170,7 +232,9 @@ export default function ProfileBanner({
   return (
     <div
       className="pf-banner"
-      style={{ backgroundImage: `url(${heroImage})` }}
+      style={{
+        backgroundImage: `url(${heroImage})`,
+      }}
     >
       <div className="pf-avatar">
         {displayedAvatar ? (
@@ -178,7 +242,14 @@ export default function ProfileBanner({
             src={displayedAvatar}
             alt="Profile"
             onError={() => {
-              if (displayedAvatar === remotePreview) {
+              if (displayedAvatar === localPreview) {
+                if (localPreviewRef.current) {
+                  URL.revokeObjectURL(localPreviewRef.current);
+                  localPreviewRef.current = '';
+                }
+
+                setLocalPreview('');
+              } else if (displayedAvatar === remotePreview) {
                 setRemotePreview('');
               }
             }}
@@ -201,7 +272,7 @@ export default function ProfileBanner({
             <input
               ref={inputRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp"
               hidden
               onChange={handleFile}
             />

@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, X } from "lucide-react";
 import NavGroup, { NavItem } from "../shared/NavGroup";
 import { getNavigationByRole } from "@/constants/navigation";
-import { Avatar } from "@/shared/components/ui";
 import { useAuth } from "@/context";
 import useSidebarCounts from "@/hooks/useSidebarCounts";
 
@@ -20,6 +19,48 @@ const Logo = () => (
     <span className="text-primary-light">.</span>
   </div>
 );
+
+const getAvatarUrl = (user) =>
+  user?.avatarUrl ||
+  user?.profile?.avatarUrl ||
+  user?.profileImage ||
+  user?.image ||
+  "";
+
+const getInitials = (user) => {
+  const name = user?.name || user?.email || "User";
+
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+};
+
+function UserAvatar({ user, size = 36 }) {
+  const avatarUrl = getAvatarUrl(user);
+
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-[#2b1519] text-xs font-semibold text-white"
+      style={{ width: size, height: size }}
+    >
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt={`${user?.name || "User"} profile`}
+          className="h-full w-full rounded-full object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : (
+        getInitials(user)
+      )}
+    </div>
+  );
+}
 
 export default function Sidebar({
   open = false,
@@ -131,12 +172,13 @@ export default function Sidebar({
 
           <div className="shrink-0 border-t border-white/10 px-3 py-4">
             <div className="flex items-center gap-2">
-              <Avatar size={32} />
+              <UserAvatar user={user} size={36} />
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-white">
                   {user?.name || user?.email || "User"}
                 </p>
+
                 <p className="truncate text-[10px] capitalize text-gray-400">
                   {user?.role || "Member"}
                 </p>

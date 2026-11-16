@@ -21,8 +21,10 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, PROFILE_DOCUMENTS_DIR);
   },
+
   filename: (req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();
+
     cb(null, `${crypto.randomUUID()}${extension}`);
   },
 });
@@ -31,9 +33,13 @@ const fileFilter = (req, file, cb) => {
   const extension = path.extname(file.originalname).toLowerCase();
 
   if (!allowedExtensions.has(extension)) {
-    return cb(
-      new Error("Only PDF, DOC, DOCX, JPG, JPEG, PNG and WEBP files are allowed.")
+    const error = new Error(
+      "Only PDF, DOC, DOCX, JPG, JPEG, PNG and WEBP files are allowed."
     );
+
+    error.statusCode = 400;
+
+    return cb(error);
   }
 
   cb(null, true);
