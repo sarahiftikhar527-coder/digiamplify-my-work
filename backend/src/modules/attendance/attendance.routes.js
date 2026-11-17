@@ -37,6 +37,10 @@ router.get("/today", controller.myToday);
 router.get("/me/today", controller.myToday);
 router.get("/me/recent", controller.myRecent);
 router.get("/me/absenteeism", controller.myAbsenteeism);
+router.get("/me/hours", controller.myHours);
+
+// Break limits and default hours (everybody can read them).
+router.get("/rules", controller.getRules);
 
 router.post("/clock-in", controller.clockIn);
 router.post("/clock-out", controller.clockOut);
@@ -80,6 +84,24 @@ router.patch(
   "/admin/employee/:userId/pin",
   allowRoles(ROLES.ADMIN),
   controller.setEmployeePin
+);
+
+router.put(
+  "/admin/rules",
+  allowRoles(ROLES.ADMIN),
+  controller.updateRules
+);
+
+router.get(
+  "/admin/schedules",
+  allowRoles(ROLES.ADMIN),
+  controller.listSchedules
+);
+
+router.put(
+  "/admin/employee/:userId/schedule",
+  allowRoles(ROLES.ADMIN),
+  controller.setSchedule
 );
 
 export default router;

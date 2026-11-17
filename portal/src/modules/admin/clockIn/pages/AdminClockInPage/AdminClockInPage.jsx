@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Clock, FileText, Network } from "lucide-react";
+import { Clock, FileText, Network, SlidersHorizontal } from "lucide-react";
 
 import MyClockIn from "../../components/MyClockIn";
 import AttendanceOverview from "../../components/AttendanceOverview";
+import AttendanceRulesModal from "../../components/AttendanceRulesModal";
 import { TeamLiveBoard } from "@/shared/teamLive";
 import { formatDateLong } from "../../../../../utils/time";
 
@@ -16,6 +17,7 @@ const TABS = [
 
 const AdminClockInPage = () => {
   const [view, setView] = useState("clockin");
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   return (
     <div className="w-full">
@@ -34,27 +36,38 @@ const AdminClockInPage = () => {
           </p>
         </div>
 
-        <div
-          role="tablist"
-          className="flex flex-wrap gap-1 rounded-xl border border-white/10 bg-[#0d0d0d] p-1"
-        >
-          {TABS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={view === key}
-              onClick={() => setView(key)}
-              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-[12.5px] font-semibold transition ${
-                view === key
-                  ? "bg-[#c1121f] text-white shadow-lg"
-                  : "text-white/60 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <Icon size={14} />
-              {label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            role="tablist"
+            className="flex flex-wrap gap-1 rounded-xl border border-white/10 bg-[#0d0d0d] p-1"
+          >
+            {TABS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={view === key}
+                onClick={() => setView(key)}
+                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-[12.5px] font-semibold transition ${
+                  view === key
+                    ? "bg-[#c1121f] text-white shadow-lg"
+                    : "text-white/60 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setRulesOpen(true)}
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#0d0d0d] px-3.5 py-2.5 text-[12.5px] font-semibold text-white/80 transition hover:border-white/25 hover:text-white"
+          >
+            <SlidersHorizontal size={14} />
+            Attendance Rules
+          </button>
         </div>
       </div>
 
@@ -64,6 +77,10 @@ const AdminClockInPage = () => {
         <TeamLiveBoard mode="admin" embedded />
       ) : (
         <MyClockIn />
+      )}
+
+      {rulesOpen && (
+        <AttendanceRulesModal onClose={() => setRulesOpen(false)} />
       )}
     </div>
   );

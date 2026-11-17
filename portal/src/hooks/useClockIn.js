@@ -21,6 +21,8 @@ export default function useClockIn() {
     sessions: [],
     state: "out",
     hasPin: null,
+    rules: null,
+    hours: null,
   });
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,7 @@ export default function useClockIn() {
           ? [res.shift]
           : [];
 
-    // Backend purana ho to sessions nahi aate: banner dikhao
+    // An old backend does not send sessions: show the banner.
     const hasSessions = Array.isArray(res.sessions);
     setBackendOutdated(!hasSessions);
 
@@ -57,6 +59,8 @@ export default function useClockIn() {
       sessions: hasSessions ? res.sessions : [],
       state: res.state || fallbackState,
       hasPin: typeof res.hasPin === "boolean" ? res.hasPin : null,
+      rules: res.rules || null,
+      hours: res.hours || null,
     });
 
     if (res.serverTime) {
@@ -89,7 +93,7 @@ export default function useClockIn() {
 
     document.addEventListener("visibilitychange", onVisible);
 
-    // Refresh every minute so newly assigned tasks and shifts show up.
+    // Refresh every minute so tasks, shifts and hours stay current.
     const t = setInterval(() => load(true), 60 * 1000);
 
     return () => {
@@ -109,9 +113,12 @@ export default function useClockIn() {
           await load(true);
         }
 
+        // Lets other parts of the app (for example the meeting join guard)
+        // know that the attendance state just changed.
+        window.dispatchEvent(new Event("attendance:changed"));
+
         return { ok: true, message: res?.message };
       } catch (e) {
-        // apiClient error mein code response.data.code mein hota hai
         const code = e.response?.data?.code || e.data?.code;
 
         if (RELOAD_CODES.includes(code)) load(true);

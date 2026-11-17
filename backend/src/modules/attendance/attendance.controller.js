@@ -1,7 +1,9 @@
+
 import * as service from "./attendance.service.js";
 import * as sessionService from "./attendanceSessions.service.js";
 import * as teamService from "./teamAttendance.service.js";
 import * as taskService from "./attendanceTasks.service.js";
+import * as rulesService from "./attendanceRules.service.js";
 import { broadcastMemberUpdate } from "./attendanceTeam.service.js";
 import { emitToAll } from "../../sockets/index.js";
 
@@ -23,8 +25,6 @@ const handle = (fn) => async (req, res, next) => {
   }
 };
 
-// Adds the employee's tasks of today to an attendance snapshot.
-// A task problem must never break clock in / clock out.
 const withTasks = async (userId, data) => {
   try {
     const tasks = await taskService.getClockInTasks(userId);
@@ -37,8 +37,6 @@ const withTasks = async (userId, data) => {
   }
 };
 
-// Tells every open Clock In page (employees and admin) that someone
-// clocked in, clocked out or changed a break. Never throws.
 const announceChange = (userId) => {
   try {
     broadcastMemberUpdate(userId);
@@ -50,7 +48,6 @@ const announceChange = (userId) => {
 
 const afterChange = async (userId, data) => {
   announceChange(userId);
-
   return withTasks(userId, data);
 };
 
@@ -63,10 +60,7 @@ export const myRecent = handle((req) =>
 );
 
 export const myAbsenteeism = handle((req) =>
-  service.getMyAbsenteeism(
-    req.user._id,
-    req.query.month
-  )
+  service.getMyAbsenteeism(req.user._id, req.query.month)
 );
 
 export const clockIn = handle(async (req) =>
@@ -80,7 +74,6 @@ export const clockOut = handle(async (req) => {
   const userId = req.user._id;
   const taskIds = req.body?.completedTaskIds;
 
-  // The ticked tasks are written into the description of the clock out.
   const prepared = await taskService.prepareClockOutNote(
     userId,
     req.body?.description,
@@ -93,7 +86,6 @@ export const clockOut = handle(async (req) => {
     prepared.note
   );
 
-  // The PIN was correct and the clock out is saved: now update the tasks.
   await taskService.applyClockOutChecklist(
     userId,
     taskIds,
@@ -118,18 +110,11 @@ export const endBreak = handle(async (req) =>
 );
 
 export const completeShift = handle((req) =>
-  service.completeMyShift(
-    req.user._id,
-    req.params.shiftId
-  )
+  service.completeMyShift(req.user._id, req.params.shiftId)
 );
 
 export const setPin = handle((req) =>
-  service.setPin(
-    req.user._id,
-    req.body?.password,
-    req.body?.newPin
-  )
+  service.setPin(req.user._id, req.body?.password, req.body?.newPin)
 );
 
 export const requestPinReset = handle((req) =>
@@ -156,18 +141,13 @@ export const employeeAttendance = handle((req) =>
 );
 
 export const setEmployeePin = handle((req) =>
-  service.setEmployeePin(
-    req.params.userId,
-    req.body?.newPin
-  )
+  service.setEmployeePin(req.params.userId, req.body?.newPin)
 );
 
-// Live clock-in board of the whole team (admins and employees).
 export const teamLive = handle((req) =>
   teamService.getTeamLive(req.user, req.query)
 );
 
-// Older team card (/team/today): it needs `workedSeconds` on every member.
 export const teamToday = handle(async (req) => {
   const data = await teamService.getTeamLive(req.user, req.query);
 
@@ -179,3 +159,23 @@ export const teamToday = handle(async (req) => {
     })),
   };
 });
+
+export const myHours = handle((req) =>
+  rulesService.getMyHours(req.user._id)
+);
+
+export const getRules = handle(() =>
+  rulesService.getRules()
+);
+
+export const updateRules = handle((req) =>
+  rulesService.updateRules(req.body)
+);
+
+export const listSchedules = handle(() =>
+  rulesService.listSchedules()
+);
+
+export const setSchedule = handle((req) =>
+  rulesService.setSchedule(req.params.userId, req.body)
+);

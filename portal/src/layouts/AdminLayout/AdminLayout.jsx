@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import MeetingJoinGuard from "@/components/MeetingJoinGuard/MeetingJoinGuard.jsx";
 import { getNavigationByRole } from "@/constants/navigation";
 import { useAuth } from "@/context";
 import useHideOnScroll from "@/hooks/useHideOnScroll";
@@ -57,6 +58,9 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Meetings can only be joined while clocked in. */}
+      <MeetingJoinGuard clockInPath="/admin/clock-in" />
     </div>
   );
 }

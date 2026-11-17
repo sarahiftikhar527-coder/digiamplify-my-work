@@ -673,3 +673,29 @@ model ChatReaction {
   @@unique([messageId, userId, emoji])
   @@map("chat_reactions")
 }
+
+
+
+model AttendanceRule {
+  id                 String   @id @default("default")
+  teaMinutes         Int      @default(15)
+  lunchMinutes       Int      @default(30)
+  prayerMinutes      Int      @default(15)
+  otherMinutes       Int      @default(15)
+  dailyTargetMinutes Int      @default(480)
+  workDays           String   @default("1,2,3,4,5") @db.VarChar(20)
+  updatedAt          DateTime @updatedAt
+
+  @@map("attendance_rules")
+}
+
+model EmployeeSchedule {
+  userId             String   @id
+  startTime          String   @default("") @db.VarChar(10)
+  endTime            String   @default("") @db.VarChar(10)
+  dailyTargetMinutes Int?
+  workDays           String   @default("1,2,3,4,5") @db.VarChar(20)
+  updatedAt          DateTime @updatedAt
+
+  @@map("employee_schedules")
+}

@@ -22,6 +22,7 @@ const TodayStatusCard = ({ status, record, totals, state = "out", loading }) => 
   const muted = "font-medium tabular-nums text-white/50";
   const current = STATE[state] || STATE.out;
   const hasData = Boolean(clockIn);
+  const over = totals?.breakOverMinutes ?? 0;
 
   return (
     <Card icon={CalendarCheck} title="Today's Status">
@@ -50,6 +51,19 @@ const TodayStatusCard = ({ status, record, totals, state = "out", loading }) => 
             {hasData
               ? `${totals?.breakCount ?? 0} · ${formatDuration(totals?.breakMinutes ?? 0)}`
               : "--"}
+          </span>
+        </Row>
+        <Row label="Extra Break Time">
+          <span
+            className={
+              over > 0
+                ? "font-semibold tabular-nums text-red-400"
+                : hasData
+                  ? "font-semibold tabular-nums text-white"
+                  : muted
+            }
+          >
+            {hasData ? formatDuration(over) : "--"}
           </span>
         </Row>
         <Row label="Worked Hours" last>

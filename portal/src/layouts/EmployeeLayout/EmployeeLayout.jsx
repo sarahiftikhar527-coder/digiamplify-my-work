@@ -2,6 +2,7 @@ import { useContext, useMemo, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import MeetingJoinGuard from "@/components/MeetingJoinGuard/MeetingJoinGuard.jsx";
 import { getEmployeeNavigation } from "@/constants";
 import { AuthContext } from "@/context";
 import useHideOnScroll from "@/hooks/useHideOnScroll";
@@ -84,6 +85,9 @@ const EmployeeLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Meetings can only be joined while clocked in. */}
+      <MeetingJoinGuard clockInPath="/clock-in" />
     </div>
   );
 };

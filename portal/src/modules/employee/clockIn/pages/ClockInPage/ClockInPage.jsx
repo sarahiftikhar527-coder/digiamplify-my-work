@@ -8,6 +8,7 @@ import {
   BreakCard,
   ClockOutReport,
   ForgotPinModal,
+  HoursCard,
   PinPad,
   SessionsCard,
   TaskAssignToday,
@@ -69,6 +70,20 @@ const ClockInPage = () => {
     return result;
   };
 
+  const breakCard = state !== "out" && (
+    <BreakCard
+      state={state}
+      openBreak={openBreak}
+      now={now}
+      busy={c.breakBusy}
+      error={c.breakError}
+      rules={c.rules}
+      overMinutes={totals.breakOverMinutes}
+      onStart={c.startBreak}
+      onEnd={c.endBreak}
+    />
+  );
+
   return (
     <div className="w-full">
 
@@ -97,10 +112,19 @@ const ClockInPage = () => {
         </div>
       )}
 
+      {/* CLOCK-IN REMINDER FOR MEETINGS */}
+      {!error && !loading && state !== "in" && (
+        <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[12px] text-white/70">
+          {onBreak
+            ? "You are on a break. End your break before you join a meeting."
+            : "You must be clocked in to join meetings. Meeting time counts toward your working hours."}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
 
-        {/* LEFT SIDE */}
-        <div className="min-w-0 lg:sticky lg:top-4">
+        {/* LEFT SIDE: stays fixed while the right side scrolls */}
+        <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
 
           <PinPad
             key={`${mode}-${onBreak}`}
@@ -117,10 +141,20 @@ const ClockInPage = () => {
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="mt-5 flex min-w-0 flex-col gap-4">
+        <div className="mt-5 flex min-w-0 flex-col gap-4 lg:mt-0">
+
+          {/* While on a break the break card comes first so the timer and warning are seen */}
+          {onBreak && breakCard}
 
           <AssignedShiftCard
             shift={shifts}
+            loading={loading}
+          />
+
+          <HoursCard
+            hours={c.hours}
+            state={state}
+            now={now}
             loading={loading}
           />
 
@@ -130,18 +164,7 @@ const ClockInPage = () => {
             now={now}
           />
 
-          {/* BREAK (only while clocked in) */}
-          {state !== "out" && (
-            <BreakCard
-              state={state}
-              openBreak={openBreak}
-              now={now}
-              busy={c.breakBusy}
-              error={c.breakError}
-              onStart={c.startBreak}
-              onEnd={c.endBreak}
-            />
-          )}
+          {!onBreak && breakCard}
 
           <TodayStatusCard
             status={status}

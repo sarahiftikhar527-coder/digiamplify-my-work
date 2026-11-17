@@ -39,6 +39,25 @@ export const getSessionBreakMinutes = (session, now = new Date()) =>
     0
   );
 
+// Seconds of a single break that went beyond its fixed allowance.
+export const getBreakOverSeconds = (item, now = new Date()) => {
+  if (!item) return 0;
+
+  const elapsed = item.endAt
+    ? (Number(item.minutes) || 0) * 60
+    : diffSeconds(item.startAt, now);
+
+  return Math.max(0, elapsed - (Number(item.allowedMinutes) || 0) * 60);
+};
+
+export const getSessionBreakOverMinutes = (session, now = new Date()) =>
+  Math.round(
+    (session?.breaks || []).reduce(
+      (sum, item) => sum + getBreakOverSeconds(item, now),
+      0
+    ) / 60
+  );
+
 export const getSessionWorkedMinutes = (session, now = new Date()) => {
   if (!session) return 0;
 
@@ -61,13 +80,17 @@ export const getDayTotals = (sessions = [], now = new Date()) => ({
     (sum, item) => sum + getSessionBreakMinutes(item, now),
     0
   ),
+  breakOverMinutes: sessions.reduce(
+    (sum, item) => sum + getSessionBreakOverMinutes(item, now),
+    0
+  ),
   workedMinutes: sessions.reduce(
     (sum, item) => sum + getSessionWorkedMinutes(item, now),
     0
   ),
 });
 
-// Live timer ke liye (seconds tak), break ka time nikal kar
+// Live timer (down to seconds), break time removed.
 export const getLiveWorkedSeconds = (sessions = [], now = new Date()) =>
   sessions.reduce((sum, session) => {
     if (session.clockOutAt) {

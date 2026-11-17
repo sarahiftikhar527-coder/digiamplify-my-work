@@ -5,6 +5,9 @@ export const clockInService = {
 
   getRecent: () => unwrap(apiClient.get("/attendance/me/recent")),
 
+  // Day / week / month hours of the signed-in person.
+  getHours: () => unwrap(apiClient.get("/attendance/me/hours")),
+
   // Today's status of the whole team (everyone can read it).
   getTeamToday: () => unwrap(apiClient.get("/attendance/team/today")),
 
@@ -44,4 +47,15 @@ export const clockInService = {
         newPin,
       })
     ),
+
+  // Admin: break limits, default hours and employee schedules.
+  getRules: () => unwrap(apiClient.get("/attendance/rules")),
+
+  updateRules: (body) =>
+    unwrap(apiClient.put("/attendance/admin/rules", body)),
+
+  getSchedules: () => unwrap(apiClient.get("/attendance/admin/schedules")),
+
+  saveSchedule: (userId, body) =>
+    unwrap(apiClient.put(`/attendance/admin/employee/${userId}/schedule`, body)),
 };

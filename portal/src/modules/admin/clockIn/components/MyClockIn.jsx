@@ -8,6 +8,7 @@ import {
   BreakCard,
   ClockOutReport,
   ForgotPinModal,
+  HoursCard,
   PinPad,
   SessionsCard,
   TaskAssignToday,
@@ -24,8 +25,9 @@ import {
   getOpenBreak,
 } from "../../../../utils/attendanceSessions";
 
-// The admin's own clock in: same screen as the employee Clock In page,
-// followed by the live attendance of the whole team.
+// The admin's own clock in: the same screen as the employee Clock In page
+// (fixed PIN pad on the left, scrolling cards on the right), followed by
+// the live attendance of the whole team.
 const MyClockIn = () => {
   const c = useClockIn();
   const now = useNow(c.offset);
@@ -96,6 +98,20 @@ const MyClockIn = () => {
     }
   };
 
+  const breakCard = state !== "out" && (
+    <BreakCard
+      state={state}
+      openBreak={openBreak}
+      now={now}
+      busy={c.breakBusy}
+      error={c.breakError}
+      rules={c.rules}
+      overMinutes={totals.breakOverMinutes}
+      onStart={c.startBreak}
+      onEnd={c.endBreak}
+    />
+  );
+
   return (
     <div className="w-full">
       {/* ERROR */}
@@ -122,6 +138,15 @@ const MyClockIn = () => {
         </div>
       )}
 
+      {/* CLOCK-IN REMINDER FOR MEETINGS */}
+      {!needsPin && !error && !loading && state !== "in" && (
+        <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[12px] text-white/70">
+          {onBreak
+            ? "You are on a break. End your break before you join a meeting."
+            : "You must be clocked in to join meetings. Meeting time counts toward your working hours."}
+        </div>
+      )}
+
       {needsPin ? (
         <div className="mx-auto max-w-md">
           <PinPanel
@@ -132,8 +157,8 @@ const MyClockIn = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          {/* LEFT SIDE */}
-          <div className="min-w-0 lg:sticky lg:top-4">
+          {/* LEFT SIDE: fixed below the top bar while the right side scrolls */}
+          <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
             <PinPad
               key={`${mode}-${onBreak}`}
               mode={mode}
@@ -149,21 +174,20 @@ const MyClockIn = () => {
 
           {/* RIGHT SIDE */}
           <div className="mt-5 flex min-w-0 flex-col gap-4 lg:mt-0">
+            {onBreak && breakCard}
+
             <AssignedShiftCard shift={shifts} loading={loading} />
+
+            <HoursCard
+              hours={c.hours}
+              state={state}
+              now={now}
+              loading={loading}
+            />
 
             <WorkTimerCard sessions={sessions} state={state} now={now} />
 
-            {state !== "out" && (
-              <BreakCard
-                state={state}
-                openBreak={openBreak}
-                now={now}
-                busy={c.breakBusy}
-                error={c.breakError}
-                onStart={c.startBreak}
-                onEnd={c.endBreak}
-              />
-            )}
+            {!onBreak && breakCard}
 
             <TodayStatusCard
               status={status}

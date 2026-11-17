@@ -7,23 +7,15 @@ import {
   getEmployeeAttendance as getLegacyEmployeeAttendance,
   todayStr,
 } from "./attendance.service.js";
-
-const DEFAULT_TIME_ZONE = "Asia/Karachi";
-const BREAK_TYPES = ["tea", "lunch", "prayer", "other"];
+import {
+  BREAK_TYPES,
+  getHoursForUsers,
+  getRules,
+  normalizeTimeZone,
+} from "./attendanceRules.service.js";
 
 const fail = (status, message, code = "ATTENDANCE_ERROR") =>
   Object.assign(new Error(message), { status, statusCode: status, code });
-
-function normalizeTimeZone(timeZone) {
-  if (!timeZone || typeof timeZone !== "string") return DEFAULT_TIME_ZONE;
-
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone });
-    return timeZone;
-  } catch {
-    return DEFAULT_TIME_ZONE;
-  }
-}
 
 function normalizeBreakType(type) {
   const value = String(type ?? "").trim().toLowerCase();
@@ -35,6 +27,9 @@ const diffMinutes = (from, to) =>
     0,
     Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60000)
   );
+
+const allowanceFor = (allowances, type) =>
+  allowances?.[type] ?? allowances?.other ?? 0;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,27 +78,37 @@ async function verifyPin(userId, pin) {
 
 /*
 |--------------------------------------------------------------------------
-| Serializers
+| Serializers (breaks carry their fixed allowance and any extra time)
 |--------------------------------------------------------------------------
 */
 
-function serializeBreak(item, now) {
+function serializeBreak(item, now, allowances) {
+  const minutes = item.endAt ? item.minutes : diffMinutes(item.startAt, now);
+  const type = item.type || "other";
+  const allowedMinutes = allowanceFor(allowances, type);
+
   return {
     id: item.id,
-    type: item.type || "other",
+    type,
     startAt: item.startAt,
     endAt: item.endAt || null,
-    minutes: item.endAt ? item.minutes : diffMinutes(item.startAt, now),
+    minutes,
+    allowedMinutes,
+    overMinutes: Math.max(0, minutes - allowedMinutes),
     open: !item.endAt,
   };
 }
 
-function serializeSession(session, now) {
+function serializeSession(session, now, allowances) {
   const breaks = (session.breaks || []).map((item) =>
-    serializeBreak(item, now)
+    serializeBreak(item, now, allowances)
   );
 
   const breakMinutes = breaks.reduce((sum, item) => sum + item.minutes, 0);
+  const breakOverMinutes = breaks.reduce(
+    (sum, item) => sum + item.overMinutes,
+    0
+  );
 
   const workedMinutes = session.clockOutAt
     ? session.workedMinutes
@@ -116,6 +121,7 @@ function serializeSession(session, now) {
     clockOutAt: session.clockOutAt || null,
     workedMinutes,
     breakMinutes,
+    breakOverMinutes,
     description: session.description || "",
     open: !session.clockOutAt,
     onBreak: breaks.some((item) => item.open),
@@ -132,6 +138,10 @@ function summarize(sessions) {
     clockOuts: closed.length,
     breakCount: sessions.reduce((sum, item) => sum + item.breaks.length, 0),
     breakMinutes: sessions.reduce((sum, item) => sum + item.breakMinutes, 0),
+    breakOverMinutes: sessions.reduce(
+      (sum, item) => sum + (item.breakOverMinutes || 0),
+      0
+    ),
     workedMinutes: sessions.reduce((sum, item) => sum + item.workedMinutes, 0),
   };
 
@@ -151,7 +161,7 @@ function summarize(sessions) {
 |--------------------------------------------------------------------------
 */
 
-// Aaj purane system mein jo clock in ho chuka ho, usay naye system mein le aao
+// A clock in made today in the old system is brought into the new one.
 async function ensureLegacySession(userId, dateKey) {
   const count = await prisma.attendanceSession.count({
     where: { userId, dateKey },
@@ -177,7 +187,7 @@ async function ensureLegacySession(userId, dateKey) {
   });
 }
 
-async function loadDay(userId, dateKey, now = new Date()) {
+async function loadDay(userId, dateKey, now, allowances) {
   await ensureLegacySession(userId, dateKey);
 
   const rows = await prisma.attendanceSession.findMany({
@@ -189,7 +199,7 @@ async function loadDay(userId, dateKey, now = new Date()) {
     orderBy: { clockInAt: "asc" },
   });
 
-  const sessions = rows.map((row) => serializeSession(row, now));
+  const sessions = rows.map((row) => serializeSession(row, now, allowances));
 
   return { sessions, ...summarize(sessions) };
 }
@@ -197,7 +207,21 @@ async function loadDay(userId, dateKey, now = new Date()) {
 async function todaySnapshot(userId, message) {
   const base = await getLegacyToday(userId);
   const now = new Date(base.serverTime);
-  const day = await loadDay(String(userId), base.dateKey, now);
+  const id = String(userId);
+
+  const rules = await getRules();
+  const day = await loadDay(id, base.dateKey, now, rules.breakAllowances);
+
+  const owner = await prisma.user.findUnique({
+    where: { id },
+    select: { timeZone: true },
+  });
+
+  const hoursMap = await getHoursForUsers(
+    [{ id, timeZone: owner?.timeZone }],
+    now,
+    rules
+  );
 
   const lastClosed = [...day.sessions].reverse().find((item) => !item.open);
 
@@ -207,6 +231,11 @@ async function todaySnapshot(userId, message) {
     state: day.state,
     sessions: day.sessions,
     totals: day.totals,
+    rules: {
+      breakAllowances: rules.breakAllowances,
+      dailyTargetMinutes: rules.dailyTargetMinutes,
+    },
+    hours: hoursMap.get(id) || null,
     record: day.firstClockInAt
       ? {
           id: `day-${base.dateKey}`,
@@ -215,6 +244,7 @@ async function todaySnapshot(userId, message) {
           clockOutAt: day.lastClockOutAt,
           workedMinutes: day.totals.workedMinutes,
           breakMinutes: day.totals.breakMinutes,
+          breakOverMinutes: day.totals.breakOverMinutes,
           description: lastClosed?.description || "",
           status: "present",
         }
@@ -319,17 +349,24 @@ export async function startBreak(userId, type) {
     throw fail(409, "You are already on a break.", "ALREADY_ON_BREAK");
   }
 
+  const breakType = normalizeBreakType(type);
+  const rules = await getRules();
+  const allowed = allowanceFor(rules.breakAllowances, breakType);
+
   await prisma.attendanceBreak.create({
     data: {
       sessionId: session.id,
       userId: String(userId),
       dateKey: session.dateKey,
-      type: normalizeBreakType(type),
+      type: breakType,
       startAt: new Date(),
     },
   });
 
-  return todaySnapshot(userId, "Break started.");
+  return todaySnapshot(
+    userId,
+    `Break started. You have ${allowed} minute${allowed === 1 ? "" : "s"}.`
+  );
 }
 
 export async function endBreak(userId) {
@@ -350,13 +387,23 @@ export async function endBreak(userId) {
   }
 
   const endAt = new Date();
+  const minutes = diffMinutes(openBreak.startAt, endAt);
 
   await prisma.attendanceBreak.update({
     where: { id: openBreak.id },
-    data: { endAt, minutes: diffMinutes(openBreak.startAt, endAt) },
+    data: { endAt, minutes },
   });
 
-  return todaySnapshot(userId, "Break ended. Welcome back!");
+  const rules = await getRules();
+  const allowed = allowanceFor(rules.breakAllowances, openBreak.type || "other");
+  const over = Math.max(0, minutes - allowed);
+
+  return todaySnapshot(
+    userId,
+    over > 0
+      ? `Break ended. You were ${over} minute${over === 1 ? "" : "s"} over your ${allowed}-minute limit.`
+      : "Break ended. Welcome back!"
+  );
 }
 
 /*
@@ -395,7 +442,7 @@ export async function clockOut(userId, pin, description = "") {
 
   const now = new Date();
 
-  // Break chal rahi ho to pehle usko band karo
+  // If a break is still running, close it first.
   const openBreak = await prisma.attendanceBreak.findFirst({
     where: { sessionId: session.id, endAt: null },
   });
@@ -428,7 +475,7 @@ export async function clockOut(userId, pin, description = "") {
     },
   });
 
-  // Din ka summary record (purani reports isi se chalti hain)
+  // Day summary record (older reports still read from it).
   const daySessions = await prisma.attendanceSession.findMany({
     where: { userId: id, dateKey: session.dateKey },
     orderBy: { clockInAt: "asc" },
@@ -490,6 +537,7 @@ function legacySession(row) {
     clockOutAt: row.clockOutAt || null,
     workedMinutes: row.workedMinutes || 0,
     breakMinutes: 0,
+    breakOverMinutes: 0,
     description: row.description || "",
     open: !row.clockOutAt,
     onBreak: false,
@@ -499,6 +547,7 @@ function legacySession(row) {
 
 export async function getAdminOverview(query = {}) {
   const base = await getLegacyOverview(query);
+  const rules = await getRules();
 
   const userIds = base.rows.map((row) => row.userId);
   const now = new Date();
@@ -515,7 +564,7 @@ export async function getAdminOverview(query = {}) {
 
   for (const session of dbSessions) {
     const list = byUser.get(session.userId) || [];
-    list.push(serializeSession(session, now));
+    list.push(serializeSession(session, now, rules.breakAllowances));
     byUser.set(session.userId, list);
   }
 
@@ -545,6 +594,7 @@ export async function getAdminOverview(query = {}) {
       clockOutCount: day.totals.clockOuts,
       breakCount: day.totals.breakCount,
       breakMinutes: day.totals.breakMinutes,
+      breakOverMinutes: day.totals.breakOverMinutes,
       state: day.state,
       sessions,
     };
@@ -565,6 +615,7 @@ export async function getAdminOverview(query = {}) {
 
 export async function getEmployeeAttendance(userId) {
   const base = await getLegacyEmployeeAttendance(userId);
+  const rules = await getRules();
   const now = new Date();
 
   const dateKeys = base.records.map((record) => record.dateKey);
@@ -581,7 +632,7 @@ export async function getEmployeeAttendance(userId) {
 
   for (const session of dbSessions) {
     const list = byDate.get(session.dateKey) || [];
-    list.push(serializeSession(session, now));
+    list.push(serializeSession(session, now, rules.breakAllowances));
     byDate.set(session.dateKey, list);
   }
 
@@ -597,6 +648,7 @@ export async function getEmployeeAttendance(userId) {
         clockOutCount: day.totals.clockOuts,
         breakCount: day.totals.breakCount,
         breakMinutes: day.totals.breakMinutes,
+        breakOverMinutes: day.totals.breakOverMinutes,
         workedMinutes: sessions.length
           ? day.totals.workedMinutes
           : record.workedMinutes,
