@@ -250,7 +250,7 @@ const AttendanceOverview = ({
           {selectedInfo.rec?.note && <p className="mt-1 text-gray-400">{selectedInfo.rec.note}</p>}
         </div>
       ) : (
-        <p className="mt-3 text-center text-[10px] text-gray-500">Kisi bhi din par click karo details ke liye</p>
+        <p className="mt-3 text-center text-[10px] text-gray-500">Click on any day to view its details.</p>
       )}
 
       {/* Legend with counts */}

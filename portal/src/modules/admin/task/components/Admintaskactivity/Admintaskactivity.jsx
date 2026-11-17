@@ -34,7 +34,10 @@ const fmtDay = (value) => {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
 };
 
 const STATUS_STYLE = {
@@ -45,7 +48,7 @@ const STATUS_STYLE = {
 };
 
 const STATUS_LABEL = {
-  pending: "To Do",
+  pending: "Open",
   "in-progress": "In Progress",
   review: "In Review",
   approved: "Done",
@@ -69,7 +72,6 @@ function Th({ children }) {
 }
 
 export default function AdminTaskActivity({ employees = [], onNotice }) {
-  // The Excel report is for admins only.
   const { user: currentUser } = useAuth();
 
   const isAdminUser =
@@ -140,7 +142,6 @@ export default function AdminTaskActivity({ employees = [], onNotice }) {
 
   return (
     <div className="space-y-5">
-      {/* Excel download: admins only */}
       {isAdminUser && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0d0d] px-4 py-3">
           <div>
@@ -213,7 +214,6 @@ export default function AdminTaskActivity({ employees = [], onNotice }) {
         />
       </div>
 
-      {/* Fixed daily tasks */}
       <section className="rounded-xl border border-white/10 bg-[#0d0d0d]">
         <div className="border-b border-white/10 px-4 py-3">
           <h2 className="text-sm font-semibold text-white">
@@ -330,7 +330,6 @@ export default function AdminTaskActivity({ employees = [], onNotice }) {
         )}
       </section>
 
-      {/* Extra tasks */}
       <section className="rounded-xl border border-white/10 bg-[#0d0d0d]">
         <div className="border-b border-white/10 px-4 py-3">
           <h2 className="text-sm font-semibold text-white">Extra tasks</h2>

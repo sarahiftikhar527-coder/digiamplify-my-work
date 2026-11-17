@@ -2,12 +2,14 @@
 import AvatarStack from "../Avatarstack/Avatarstack";
 import { CalendarIcon, EyeIcon, TrashIcon } from "../Icons/Icons";
 import { PRIORITY_STYLES, formatDate } from "../../Constants";
+import TaskChatButton from "@/components/TaskChat/TaskChat.jsx";
 
 const getProgress = (task) => {
   const status = String(task?.status || "todo").toLowerCase();
 
   if (["completed", "done", "approved"].includes(status)) return 100;
   if (["in-progress", "in progress", "inprogress"].includes(status)) return 50;
+  if (["review", "under-review", "under review"].includes(status)) return 75;
 
   return 0;
 };
@@ -32,6 +34,7 @@ export function ProgressRing({ value = 0, size = 44 }) {
           stroke="#2a2a2a"
           strokeWidth="4"
         />
+
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -62,6 +65,7 @@ export default function TaskCard({
   onDragStart,
 }) {
   const progress = getProgress(task);
+
   const priorityClass =
     PRIORITY_STYLES?.[task.priority] ||
     "border-neutral-700 text-neutral-300";
@@ -102,23 +106,35 @@ export default function TaskCard({
       </p>
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span
-            className={`rounded border px-3 py-0.5 text-[10px] ${priorityClass}`}
+            className={`shrink-0 rounded border px-3 py-0.5 text-[10px] ${priorityClass}`}
           >
             {task.priority || "Medium"}
           </span>
 
-          <span className="flex items-center gap-1 text-[11px] text-neutral-300">
+          <span
+            className="flex min-w-0 items-center gap-1 text-[10px] text-neutral-300"
+            title={`Assigned ${formatDate(task.createdAt)} → Due ${formatDate(task.dueDate)}`}
+          >
             <CalendarIcon width={12} height={12} />
-            {formatDate(task.dueDate)}
+            <span className="truncate">
+              {formatDate(task.createdAt)} → {formatDate(task.dueDate)}
+            </span>
           </span>
         </div>
 
         <AvatarStack users={assignees} />
       </div>
 
-      <div className="mt-2 flex justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+      <div className="mt-2 flex justify-end gap-1">
+        <TaskChatButton
+          taskId={task.id}
+          taskTitle={task.title}
+          size={14}
+          className="rounded p-1.5 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+        />
+
         <button
           type="button"
           aria-label="View task details"

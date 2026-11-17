@@ -4,10 +4,10 @@ import { PlusIcon, SearchIcon } from "../Icons/Icons";
 import { formatDateTime } from "../../Constants";
 
 const BOARD_STATUSES = [
-  { key: "todo", label: "To Do" },
+  { key: "todo", label: "Pending" },
   { key: "in-progress", label: "In Progress" },
-  { key: "review", label: "Review" },
-  { key: "approved", label: "Approve" },
+  { key: "review", label: "In Review" },
+  { key: "approved", label: "Completed" },
 ];
 
 const normalizeStatus = (status) => {

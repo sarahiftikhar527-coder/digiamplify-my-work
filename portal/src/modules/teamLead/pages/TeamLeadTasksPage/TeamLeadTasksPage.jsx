@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import apiClient from "@/services/api/apiClient.js";
 import { useAuth } from "@/context/AuthContext/AuthContext/AuthContext.jsx";
 import { getPosition, getPositionLabel } from "@/constants/positions";
+import TaskChatButton from "@/components/TaskChat/TaskChat.jsx";
 
 /*
 |--------------------------------------------------------------------------
@@ -9,7 +10,7 @@ import { getPosition, getPositionLabel } from "@/constants/positions";
 |--------------------------------------------------------------------------
 | - Assign one-time or fixed daily tasks to everyone in your hierarchy
 | - Track progress on a board, a list or a per-member team view
-| - Review work (approve or request changes) and comment on every task
+| - Review work (approve or disapprove) and chat on every task
 | - Edit, reassign, pause or delete the tasks you manage
 | - Export the current view to CSV
 |
@@ -29,14 +30,14 @@ const PRIORITY_STYLES = {
 };
 
 const COLUMNS = [
-  { id: "todo", label: "To Do", dot: "bg-gray-400" },
+  { id: "todo", label: "Open", dot: "bg-gray-400" },
   { id: "in-progress", label: "In Progress", dot: "bg-amber-400" },
   { id: "review", label: "In Review", dot: "bg-sky-400" },
   { id: "done", label: "Completed", dot: "bg-emerald-400" },
 ];
 
 const STATUS_OPTIONS = [
-  { value: "pending", label: "To Do" },
+  { value: "pending", label: "Open" },
   { value: "in-progress", label: "In Progress" },
   { value: "review", label: "In Review" },
   { value: "approved", label: "Completed" },
@@ -86,6 +87,9 @@ const GHOST_BUTTON =
 const PRIMARY_BUTTON =
   "rounded-lg bg-[#c1121f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#a50f1a] disabled:cursor-not-allowed disabled:opacity-50";
 
+const CHAT_BUTTON_CLASS =
+  "rounded-md p-1.5 text-gray-400 transition hover:bg-white/10 hover:text-white";
+
 /* ------------------------------ Helpers ------------------------------ */
 
 const cx = (...parts) => parts.filter(Boolean).join(" ");
@@ -109,6 +113,19 @@ const formatDate = (value) => {
         day: "numeric",
         month: "short",
         year: "numeric",
+      })
+    : "—";
+};
+
+const formatDateTime = (value) => {
+  const date = parseDate(value);
+
+  return date
+    ? date.toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
       })
     : "—";
 };
@@ -188,6 +205,11 @@ const normalizeTask = (raw) => {
     assignedByName: assigner?.name || "",
     commentCount: Number(raw.commentCount ?? raw._count?.comments ?? 0) || 0,
     timeSpentMinutes: Number(raw.timeSpentMinutes) || 0,
+    submissionNote: raw.submissionNote || "",
+    submittedAt: raw.submittedAt || "",
+    reviewNote: raw.reviewNote || "",
+    reviewedAt: raw.reviewedAt || "",
+    reviewedByName: raw.reviewedByName || "",
     createdAt: raw.createdAt || "",
     completedAt: raw.completedAt || "",
   };
@@ -250,7 +272,7 @@ const exportTasksCsv = (tasks) => {
     "Status",
     "Due date",
     "Assigned by",
-    "Created",
+    "Assigned on",
     "Completed",
     "Comments",
   ];
@@ -441,9 +463,18 @@ function TaskCard({ task, today, onOpen, onDragStart }) {
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <DueLabel task={task} today={today} />
-        <span className="text-xs text-gray-500">
-          {task.commentCount} comment{task.commentCount === 1 ? "" : "s"}
+        <span className="flex flex-col gap-0.5 text-xs text-gray-500">
+          <span>Assigned {formatDate(task.createdAt)}</span>
+          <DueLabel task={task} today={today} />
+        </span>
+        <span className="flex items-center gap-1 text-xs text-gray-500">
+          {task.commentCount}
+          <TaskChatButton
+            taskId={task.id}
+            taskTitle={task.title}
+            size={14}
+            className={CHAT_BUTTON_CLASS}
+          />
         </span>
       </div>
     </div>
@@ -836,6 +867,7 @@ function TaskDrawer({
   busy,
   onClose,
   onStatus,
+  onReview,
   onSave,
   onDelete,
   onCountChange,
@@ -895,6 +927,19 @@ function TaskDrawer({
     };
   }, [task.id, onCountChange]);
 
+  // Quietly reloads the chat (used after a review decision adds a message).
+  const reloadComments = useCallback(async () => {
+    try {
+      const response = await apiClient.get(`/tasks/${task.id}/comments`);
+      const list = Array.isArray(response?.data?.comments) ? response.data.comments : [];
+
+      setComments(list);
+      onCountChange(task.id, list.length);
+    } catch {
+      /* the chat will refresh on the next open */
+    }
+  }, [task.id, onCountChange]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
   }, [comments.length]);
@@ -943,7 +988,11 @@ function TaskDrawer({
     }
   };
 
-  const handleApprove = () => onStatus(task, "approved");
+  const handleApprove = async () => {
+    const ok = await onReview(task, "approve", "");
+
+    if (ok) await reloadComments();
+  };
 
   const handleRequestChanges = async () => {
     const note = changeNote.trim();
@@ -956,16 +1005,13 @@ function TaskDrawer({
     setPosting(true);
 
     try {
-      await sendComment(`Changes requested: ${note}`);
+      const ok = await onReview(task, "disapprove", note);
 
-      const moved = await onStatus(task, "in-progress");
-
-      if (moved) {
+      if (ok) {
         setChangesOpen(false);
         setChangeNote("");
+        await reloadComments();
       }
-    } catch (error) {
-      flash("error", errorMessage(error, "Could not request changes."));
     } finally {
       setPosting(false);
     }
@@ -1051,14 +1097,22 @@ function TaskDrawer({
               </>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close task details"
-            className="rounded-lg px-2 py-1 text-xl leading-none text-gray-400 hover:text-white"
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-1">
+            <TaskChatButton
+              taskId={task.id}
+              taskTitle={task.title}
+              size={18}
+              className={CHAT_BUTTON_CLASS}
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close task details"
+              className="rounded-lg px-2 py-1 text-xl leading-none text-gray-400 hover:text-white"
+            >
+              ×
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
@@ -1159,16 +1213,16 @@ function TaskDrawer({
                   <p className="mt-1.5 text-white">{task.assignedByName || "—"}</p>
                 </div>
                 <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Assigned on</p>
+                  <p className="mt-1.5 text-white">{formatDate(task.createdAt)}</p>
+                </div>
+                <div>
                   <p className="text-xs uppercase tracking-wide text-gray-500">
                     {isDaily ? "Schedule" : "Due date"}
                   </p>
                   <p className="mt-1.5">
                     <DueLabel task={task} today={today} />
                   </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Created</p>
-                  <p className="mt-1.5 text-white">{formatDate(task.createdAt)}</p>
                 </div>
                 {task.completedAt ? (
                   <div>
@@ -1195,8 +1249,18 @@ function TaskDrawer({
                 <section className="rounded-xl border border-sky-900/60 bg-sky-950/30 p-4">
                   <p className="text-sm font-semibold text-sky-200">Waiting for your review</p>
                   <p className="mt-1 text-xs text-sky-300/80">
-                    Approve the work, or send it back with clear feedback.
+                    Submitted {formatDateTime(task.submittedAt)}
+                    {task.timeSpentMinutes ? ` · Time spent ${formatMinutes(task.timeSpentMinutes)}` : ""}
                   </p>
+
+                  <div className="mt-3 rounded-lg border border-sky-900/60 bg-black/30 p-3">
+                    <p className="text-[11px] uppercase tracking-wide text-sky-300/70">
+                      Work description from the employee
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-200">
+                      {task.submissionNote || "No description was added."}
+                    </p>
+                  </div>
 
                   {changesOpen ? (
                     <div className="mt-3 space-y-2">
@@ -1231,11 +1295,43 @@ function TaskDrawer({
                       <button type="button" onClick={handleApprove} disabled={busy} className={PRIMARY_BUTTON}>
                         Approve
                       </button>
-                      <button type="button" onClick={() => setChangesOpen(true)} className={GHOST_BUTTON}>
-                        Request changes
+                      <button type="button" onClick={() => setChangesOpen(true)} disabled={busy} className={GHOST_BUTTON}>
+                        Disapprove
                       </button>
                     </div>
                   )}
+                </section>
+              ) : null}
+
+              {!isDaily && task.group === "done" && task.submissionNote ? (
+                <section className="rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-4">
+                  <p className="text-sm font-semibold text-emerald-300">Approved and completed</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {task.reviewedByName ? `Approved by ${task.reviewedByName} · ` : ""}
+                    {formatDateTime(task.reviewedAt || task.completedAt)}
+                  </p>
+                  <p className="mt-3 text-[11px] uppercase tracking-wide text-gray-500">
+                    Work description
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-200">
+                    {task.submissionNote}
+                  </p>
+                  {task.reviewNote ? (
+                    <p className="mt-2 text-xs text-gray-400">Reviewer note: {task.reviewNote}</p>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {!isDaily && task.group === "in-progress" && task.reviewNote ? (
+                <section className="rounded-xl border border-red-900/60 bg-red-950/20 p-4">
+                  <p className="text-sm font-semibold text-red-300">Changes requested</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {task.reviewedByName ? `By ${task.reviewedByName} · ` : ""}
+                    {formatDateTime(task.reviewedAt)}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-200">
+                    {task.reviewNote}
+                  </p>
                 </section>
               ) : null}
 
@@ -1282,19 +1378,19 @@ function TaskDrawer({
 
           <section>
             <h3 className="text-sm font-semibold text-white">
-              Comments <span className="text-gray-500">({comments.length})</span>
+              Task chat <span className="text-gray-500">({comments.length})</span>
             </h3>
 
             <div className="mt-3 space-y-3">
               {commentsLoading ? (
-                <p className="text-sm text-gray-500">Loading comments...</p>
+                <p className="text-sm text-gray-500">Loading chat...</p>
               ) : commentsError ? (
                 <p role="alert" className="text-sm text-red-400">
                   {commentsError}
                 </p>
               ) : comments.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  No comments yet. Start the conversation below.
+                  No messages yet. Start the conversation below.
                 </p>
               ) : (
                 comments.map((comment) => (
@@ -1343,8 +1439,8 @@ function TaskDrawer({
                     handlePost();
                   }
                 }}
-                placeholder="Write a comment, give feedback or ask a question..."
-                aria-label="Write a comment"
+                placeholder="Write a message, give feedback or ask a question..."
+                aria-label="Write a message"
                 className={FIELD_CLASS}
               />
               <div className="mt-2 flex items-center justify-between">
@@ -1357,7 +1453,7 @@ function TaskDrawer({
                   disabled={posting || !draft.trim()}
                   className={PRIMARY_BUTTON}
                 >
-                  {posting ? "Posting..." : "Comment"}
+                  {posting ? "Sending..." : "Send"}
                 </button>
               </div>
             </div>
@@ -1609,6 +1705,30 @@ export default function TeamLeadTasksPage() {
       flash("error", errorMessage(error, "Status could not be updated."));
 
       return false;
+    }
+  };
+
+  // Approve or disapprove a task that is in review.
+  const reviewTask = async (task, decision, note) => {
+    setBusy(true);
+
+    try {
+      await apiClient.post(`/tasks/admin/${task.id}/review`, { decision, note });
+      flash(
+        "success",
+        decision === "approve"
+          ? "Task approved and marked as completed."
+          : "Task sent back to the employee for changes."
+      );
+      await load({ silent: true });
+
+      return true;
+    } catch (error) {
+      flash("error", errorMessage(error, "Your review could not be saved."));
+
+      return false;
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -1922,15 +2042,16 @@ export default function TeamLeadTasksPage() {
             />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0d0d0d]">
-              <table className="w-full min-w-[820px] text-left text-sm">
+              <table className="w-full min-w-[940px] text-left text-sm">
                 <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
                     <th className="px-4 py-3 font-medium">Task</th>
                     <th className="px-4 py-3 font-medium">Assignee</th>
                     <th className="px-4 py-3 font-medium">Priority</th>
                     <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Assigned</th>
                     <th className="px-4 py-3 font-medium">Due</th>
-                    <th className="px-4 py-3 font-medium">Comments</th>
+                    <th className="px-4 py-3 font-medium">Chat</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -1965,10 +2086,23 @@ export default function TeamLeadTasksPage() {
                       <td className="px-4 py-3">
                         <StatusPill task={task} />
                       </td>
+                      <td className="px-4 py-3 text-xs text-gray-400">
+                        {formatDate(task.createdAt)}
+                      </td>
                       <td className="px-4 py-3">
                         <DueLabel task={task} today={today} />
                       </td>
-                      <td className="px-4 py-3 text-gray-400">{task.commentCount}</td>
+                      <td className="px-4 py-3 text-gray-400">
+                        <span className="flex items-center gap-1">
+                          {task.commentCount}
+                          <TaskChatButton
+                            taskId={task.id}
+                            taskTitle={task.title}
+                            size={15}
+                            className={CHAT_BUTTON_CLASS}
+                          />
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2060,6 +2194,7 @@ export default function TeamLeadTasksPage() {
           busy={busy}
           onClose={closeDrawer}
           onStatus={changeStatus}
+          onReview={reviewTask}
           onSave={saveTask}
           onDelete={deleteTask}
           onCountChange={updateCommentCount}

@@ -1,3 +1,4 @@
+
 import * as XLSX from "xlsx-js-style";
 
 const BORDER = { style: "thin", color: { rgb: "D9D9D9" } };
@@ -39,7 +40,7 @@ const TOTAL_STYLE = {
 };
 
 const STATUS_LABEL = {
-  pending: "To Do",
+  pending: "Pending",
   "in-progress": "In Progress",
   review: "In Review",
   approved: "Done",

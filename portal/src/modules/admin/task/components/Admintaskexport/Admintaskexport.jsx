@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import apiClient from "@/services/api/apiClient.js";
 import { downloadTaskReport } from "../../utils/exportTaskReport.js";
@@ -121,7 +122,9 @@ export default function AdminTaskExport({ employees = [], onNotice }) {
         max={to || todayKey()}
         onChange={(event) => setFrom(event.target.value)}
       />
+
       <span className="text-xs text-neutral-500">to</span>
+
       <input
         type="date"
         aria-label="Report to"
@@ -176,6 +179,7 @@ export default function AdminTaskExport({ employees = [], onNotice }) {
               <p className="px-2 pb-1 text-[11px] uppercase tracking-wide text-neutral-500">
                 Individual report
               </p>
+
               <input
                 className={`${field} mb-2 w-full py-1.5 text-xs`}
                 placeholder="Search employee"

@@ -10,13 +10,14 @@ import TaskDetailDrawer from "../../components/Taskdetaildrawer/Taskdetaildrawer
 import AdminTaskActivity from "../../components/Admintaskactivity/Admintaskactivity.jsx";
 
 const BOARD_STATUSES = [
-  { id: "todo", key: "todo", value: "todo", label: "To Do" },
+  { id: "todo", key: "todo", value: "todo", label: "Open" },
   {
     id: "in-progress",
     key: "in-progress",
     value: "in-progress",
     label: "In Progress",
   },
+  { id: "review", key: "review", value: "review", label: "In Review" },
   {
     id: "completed",
     key: "completed",
@@ -112,6 +113,8 @@ const normalizeStatus = (status) => {
     return "in-progress";
   }
 
+  if (["review", "under-review", "under review"].includes(value)) return "review";
+
   if (["completed", "done", "approved"].includes(value)) {
     return "completed";
   }
@@ -132,6 +135,7 @@ const getProgress = (status) => {
 
   if (normalized === "completed") return 100;
   if (normalized === "in-progress") return 50;
+  if (normalized === "review") return 75;
 
   return 0;
 };
@@ -744,7 +748,7 @@ function AdminTaskPage() {
                 Loading task board...
               </div>
             ) : (
-              <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-3">
+              <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-4">
                 {BOARD_STATUSES.map((status) => {
                   const columnTasks = filteredTasks.filter(
                     (task) => task.status === status.id
@@ -786,6 +790,10 @@ function AdminTaskPage() {
           onUpdate={updateTask}
           onEdit={updateTask}
           onDelete={deleteTask}
+          onReviewed={() => {
+            closeTaskDetails();
+            loadData();
+          }}
         />
       )}
     </div>

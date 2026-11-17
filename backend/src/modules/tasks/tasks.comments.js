@@ -1,22 +1,10 @@
+
 import { prisma } from "../../config/db.js";
 import ApiError from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { isAdminUser } from "../../utils/permissions.js";
 import { getAssignableUserIds } from "../../utils/hierarchy.js";
 import { notifyUsers } from "../notifications/notifications.events.js";
-
-/*
-|--------------------------------------------------------------------------
-| Task comments
-|--------------------------------------------------------------------------
-| Who may read and write comments on a task:
-|   - Admin                                   (every task)
-|   - The employee the task is assigned to
-|   - The person who created the task
-|   - Any task assigner (Team Lead, Manager, HR, ...) whose reporting
-|     hierarchy contains the assigned employee
-| Personal tasks are private and never have comments.
-*/
 
 const MAX_COMMENT_LENGTH = 2000;
 const MAX_COMMENTS_PER_TASK = 500;
@@ -51,7 +39,6 @@ function serializeComment(row, viewerId) {
   };
 }
 
-// Loads the task and makes sure the user may take part in its discussion.
 async function loadTaskForUser(user, taskId) {
   const id = String(taskId || "").trim();
 
@@ -112,6 +99,87 @@ export const listTaskComments = asyncHandler(async (req, res) => {
   });
 });
 
+export const getTaskCommentUnreadCount = asyncHandler(async (req, res) => {
+  const task = await loadTaskForUser(req.user, req.params.taskId);
+  const userId = String(req.user.id);
+
+  const readState = await prisma.taskCommentReadState.findUnique({
+    where: {
+      taskId_userId: {
+        taskId: task.id,
+        userId,
+      },
+    },
+    select: { lastReadAt: true },
+  });
+
+  const unreadCount = await prisma.taskComment.count({
+    where: {
+      taskId: task.id,
+      authorId: { not: userId },
+      ...(readState ? { createdAt: { gt: readState.lastReadAt } } : {}),
+    },
+  });
+
+  res.json({
+    success: true,
+    unreadCount,
+  });
+});
+
+export const markTaskCommentsRead = asyncHandler(async (req, res) => {
+  const task = await loadTaskForUser(req.user, req.params.taskId);
+  const userId = String(req.user.id);
+  const lastReadAt = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.taskCommentReadState.findUnique({
+      where: {
+        taskId_userId: {
+          taskId: task.id,
+          userId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      await tx.taskCommentReadState.update({
+        where: { id: existing.id },
+        data: { lastReadAt },
+      });
+    } else {
+      try {
+        await tx.taskCommentReadState.create({
+          data: {
+            taskId: task.id,
+            userId,
+            lastReadAt,
+          },
+        });
+      } catch (error) {
+        if (error.code !== "P2002") throw error;
+
+        await tx.taskCommentReadState.update({
+          where: {
+            taskId_userId: {
+              taskId: task.id,
+              userId,
+            },
+          },
+          data: { lastReadAt },
+        });
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    message: "Task comments marked as read.",
+    lastReadAt,
+  });
+});
+
 export const addTaskComment = asyncHandler(async (req, res) => {
   const task = await loadTaskForUser(req.user, req.params.taskId);
 
@@ -137,7 +205,6 @@ export const addTaskComment = asyncHandler(async (req, res) => {
     include: { author: { select: AUTHOR_SELECT } },
   });
 
-  // Tell the other people involved in the task (never the author).
   try {
     const authorId = String(req.user.id);
     const preview = body.length > 140 ? `${body.slice(0, 137)}...` : body;

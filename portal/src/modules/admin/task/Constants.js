@@ -1,5 +1,6 @@
+
 export const STATUSES = [
-  { key: "todo", label: "To Do" },
+  { key: "todo", label: "Open" },
   { key: "inprogress", label: "In Progress" },
   { key: "revision", label: "Revision" },
   { key: "approved", label: "Approved" },
@@ -20,11 +21,16 @@ export const INITIAL_TASKS = [];
 export const formatDate = (date) =>
   date
     ? new Date(date.length <= 10 ? `${date}T00:00:00` : date).toLocaleDateString("en-GB", {
-        day: "numeric", month: "long", year: "numeric",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
       })
     : "—";
 
 export const formatDateTime = (iso) =>
   iso
-    ? `${formatDate(iso)}, ${new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+    ? `${formatDate(iso)}, ${new Date(iso).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`
     : "—";

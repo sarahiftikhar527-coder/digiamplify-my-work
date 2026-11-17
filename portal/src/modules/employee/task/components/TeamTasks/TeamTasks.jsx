@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
@@ -20,7 +19,7 @@ import apiClient from "@/services/api/apiClient.js";
 
 const STATUS = {
   pending: {
-    label: "To Do",
+    label: "Open",
     color: "text-gray-300",
     bg: "bg-white/[0.07]",
     dot: "bg-gray-400",
@@ -38,7 +37,7 @@ const STATUS = {
     dot: "bg-amber-400",
   },
   approved: {
-    label: "Done",
+    label: "Completed",
     color: "text-emerald-400",
     bg: "bg-emerald-500/10",
     dot: "bg-emerald-400",
@@ -53,10 +52,10 @@ const PRIORITY = {
 
 const FILTERS = [
   { value: "all", label: "All Tasks" },
-  { value: "pending", label: "To Do" },
+  { value: "pending", label: "Open" },
   { value: "in-progress", label: "In Progress" },
   { value: "review", label: "In Review" },
-  { value: "approved", label: "Done" },
+  { value: "approved", label: "Completed" },
 ];
 
 const inputCls =
@@ -107,10 +106,13 @@ function SummaryCard({ icon: Icon, label, value, color }) {
 function TaskCard({ task }) {
   const [expanded, setExpanded] = useState(false);
 
+  // A completed task always shows "Completed", whatever the saved status is.
+  const statusKey = task.isDone ? "approved" : task.status;
+
   const status =
     task.taskType === "daily"
       ? null
-      : STATUS[task.status] || STATUS.pending;
+      : STATUS[statusKey] || STATUS.pending;
 
   const priority =
     PRIORITY[task.priority] || "bg-white/5 text-gray-400";
@@ -349,7 +351,7 @@ export default function TeamTasks() {
         const matches =
           status === "approved"
             ? task.isDone
-            : task.status === status;
+            : !task.isDone && task.status === status;
 
         if (!matches) return false;
       }

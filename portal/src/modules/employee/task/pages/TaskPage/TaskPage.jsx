@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -16,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import apiClient from '@/services/api/apiClient.js';
+import TaskChatButton from '@/components/TaskChat/TaskChat.jsx';
 import TeamTasks from '../../components/TeamTasks/TeamTasks.jsx';
 
 const VIEWS = {
@@ -38,10 +40,10 @@ const VIEWS = {
 };
 
 const STATUS_GROUPS = [
-  { key: 'pending', label: 'To Do', color: 'text-gray-400' },
+  { key: 'pending', label: 'Open', color: 'text-gray-400' },
   { key: 'in-progress', label: 'In Progress', color: 'text-sky-400' },
   { key: 'review', label: 'In Review', color: 'text-amber-400' },
-  { key: 'approved', label: 'Done', color: 'text-emerald-400' },
+  { key: 'approved', label: 'Completed', color: 'text-emerald-400' },
 ];
 
 const PRIORITY = {
@@ -92,24 +94,42 @@ const toInputDate = (value) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
-const nextStatus = (task) => {
-  if (task.isDone) return 'pending';
+const usesReview = (task) => task.taskType === 'extra';
+
+const nextAction = (task) => {
+  if (task.taskType === 'personal') {
+    if (task.isDone) return 'pending';
+    if (task.status === 'pending') return 'in-progress';
+    return 'completed';
+  }
+
   if (task.status === 'pending') return 'in-progress';
-  return 'completed';
+  if (task.status === 'in-progress') return 'submit';
+
+  return null;
 };
 
-// Minutes since the employee started the task (used to prefill the time box).
+const statusTitle = (task) => {
+  if (task.taskType === 'personal') return 'Change status';
+  if (task.status === 'pending') return 'Start this task';
+  if (task.status === 'in-progress') return 'Submit for review';
+  if (task.status === 'review') return 'Waiting for review';
+  return 'Completed';
+};
+
 const minutesSinceStart = (task) => {
   if (!task.startedAt) return 0;
   const diff = Date.now() - new Date(task.startedAt).getTime();
   return Number.isFinite(diff) ? Math.max(0, Math.round(diff / 60000)) : 0;
 };
 
+const changesRequested = (task) =>
+  usesReview(task) && task.status === 'in-progress' && Boolean(task.reviewNote);
+
 /* ------------------------------------------------------------------ */
 /* Small pieces                                                        */
 /* ------------------------------------------------------------------ */
 
-// Hours + minutes input. Value and onChange both use total minutes.
 function TimeField({ value, onChange }) {
   const total = Number(value) || 0;
   const hours = Math.floor(total / 60);
@@ -158,20 +178,23 @@ function StatusIcon({ task, onClick, busy }) {
   const color = task.isDone
     ? 'text-emerald-400'
     : task.status === 'in-progress'
-      ? 'text-sky-400'
+      ? 'text-sky-400 hover:text-white'
       : task.status === 'review'
         ? 'text-amber-400'
         : 'text-gray-500 hover:text-white';
 
+  const locked =
+    task.status === 'review' || (usesReview(task) && task.isDone);
+
   return (
     <button
       type="button"
-      disabled={busy || task.status === 'review'}
+      disabled={busy || locked}
       onClick={(event) => {
         event.stopPropagation();
         onClick();
       }}
-      title="Change status"
+      title={statusTitle(task)}
       className={`shrink-0 transition-colors disabled:cursor-not-allowed ${color}`}
     >
       <Icon size={18} />
@@ -210,11 +233,33 @@ function DueChip({ task }) {
   );
 }
 
+function ReviewChip({ task }) {
+  if (!usesReview(task)) return null;
+
+  if (task.status === 'review') {
+    return (
+      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-400">
+        In review
+      </span>
+    );
+  }
+
+  if (changesRequested(task)) {
+    return (
+      <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] text-red-400">
+        Changes requested
+      </span>
+    );
+  }
+
+  return null;
+}
+
 function TimeChip({ task }) {
   const minutes =
     task.taskType === 'daily'
       ? task.todayUpdate?.timeSpentMinutes
-      : task.isDone
+      : task.isDone || task.status === 'review'
         ? task.timeSpentMinutes
         : 0;
 
@@ -255,8 +300,19 @@ function TaskRow({ task, busy, onOpen, onToggle }) {
         </span>
       )}
 
+      {task.taskType !== 'personal' && task.createdAt && (
+        <span className="hidden text-xs text-gray-500 md:inline">
+          Assigned {fmtDate(task.createdAt)}
+        </span>
+      )}
+
+      <ReviewChip task={task} />
       <TimeChip task={task} />
       <DueChip task={task} />
+
+      {task.taskType !== 'personal' && (
+        <TaskChatButton taskId={task.id} taskTitle={task.title} />
+      )}
 
       <Flag
         size={15}
@@ -299,35 +355,50 @@ function Section({ title, color = 'text-white', tasks, children }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* "How long did it take?" popup                                       */
+/* Review: submit form, modal and status box                           */
 /* ------------------------------------------------------------------ */
 
-function DoneModal({ task, saving, onCancel, onConfirm }) {
-  const [minutes, setMinutes] = useState(
-    task.timeSpentMinutes || minutesSinceStart(task)
-  );
+const MIN_DESCRIPTION = 10;
+
+function ReviewSubmitForm({ task, saving, error, onSubmit, onCancel }) {
+  const [description, setDescription] = useState('');
+
+  const tooShort = description.trim().length < MIN_DESCRIPTION;
+  const elapsed =
+    (Number(task.timeSpentMinutes) || 0) + minutesSinceStart(task);
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-sm rounded-lg border border-[#1e1e1e] bg-[#0b0b0b] p-5">
-        <h3 className="text-base font-semibold text-white">
-          Mark task as done
-        </h3>
-        <p className="mt-1 truncate text-sm text-gray-400">{task.title}</p>
+    <div className="space-y-3">
+      <div>
+        <p className="mb-1.5 text-xs uppercase tracking-wide text-gray-500">
+          What work did you do in this task?
+        </p>
+        <textarea
+          rows={5}
+          className={inputCls}
+          placeholder="Describe in detail what you completed. Your reviewer will read this."
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <p className="mt-1 text-[11px] text-gray-500">
+          {tooShort
+            ? `Write at least ${MIN_DESCRIPTION} characters.`
+            : 'This will be visible to your admin, assigner and project manager.'}
+        </p>
+      </div>
 
-        <div className="mt-4 space-y-2">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            How long did it take?
-          </p>
-          <TimeField value={minutes} onChange={setMinutes} />
-          {task.startedAt && (
-            <p className="text-[11px] text-gray-500">
-              Started {fmtDateTime(task.startedAt)}
-            </p>
-          )}
-        </div>
+      <div className="flex items-center gap-2 rounded-md border border-[#1e1e1e] bg-[#0b0b0b] px-3 py-2 text-xs text-gray-400">
+        <Clock size={13} />
+        <span>
+          Time is tracked automatically: {fmtMinutes(elapsed)} so far
+          {task.startedAt ? ` (started ${fmtDateTime(task.startedAt)})` : ''}
+        </span>
+      </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+      {error && <p className="text-sm text-red-400">{error}</p>}
+
+      <div className="flex justify-end gap-2">
+        {onCancel && (
           <button
             type="button"
             onClick={onCancel}
@@ -335,18 +406,112 @@ function DoneModal({ task, saving, onCancel, onConfirm }) {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => onConfirm(minutes)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-light disabled:opacity-60"
-          >
-            Mark done
-          </button>
-        </div>
+        )}
+        <button
+          type="button"
+          disabled={saving || tooShort}
+          onClick={() => onSubmit(description.trim())}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-light disabled:opacity-60"
+        >
+          <Send size={14} />
+          Submit for review
+        </button>
       </div>
     </div>
   );
+}
+
+function SubmitReviewModal({ task, saving, onCancel, onSubmit }) {
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (description) => {
+    setError('');
+    const message = await onSubmit(task, description);
+    if (message) setError(message);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-md rounded-lg border border-[#1e1e1e] bg-[#0b0b0b] p-5">
+        <h3 className="text-base font-semibold text-white">
+          Submit task for review
+        </h3>
+        <p className="mb-4 mt-1 truncate text-sm text-gray-400">{task.title}</p>
+
+        <ReviewSubmitForm
+          task={task}
+          saving={saving}
+          error={error}
+          onSubmit={handleSubmit}
+          onCancel={onCancel}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ReviewInfo({ task }) {
+  if (!usesReview(task)) return null;
+
+  if (task.status === 'review') {
+    return (
+      <div className="mt-5 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+        <p className="text-sm font-semibold text-amber-300">Waiting for review</p>
+        <p className="mt-1 text-[11px] text-gray-400">
+          Submitted {fmtDateTime(task.submittedAt)} · Time{' '}
+          {fmtMinutes(task.timeSpentMinutes)}
+        </p>
+        <p className="mt-2 whitespace-pre-wrap text-sm text-gray-300">
+          {task.submissionNote}
+        </p>
+      </div>
+    );
+  }
+
+  if (task.isDone) {
+    return (
+      <div className="mt-5 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
+        <p className="text-sm font-semibold text-emerald-300">
+          Approved and completed
+        </p>
+        <p className="mt-1 text-[11px] text-gray-400">
+          {task.reviewedByName ? `Approved by ${task.reviewedByName} · ` : ''}
+          {fmtDateTime(task.reviewedAt || task.completedAt)} · Time{' '}
+          {fmtMinutes(task.timeSpentMinutes)}
+        </p>
+        {task.submissionNote && (
+          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-300">
+            {task.submissionNote}
+          </p>
+        )}
+        {task.reviewNote && (
+          <p className="mt-2 text-xs text-gray-400">
+            Reviewer note: {task.reviewNote}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (changesRequested(task)) {
+    return (
+      <div className="mt-5 rounded-md border border-red-500/30 bg-red-500/5 p-3">
+        <p className="text-sm font-semibold text-red-300">Changes requested</p>
+        <p className="mt-1 text-[11px] text-gray-400">
+          {task.reviewedByName ? `By ${task.reviewedByName} · ` : ''}
+          {fmtDateTime(task.reviewedAt)}
+        </p>
+        <p className="mt-2 whitespace-pre-wrap text-sm text-gray-300">
+          {task.reviewNote}
+        </p>
+        <p className="mt-2 text-[11px] text-gray-500">
+          Fix the work and submit it for review again.
+        </p>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -356,6 +521,7 @@ function DoneModal({ task, saving, onCancel, onConfirm }) {
 function TaskDrawer({ task, onClose, onChanged, onToast }) {
   const isDaily = task.taskType === 'daily';
   const isPersonal = task.taskType === 'personal';
+  const isReviewTask = usesReview(task);
 
   const [note, setNote] = useState(task.todayUpdate?.description || '');
   const [progress, setProgress] = useState(
@@ -364,7 +530,6 @@ function TaskDrawer({ task, onClose, onChanged, onToast }) {
   const [dailyMinutes, setDailyMinutes] = useState(
     task.todayUpdate?.timeSpentMinutes || 0
   );
-  const [doneMinutes, setDoneMinutes] = useState(task.timeSpentMinutes || 0);
   const [form, setForm] = useState({
     title: task.title,
     description: task.description || '',
@@ -401,14 +566,22 @@ function TaskDrawer({ task, onClose, onChanged, onToast }) {
       'Daily update saved'
     );
 
-  const saveDoneTime = () =>
+  const startTask = () =>
     run(
       () =>
         apiClient.patch(`/tasks/employee/${task.id}/status`, {
-          status: 'completed',
-          timeSpentMinutes: doneMinutes,
+          status: 'in-progress',
         }),
-      'Time saved'
+      'Task started'
+    );
+
+  const submitReview = (description) =>
+    run(
+      () =>
+        apiClient.post(`/tasks/employee/${task.id}/submit-review`, {
+          description,
+        }),
+      'Submitted for review'
     );
 
   const savePersonal = () =>
@@ -465,13 +638,23 @@ function TaskDrawer({ task, onClose, onChanged, onToast }) {
               </h2>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1.5 text-gray-400 hover:bg-white/10 hover:text-white"
-          >
-            <X size={18} />
-          </button>
+
+          <div className="flex items-center gap-1">
+            {!isPersonal && (
+              <TaskChatButton
+                taskId={task.id}
+                taskTitle={task.title}
+                size={18}
+              />
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-1.5 text-gray-400 hover:bg-white/10 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2 text-xs text-gray-300">
@@ -479,11 +662,19 @@ function TaskDrawer({ task, onClose, onChanged, onToast }) {
             <Flag size={13} className={PRIORITY[task.priority]} />
             {task.priority}
           </span>
+
+          {!isPersonal && task.createdAt && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
+              <Calendar size={13} /> Assigned {fmtDate(task.createdAt)}
+            </span>
+          )}
+
           {!isDaily && task.dueDate && (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
               <Calendar size={13} /> Due {fmtDate(task.dueDate)}
             </span>
           )}
+
           {!isPersonal && task.assignedBy?.name && (
             <span className="rounded-full bg-white/5 px-2.5 py-1">
               By {task.assignedBy.name}
@@ -549,7 +740,32 @@ function TaskDrawer({ task, onClose, onChanged, onToast }) {
           </p>
         )}
 
-        {/* Time tracking for extra and personal tasks */}
+        {isReviewTask && <ReviewInfo task={task} />}
+
+        {isReviewTask && task.status === 'pending' && (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={startTask}
+            className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-light disabled:opacity-60"
+          >
+            Start task
+          </button>
+        )}
+
+        {isReviewTask && task.status === 'in-progress' && (
+          <div className="mt-5 rounded-md border border-[#1e1e1e] bg-[#111] p-3">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Submit for review
+            </h3>
+            <ReviewSubmitForm
+              task={task}
+              saving={saving}
+              onSubmit={submitReview}
+            />
+          </div>
+        )}
+
         {!isDaily && (
           <div className="mt-5 rounded-md border border-[#1e1e1e] bg-[#111] p-3">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -568,28 +784,14 @@ function TaskDrawer({ task, onClose, onChanged, onToast }) {
               </div>
             </div>
 
-            {task.isDone && (
-              <div className="mt-3 border-t border-[#1e1e1e] pt-3">
-                <p className="mb-2 text-[11px] text-gray-500">
-                  Time spent on this task
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <TimeField value={doneMinutes} onChange={setDoneMinutes} />
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={saveDoneTime}
-                    className="rounded-md border border-[#262626] px-3 py-2 text-xs text-gray-300 hover:text-white disabled:opacity-60"
-                  >
-                    Save time
-                  </button>
-                </div>
-              </div>
+            {(task.status === 'review' || task.isDone) && (
+              <p className="mt-3 border-t border-[#1e1e1e] pt-3 text-sm text-gray-300">
+                Time spent: {fmtMinutes(task.timeSpentMinutes)}
+              </p>
             )}
           </div>
         )}
 
-        {/* Daily update for fixed tasks */}
         {isDaily && (
           <div className="mt-6 border-t border-[#1e1e1e] pt-5">
             <h3 className="mb-2 text-sm font-semibold text-white">
@@ -684,7 +886,7 @@ const TaskPage = () => {
   const [toast, setToast] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [openId, setOpenId] = useState(null);
-  const [doneTaskId, setDoneTaskId] = useState(null);
+  const [submitTaskId, setSubmitTaskId] = useState(null);
 
   const [draft, setDraft] = useState({
     title: '',
@@ -700,7 +902,6 @@ const TaskPage = () => {
 
   const load = useCallback(
     async (silent = false) => {
-      // Team Tasks loads its own data.
       if (view === 'team') {
         setLoading(false);
         return;
@@ -729,21 +930,26 @@ const TaskPage = () => {
     load();
   }, [load]);
 
-    // A new task was just assigned by the admin: refresh the list quietly.
   useEffect(() => {
     const refresh = () => load(true);
     window.addEventListener('tasks:changed', refresh);
     return () => window.removeEventListener('tasks:changed', refresh);
   }, [load]);
 
+  useEffect(() => {
+    if (view === 'team') return undefined;
+    const timer = window.setInterval(() => load(true), 30000);
+    return () => window.clearInterval(timer);
+  }, [load, view]);
+
   const openTask = useMemo(
     () => tasks.find((task) => task.id === openId) || null,
     [tasks, openId]
   );
 
-  const doneTask = useMemo(
-    () => tasks.find((task) => task.id === doneTaskId) || null,
-    [tasks, doneTaskId]
+  const submitTask = useMemo(
+    () => tasks.find((task) => task.id === submitTaskId) || null,
+    [tasks, submitTaskId]
   );
 
   const changeStatus = async (task, status, timeSpentMinutes) => {
@@ -765,25 +971,43 @@ const TaskPage = () => {
     }
   };
 
+  const submitForReview = async (task, description) => {
+    setBusyId(task.id);
+
+    try {
+      await apiClient.post(`/tasks/employee/${task.id}/submit-review`, {
+        description,
+      });
+
+      showToast('Submitted for review');
+      setSubmitTaskId(null);
+      await load(true);
+      return '';
+    } catch (err) {
+      return getError(err, 'Unable to submit this task for review.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const toggleStatus = (task) => {
     if (busyId) return;
 
-    const status = nextStatus(task);
+    const action = nextAction(task);
 
-    // Finishing a task asks how long it took.
-    if (status === 'completed') {
-      setDoneTaskId(task.id);
+    if (!action) return;
+
+    if (action === 'submit') {
+      setSubmitTaskId(task.id);
       return;
     }
 
-    changeStatus(task, status);
-  };
+    if (action === 'completed') {
+      changeStatus(task, 'completed');
+      return;
+    }
 
-  const confirmDone = async (minutes) => {
-    if (!doneTask) return;
-
-    await changeStatus(doneTask, 'completed', minutes);
-    setDoneTaskId(null);
+    changeStatus(task, action);
   };
 
   const addPersonal = async (event) => {
@@ -920,11 +1144,11 @@ const TaskPage = () => {
           {counts.pendingDailyUpdates > 0 &&
             view !== 'personal' &&
             view !== 'team' && (
-            <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs text-amber-400">
-              {counts.pendingDailyUpdates} daily update
-              {counts.pendingDailyUpdates > 1 ? 's' : ''} pending
-            </span>
-          )}
+              <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs text-amber-400">
+                {counts.pendingDailyUpdates} daily update
+                {counts.pendingDailyUpdates > 1 ? 's' : ''} pending
+              </span>
+            )}
           {counts.overdue > 0 && view !== 'team' && (
             <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs text-red-400">
               {counts.overdue} overdue
@@ -997,13 +1221,13 @@ const TaskPage = () => {
         />
       )}
 
-      {doneTask && (
-        <DoneModal
-          key={doneTask.id}
-          task={doneTask}
-          saving={busyId === doneTask.id}
-          onCancel={() => setDoneTaskId(null)}
-          onConfirm={confirmDone}
+      {submitTask && (
+        <SubmitReviewModal
+          key={submitTask.id}
+          task={submitTask}
+          saving={busyId === submitTask.id}
+          onCancel={() => setSubmitTaskId(null)}
+          onSubmit={submitForReview}
         />
       )}
 

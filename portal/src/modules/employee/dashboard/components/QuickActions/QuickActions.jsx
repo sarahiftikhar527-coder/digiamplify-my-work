@@ -1,5 +1,5 @@
-
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   AnimatePresence,
@@ -63,53 +63,59 @@ const DEFAULT_ACTIONS = [
 
 /* =========================================
    LEAVE CONFIG
+   (must match the leave types the backend accepts)
 ========================================= */
 
-const LEAVE_TYPES = [
-  "Annual Leave",
-  "Sick Leave",
-  "Casual Leave",
-  "Unpaid Leave",
+const FALLBACK_LEAVE_TYPES = [
+  { name: "Annual Leave" },
+  { name: "Sick Leave" },
+  { name: "Casual Leave" },
 ];
 
 /* =========================================
    DATE HELPERS
 ========================================= */
 
+const pad = (value) => String(value).padStart(2, "0");
+
 const today = () => {
   const date = new Date();
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}`;
 };
 
-const daysBetween = (from, to) => {
-  if (!from || !to || to < from) return 0;
+const parseISO = (value) => {
+  if (!value) return null;
 
-  const [fromYear, fromMonth, fromDay] = from
-    .split("-")
-    .map(Number);
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
 
-  const [toYear, toMonth, toDay] = to
-    .split("-")
-    .map(Number);
+  if (!match) return null;
 
-  const start = Date.UTC(
-    fromYear,
-    fromMonth - 1,
-    fromDay
-  );
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+};
 
-  const end = Date.UTC(
-    toYear,
-    toMonth - 1,
-    toDay
-  );
+// Counts working days (Mon-Fri), same rule as the backend
+const countWorkingDays = (from, to) => {
+  const start = parseISO(from);
+  const end = parseISO(to);
 
-  return Math.floor((end - start) / 86400000) + 1;
+  if (!start || !end || end < start) return 0;
+
+  let total = 0;
+
+  for (
+    let date = new Date(start);
+    date <= end;
+    date.setDate(date.getDate() + 1)
+  ) {
+    const day = date.getDay();
+
+    if (day !== 0 && day !== 6) total += 1;
+  }
+
+  return total;
 };
 
 /* =========================================
@@ -117,17 +123,39 @@ const daysBetween = (from, to) => {
 ========================================= */
 
 const inputCls =
-  "w-full rounded border border-[#1e1e1e] bg-[#0b0b0b] px-2.5 py-2 text-[11px] text-white outline-none transition placeholder:text-gray-600 focus:border-red-700";
+  "w-full rounded border border-[#1e1e1e] bg-[#0b0b0b] px-2.5 py-2 text-[11px] text-white outline-none transition placeholder:text-gray-600 focus:border-red-700 [color-scheme:dark]";
 
 /* =========================================
    LEAVE MODAL
 ========================================= */
 
-const LeaveModal = ({ onClose, onSubmitLeave }) => {
+const LeaveModal = ({
+  onClose,
+  onSubmitLeave,
+  balances,
+  existingLeaves,
+}) => {
   const shouldReduceMotion = useReducedMotion();
 
+  const leaveOptions = useMemo(() => {
+    const source =
+      Array.isArray(balances) && balances.length
+        ? balances
+        : FALLBACK_LEAVE_TYPES;
+
+    return source
+      .filter((item) => item && item.name)
+      .map((item) => ({
+        name: item.name,
+        remaining:
+          item.remaining === undefined || item.remaining === null
+            ? null
+            : Number(item.remaining),
+      }));
+  }, [balances]);
+
   const [form, setForm] = useState(() => ({
-    leaveType: LEAVE_TYPES[0],
+    leaveType: leaveOptions[0]?.name || "Annual Leave",
     fromDate: today(),
     toDate: today(),
     reason: "",
@@ -141,10 +169,19 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
   const submittingRef = useRef(false);
   const closeTimerRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const totalDays = useMemo(
-    () => daysBetween(form.fromDate, form.toDate),
+    () => countWorkingDays(form.fromDate, form.toDate),
     [form.fromDate, form.toDate]
+  );
+
+  const selectedOption = leaveOptions.find(
+    (item) => item.name === form.leaveType
   );
 
   const transition = shouldReduceMotion
@@ -170,17 +207,12 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
     });
 
     const handleKeyDown = (event) => {
-      if (
-        event.key === "Escape" &&
-        !submittingRef.current
-      ) {
-        onClose();
+      if (event.key === "Escape" && !submittingRef.current) {
+        onCloseRef.current?.();
       }
 
       if (event.key === "Tab") {
-        const modal = document.getElementById(
-          "leave-modal-dialog"
-        );
+        const modal = document.getElementById("leave-modal-dialog");
 
         if (!modal) return;
 
@@ -193,16 +225,10 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
 
-        if (
-          event.shiftKey &&
-          document.activeElement === first
-        ) {
+        if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
           last.focus();
-        } else if (
-          !event.shiftKey &&
-          document.activeElement === last
-        ) {
+        } else if (!event.shiftKey && document.activeElement === last) {
           event.preventDefault();
           first.focus();
         }
@@ -220,14 +246,11 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
 
       document.body.style.overflow = previousOverflow;
 
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
+      window.removeEventListener("keydown", handleKeyDown);
 
       previousFocusRef.current?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   /* =========================================
      FORM FIELD HANDLER
@@ -236,24 +259,29 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
   const setField = (key) => (event) => {
     const value = event.target.value;
 
-    setForm((previous) => ({
-      ...previous,
-      [key]: value,
-    }));
+    setForm((previous) => {
+      const next = { ...previous, [key]: value };
+
+      // Keep the end date valid when the start date moves forward
+      if (key === "fromDate" && next.toDate && value > next.toDate) {
+        next.toDate = value;
+      }
+
+      return next;
+    });
 
     setErrors((previous) => ({
       ...previous,
       [key]: undefined,
-      ...(key === "fromDate"
-        ? { toDate: undefined }
+      ...(key === "fromDate" || key === "toDate"
+        ? { fromDate: undefined, toDate: undefined, leaveType: undefined }
         : {}),
+      ...(key === "leaveType" ? { leaveType: undefined } : {}),
     }));
 
     setServerError("");
 
-    setStatus((previous) =>
-      previous === "error" ? "idle" : previous
-    );
+    setStatus((previous) => (previous === "error" ? "idle" : previous));
   };
 
   /* =========================================
@@ -264,32 +292,55 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
     const nextErrors = {};
     const currentDate = today();
 
+    if (!form.leaveType) {
+      nextErrors.leaveType = "Please select a leave type.";
+    }
+
     if (!form.fromDate) {
-      nextErrors.fromDate = "Start date required";
+      nextErrors.fromDate = "Start date is required.";
     } else if (form.fromDate < currentDate) {
-      nextErrors.fromDate =
-        "Start date cannot be in the past";
+      nextErrors.fromDate = "Start date cannot be in the past.";
     }
 
     if (!form.toDate) {
-      nextErrors.toDate = "End date required";
-    } else if (form.toDate < currentDate) {
-      nextErrors.toDate =
-        "End date cannot be in the past";
+      nextErrors.toDate = "End date is required.";
+    } else if (form.fromDate && form.toDate < form.fromDate) {
+      nextErrors.toDate = "End date cannot be before the start date.";
     }
 
     if (
       form.fromDate &&
       form.toDate &&
-      form.toDate < form.fromDate
+      form.toDate >= form.fromDate &&
+      !nextErrors.fromDate &&
+      !nextErrors.toDate
     ) {
-      nextErrors.toDate =
-        "End date must be after start date";
+      if (totalDays === 0) {
+        nextErrors.toDate =
+          "The selected dates contain no working days (weekends only).";
+      } else if (
+        selectedOption &&
+        selectedOption.remaining !== null &&
+        totalDays > selectedOption.remaining
+      ) {
+        nextErrors.leaveType = `Only ${selectedOption.remaining} day(s) of ${form.leaveType} remaining, but you requested ${totalDays}.`;
+      } else {
+        const overlaps = (existingLeaves || []).some((leave) => {
+          if (!["approved", "pending"].includes(leave.status)) {
+            return false;
+          }
+
+          return form.fromDate <= leave.to && form.toDate >= leave.from;
+        });
+
+        if (overlaps) {
+          nextErrors.toDate = "These dates overlap an existing leave request.";
+        }
+      }
     }
 
     if (form.reason.trim().length < 5) {
-      nextErrors.reason =
-        "Please enter a reason (min 5 characters)";
+      nextErrors.reason = "Please enter a reason (at least 5 characters).";
     }
 
     setErrors(nextErrors);
@@ -304,10 +355,7 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (
-      submittingRef.current ||
-      status === "success"
-    ) {
+    if (submittingRef.current || status === "success") {
       return;
     }
 
@@ -317,23 +365,20 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
 
     if (typeof onSubmitLeave !== "function") {
       setStatus("error");
-
-      setServerError(
-        "Leave request submission is not configured yet."
-      );
-
+      setServerError("Leave requests are not available right now.");
       return;
     }
 
     submittingRef.current = true;
     setStatus("loading");
 
+    // Payload matches POST /leaves on the backend
     const payload = {
-      leaveType: form.leaveType,
-      fromDate: form.fromDate,
-      toDate: form.toDate,
+      type: form.leaveType,
+      from: form.fromDate,
+      to: form.toDate,
+      days: totalDays,
       reason: form.reason.trim(),
-      totalDays,
     };
 
     try {
@@ -342,13 +387,14 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
       setStatus("success");
 
       closeTimerRef.current = setTimeout(() => {
-        onClose();
+        onCloseRef.current?.();
       }, 1200);
     } catch (error) {
       setStatus("error");
 
       setServerError(
-        error?.message ||
+        error?.response?.data?.message ||
+          error?.message ||
           "Something went wrong. Please try again."
       );
     } finally {
@@ -358,24 +404,21 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
 
   /* =========================================
      MODAL UI
+     Rendered in a portal so it always sits above the
+     sidebar/topbar and the close (X) button stays clickable.
   ========================================= */
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      initial={
-        shouldReduceMotion
-          ? false
-          : { opacity: 0 }
-      }
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={transition}
       onMouseDown={(event) => {
-        if (
-          event.target === event.currentTarget &&
-          !submittingRef.current
-        ) {
+        if (event.target === event.currentTarget && !submittingRef.current) {
           onClose();
         }
       }}
@@ -386,32 +429,18 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
       <motion.div
         id="leave-modal-dialog"
         initial={
-          shouldReduceMotion
-            ? false
-            : {
-                opacity: 0,
-                y: 14,
-                scale: 0.98,
-              }
+          shouldReduceMotion ? false : { opacity: 0, y: 14, scale: 0.98 }
         }
-        animate={{
-          opacity: 1,
-          y: 0,
-          scale: 1,
-        }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={
           shouldReduceMotion
             ? { opacity: 0 }
-            : {
-                opacity: 0,
-                y: 10,
-                scale: 0.98,
-              }
+            : { opacity: 0, y: 10, scale: 0.98 }
         }
         transition={transition}
-        className="w-full max-w-md rounded-md border border-[#1e1e1e] bg-[#0b0b0b] p-5 shadow-xl"
+        className="w-full max-w-md rounded-md border border-[#1e1e1e] bg-[#0b0b0b] p-5 font-[Poppins,ui-sans-serif,system-ui,sans-serif] text-white shadow-xl"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h2
             id="leave-modal-title"
             className="text-sm font-medium text-white"
@@ -419,50 +448,23 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
             Request Leave
           </h2>
 
-          <motion.button
+          <button
             type="button"
             onClick={onClose}
             disabled={status === "loading"}
-            whileHover={
-              shouldReduceMotion
-                ? undefined
-                : {
-                    rotate: 90,
-                    scale: 1.05,
-                  }
-            }
-            whileTap={
-              shouldReduceMotion
-                ? undefined
-                : { scale: 0.9 }
-            }
-            transition={transition}
-            className="text-gray-400 transition hover:text-white disabled:opacity-40"
             aria-label="Close"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[#3a3a3a] text-white transition hover:border-red-700 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <X size={16} />
-          </motion.button>
+            <X size={14} />
+          </button>
         </div>
 
-        <AnimatePresence
-          mode="wait"
-          initial={false}
-        >
+        <AnimatePresence mode="wait" initial={false}>
           {status === "success" ? (
             <motion.div
               key="success"
-              initial={
-                shouldReduceMotion
-                  ? false
-                  : {
-                      opacity: 0,
-                      y: 8,
-                    }
-              }
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={transition}
               className="flex flex-col items-center gap-2 py-10 text-center"
@@ -470,52 +472,27 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
             >
               <motion.div
                 initial={
-                  shouldReduceMotion
-                    ? false
-                    : {
-                        scale: 0.7,
-                        opacity: 0,
-                      }
+                  shouldReduceMotion ? false : { scale: 0.7, opacity: 0 }
                 }
-                animate={{
-                  scale: 1,
-                  opacity: 1,
-                }}
+                animate={{ scale: 1, opacity: 1 }}
                 transition={transition}
               >
-                <CheckCircle2
-                  size={36}
-                  className="text-green-500"
-                />
+                <CheckCircle2 size={36} className="text-green-500" />
               </motion.div>
 
-              <p className="text-xs text-white">
-                Leave request submitted
-              </p>
+              <p className="text-xs text-white">Leave request submitted</p>
 
               <p className="text-[10px] text-gray-400">
-                {totalDays} day(s) • {form.leaveType}
+                {totalDays} working {totalDays === 1 ? "day" : "days"} •{" "}
+                {form.leaveType}
               </p>
             </motion.div>
           ) : (
             <motion.form
               key="form"
-              initial={
-                shouldReduceMotion
-                  ? false
-                  : {
-                      opacity: 0,
-                      y: 5,
-                    }
-              }
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              exit={{
-                opacity: 0,
-                y: -5,
-              }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
               transition={transition}
               onSubmit={handleSubmit}
               className="mt-4 space-y-3"
@@ -536,19 +513,30 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
                   ref={firstFieldRef}
                   value={form.leaveType}
                   onChange={setField("leaveType")}
-                  className={inputCls}
+                  className={`${inputCls} ${
+                    errors.leaveType ? "border-red-700" : ""
+                  }`}
                   disabled={status === "loading"}
                 >
-                  {LEAVE_TYPES.map((type) => (
+                  {leaveOptions.map((option) => (
                     <option
-                      key={type}
-                      value={type}
+                      key={option.name}
+                      value={option.name}
                       className="bg-[#0b0b0b]"
                     >
-                      {type}
+                      {option.name}
+                      {option.remaining !== null
+                        ? ` (${option.remaining} left)`
+                        : ""}
                     </option>
                   ))}
                 </select>
+
+                {errors.leaveType && (
+                  <p className="mt-1 text-[10px] text-red-500">
+                    {errors.leaveType}
+                  </p>
+                )}
               </div>
 
               {/* DATE FIELDS */}
@@ -568,29 +556,18 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
                     min={today()}
                     value={form.fromDate}
                     onChange={setField("fromDate")}
-                    className={inputCls}
+                    className={`${inputCls} ${
+                      errors.fromDate ? "border-red-700" : ""
+                    }`}
                     disabled={status === "loading"}
                     aria-invalid={Boolean(errors.fromDate)}
                   />
 
-                  <AnimatePresence>
-                    {errors.fromDate && (
-                      <motion.p
-                        initial={{
-                          opacity: 0,
-                          y: -3,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                        }}
-                        exit={{ opacity: 0 }}
-                        className="mt-1 text-[10px] text-red-500"
-                      >
-                        {errors.fromDate}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
+                  {errors.fromDate && (
+                    <p className="mt-1 text-[10px] text-red-500">
+                      {errors.fromDate}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -607,50 +584,27 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
                     min={form.fromDate || today()}
                     value={form.toDate}
                     onChange={setField("toDate")}
-                    className={inputCls}
+                    className={`${inputCls} ${
+                      errors.toDate ? "border-red-700" : ""
+                    }`}
                     disabled={status === "loading"}
                     aria-invalid={Boolean(errors.toDate)}
                   />
 
-                  <AnimatePresence>
-                    {errors.toDate && (
-                      <motion.p
-                        initial={{
-                          opacity: 0,
-                          y: -3,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                        }}
-                        exit={{ opacity: 0 }}
-                        className="mt-1 text-[10px] text-red-500"
-                      >
-                        {errors.toDate}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
+                  {errors.toDate && (
+                    <p className="mt-1 text-[10px] text-red-500">
+                      {errors.toDate}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* TOTAL DAYS */}
 
-              <motion.p
-                key={totalDays}
-                initial={
-                  shouldReduceMotion
-                    ? false
-                    : { opacity: 0.5 }
-                }
-                animate={{ opacity: 1 }}
-                transition={transition}
-                className="text-[10px] text-gray-400"
-              >
-                Total days:{" "}
-                <span className="text-white">
-                  {totalDays}
-                </span>
-              </motion.p>
+              <p className="text-[10px] text-gray-400">
+                Working days:{" "}
+                <span className="text-white">{totalDays}</span>
+              </p>
 
               {/* REASON */}
 
@@ -668,114 +622,61 @@ const LeaveModal = ({ onClose, onSubmitLeave }) => {
                   value={form.reason}
                   onChange={setField("reason")}
                   placeholder="Why do you need this leave?"
-                  className={`${inputCls} resize-none`}
+                  className={`${inputCls} resize-none ${
+                    errors.reason ? "border-red-700" : ""
+                  }`}
                   disabled={status === "loading"}
                   aria-invalid={Boolean(errors.reason)}
                 />
 
-                <AnimatePresence>
-                  {errors.reason && (
-                    <motion.p
-                      initial={{
-                        opacity: 0,
-                        y: -3,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                      }}
-                      exit={{ opacity: 0 }}
-                      className="mt-1 text-[10px] text-red-500"
-                    >
-                      {errors.reason}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
+                {errors.reason && (
+                  <p className="mt-1 text-[10px] text-red-500">
+                    {errors.reason}
+                  </p>
+                )}
               </div>
 
               {/* SERVER ERROR */}
 
-              <AnimatePresence>
-                {status === "error" && (
-                  <motion.p
-                    initial={{
-                      opacity: 0,
-                      y: -5,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
-                    exit={{
-                      opacity: 0,
-                      y: -5,
-                    }}
-                    role="alert"
-                    className="rounded border border-red-900/70 bg-red-950/40 px-2.5 py-2 text-[10px] text-red-400"
-                  >
-                    {serverError}
-                  </motion.p>
-                )}
-              </AnimatePresence>
+              {status === "error" && serverError && (
+                <p
+                  role="alert"
+                  className="rounded border border-red-900/70 bg-red-950/40 px-2.5 py-2 text-[10px] text-red-400"
+                >
+                  {serverError}
+                </p>
+              )}
 
               {/* BUTTONS */}
 
               <div className="flex justify-end gap-2 pt-1">
-                <motion.button
+                <button
                   type="button"
                   onClick={onClose}
                   disabled={status === "loading"}
-                  whileHover={
-                    shouldReduceMotion
-                      ? undefined
-                      : { y: -1 }
-                  }
-                  whileTap={
-                    shouldReduceMotion
-                      ? undefined
-                      : { scale: 0.97 }
-                  }
-                  transition={transition}
                   className="rounded border border-[#1e1e1e] px-3 py-1.5 text-[11px] text-gray-300 transition hover:border-gray-500 disabled:opacity-40"
                 >
                   Cancel
-                </motion.button>
+                </button>
 
-                <motion.button
+                <button
                   type="submit"
                   disabled={status === "loading"}
-                  whileHover={
-                    shouldReduceMotion ||
-                    status === "loading"
-                      ? undefined
-                      : { y: -1 }
-                  }
-                  whileTap={
-                    shouldReduceMotion ||
-                    status === "loading"
-                      ? undefined
-                      : { scale: 0.97 }
-                  }
-                  transition={transition}
                   className="flex items-center gap-1.5 rounded bg-red-700 px-3 py-1.5 text-[11px] text-white transition hover:bg-red-600 disabled:opacity-60"
                 >
                   {status === "loading" && (
-                    <Loader2
-                      size={12}
-                      className="animate-spin"
-                    />
+                    <Loader2 size={12} className="animate-spin" />
                   )}
 
-                  {status === "loading"
-                    ? "Submitting..."
-                    : "Submit Request"}
-                </motion.button>
+                  {status === "loading" ? "Submitting..." : "Submit Request"}
+                </button>
               </div>
             </motion.form>
           )}
         </AnimatePresence>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -788,6 +689,8 @@ const QuickActions = ({
   onAction,
   onNavigate,
   onSubmitLeave,
+  balances,
+  existingLeaves,
   disabled = false,
 }) => {
   const shouldReduceMotion = useReducedMotion();
@@ -815,10 +718,7 @@ const QuickActions = ({
     onAction?.(action.id, action);
 
     // LEAVE MODAL
-    if (
-      action.type === "modal" &&
-      action.id === "leave"
-    ) {
+    if (action.type === "modal" && action.id === "leave") {
       setLeaveOpen(true);
       return;
     }
@@ -840,27 +740,14 @@ const QuickActions = ({
   return (
     <>
       <motion.div
-        initial={
-          shouldReduceMotion
-            ? false
-            : {
-                opacity: 0,
-                y: 8,
-              }
-        }
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={transition}
         className="rounded-md border border-[#1e1e1e] bg-[#0b0b0b] p-4"
       >
-        <h3 className="text-xs font-medium text-white">
-          Quick Actions
-        </h3>
+        <h3 className="text-xs font-medium text-white">Quick Actions</h3>
 
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-
           {actions.map((action, index) => {
             const {
               id,
@@ -875,44 +762,24 @@ const QuickActions = ({
                 type="button"
                 disabled={disabled}
                 onClick={() => handleClick(action)}
-                initial={
-                  shouldReduceMotion
-                    ? false
-                    : {
-                        opacity: 0,
-                        y: 8,
-                      }
-                }
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{
                   ...transition,
-                  delay: shouldReduceMotion
-                    ? 0
-                    : index * 0.045,
+                  delay: shouldReduceMotion ? 0 : index * 0.045,
                 }}
                 whileHover={
-                  shouldReduceMotion || disabled
-                    ? undefined
-                    : { y: -2 }
+                  shouldReduceMotion || disabled ? undefined : { y: -2 }
                 }
                 whileTap={
-                  shouldReduceMotion || disabled
-                    ? undefined
-                    : { scale: 0.98 }
+                  shouldReduceMotion || disabled ? undefined : { scale: 0.98 }
                 }
                 className="group flex items-center gap-2.5 rounded border border-red-950 bg-[#120808] px-3 py-2.5 text-left transition hover:border-red-700 focus:outline-none focus-visible:border-red-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {/* ICON */}
 
                 <motion.span
-                  whileHover={
-                    shouldReduceMotion
-                      ? undefined
-                      : { scale: 1.08 }
-                  }
+                  whileHover={shouldReduceMotion ? undefined : { scale: 1.08 }}
                   transition={transition}
                   className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-red-900/70 bg-red-950/50 text-red-600"
                 >
@@ -940,7 +807,6 @@ const QuickActions = ({
               </motion.button>
             );
           })}
-
         </div>
       </motion.div>
 
@@ -952,6 +818,8 @@ const QuickActions = ({
             key="leave-modal"
             onClose={() => setLeaveOpen(false)}
             onSubmitLeave={onSubmitLeave}
+            balances={balances}
+            existingLeaves={existingLeaves}
           />
         )}
       </AnimatePresence>

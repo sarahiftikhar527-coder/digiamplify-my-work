@@ -204,6 +204,11 @@ function serializeTask(task, today, timeZone) {
     completedAt: task.completedAt,
     timeSpentMinutes: task.timeSpentMinutes || 0,
     elapsedMinutes: minutesBetween(task.startedAt, task.completedAt),
+    submissionNote: task.submissionNote || "",
+    submittedAt: task.submittedAt || null,
+    reviewNote: task.reviewNote || "",
+    reviewedAt: task.reviewedAt || null,
+    reviewedByName: task.reviewedByName || "",
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     started,
@@ -294,6 +299,32 @@ export async function updateEmployeeTaskStatus(
     );
   }
 
+  const isPersonalTask =
+    task.taskType === "personal" ||
+    task.assignedById === task.assignedToId;
+
+  if (!isPersonalTask) {
+    if (status === "approved" || status === "completed") {
+      throw createError(
+        "You cannot complete this assigned task directly. Submit it for review."
+      );
+    }
+
+    if (task.status === "review") {
+      throw createError(
+        "This task is already submitted for review. Wait for admin feedback."
+      );
+    }
+
+    if (task.status === "approved" || task.status === "completed") {
+      throw createError("This task has already been approved.");
+    }
+
+    if (!["pending", "in-progress"].includes(status)) {
+      throw createError("Invalid status for an assigned task.");
+    }
+  }
+
   const row = await prisma.task.update({
     where: { id: task.id },
     data: buildStatusPatch(task, status, timeSpentMinutes),
@@ -348,7 +379,7 @@ export async function getEmployeeWorkspace(
 
   return {
     view: lists[view] ? view : "assigned",
-    serverDate: today,
+        serverDate: today,
     tasks: lists[view] || lists.assigned,
     counts,
   };

@@ -44,6 +44,7 @@ model User {
   assignedTasks            Task[]                   @relation("AssignedTasks")
   createdTasks             Task[]                   @relation("CreatedTasks")
   taskComments             TaskComment[]            @relation("TaskCommentAuthor")
+  taskCommentReadStates    TaskCommentReadState[]
   calendarEvents           Calendar[]               @relation("EmployeeCalendar")
   createdCalendarEvents    Calendar[]               @relation("CreatedCalendar")
   reviewedCalendarEvents   Calendar[]               @relation("ReviewedCalendar")
@@ -239,10 +240,19 @@ model Task {
   startedAt        DateTime?
   completedAt      DateTime?
   timeSpentMinutes Int               @default(0)
+
+  submissionNote   String?           @db.Text
+  submittedAt      DateTime?
+  reviewNote       String?           @db.Text
+  reviewedAt       DateTime?
+  reviewedById     String?
+  reviewedByName   String?           @db.VarChar(150)
+
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   dailyUpdates     TaskDailyUpdate[]
   comments         TaskComment[]
+  commentReadStates TaskCommentReadState[]
 
   @@index([assignedToId, status, dueDate])
   @@index([taskType, isActive])
@@ -279,6 +289,21 @@ model TaskComment {
   @@index([taskId, createdAt])
   @@index([authorId])
   @@map("task_comments")
+}
+
+model TaskCommentReadState {
+  id         String   @id @default(uuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([taskId, userId])
+  @@index([userId, lastReadAt])
+  @@map("task_comment_read_states")
 }
 
 model Calendar {

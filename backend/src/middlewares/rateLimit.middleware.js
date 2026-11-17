@@ -1,3 +1,4 @@
+
 import rateLimit from 'express-rate-limit'
 
 const base = { standardHeaders: true, legacyHeaders: false }
@@ -12,7 +13,7 @@ export const loginLimiter = rateLimit({
 export const apiLimiter = rateLimit({
   ...base,
   windowMs: 60 * 1000,
-  limit: 300,
+  limit: 1500,
   message: { success: false, message: 'Too many requests. Slow down.' },
 })
 

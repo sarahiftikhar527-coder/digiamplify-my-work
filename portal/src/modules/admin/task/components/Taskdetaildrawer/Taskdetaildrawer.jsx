@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Avatar } from "../Avatarstack/Avatarstack";
 import { ProgressRing } from "../Taskcard/Taskcard";
@@ -12,10 +13,13 @@ import {
   formatDate,
   formatDateTime,
 } from "../../Constants";
+import TaskChatButton from "@/components/TaskChat/TaskChat.jsx";
+import TaskReviewPanel from "@/components/TaskReviewPanel/TaskReviewPanel.jsx";
 
 const STATUS_OPTIONS = [
-  { key: "todo", label: "To Do" },
+  { key: "todo", label: "Open" },
   { key: "in-progress", label: "In Progress" },
+  { key: "review", label: "In Review" },
   { key: "completed", label: "Completed" },
 ];
 
@@ -32,6 +36,10 @@ const normalizeStatus = (status) => {
     return "in-progress";
   }
 
+  if (["review", "under-review", "under review"].includes(value)) {
+    return "review";
+  }
+
   if (["completed", "done", "approved"].includes(value)) {
     return "completed";
   }
@@ -44,6 +52,7 @@ const getProgress = (task) => {
 
   if (status === "completed") return 100;
   if (status === "in-progress") return 50;
+  if (status === "review") return 75;
 
   return 0;
 };
@@ -121,6 +130,7 @@ export default function TaskDetailDrawer({
   onEdit,
   onDelete,
   onUpdate,
+  onReviewed,
   employees = [],
 }) {
   const [editing, setEditing] = useState(false);
@@ -314,15 +324,24 @@ export default function TaskDetailDrawer({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            aria-label="Close task details"
-            className="text-neutral-400 hover:text-white disabled:opacity-50"
-          >
-            <CloseIcon />
-          </button>
+          <div className="flex items-center gap-1">
+            <TaskChatButton
+              taskId={taskId}
+              taskTitle={task.title}
+              size={18}
+              className="rounded p-1.5 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            />
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              aria-label="Close task details"
+              className="text-neutral-400 hover:text-white disabled:opacity-50"
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </div>
 
         {editing ? (
@@ -542,6 +561,11 @@ export default function TaskDetailDrawer({
 
                 <span className="flex items-center gap-1.5 text-neutral-300">
                   <CalendarIcon width={13} height={13} />
+                  Assigned {formatDate(task.createdAt)}
+                </span>
+
+                <span className="flex items-center gap-1.5 text-neutral-300">
+                  <CalendarIcon width={13} height={13} />
                   Due {formatDate(task.dueDate)}
                 </span>
               </div>
@@ -565,15 +589,19 @@ export default function TaskDetailDrawer({
               <p className="mt-2 text-xs text-neutral-500">
                 {currentStatus === "completed"
                   ? "Task completed"
-                  : currentStatus === "in-progress"
-                    ? "Task is in progress"
-                    : "Task has not started"}
+                  : currentStatus === "review"
+                    ? "Task is in review"
+                    : currentStatus === "in-progress"
+                      ? "Task is in progress"
+                      : "Task has not started"}
               </p>
             </div>
 
             <p className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-neutral-200">
               {task.description || "No description provided."}
             </p>
+
+            <TaskReviewPanel task={task} onReviewed={onReviewed} />
 
             <div className="mt-6">
               <label

@@ -28,10 +28,14 @@ import {
 
 import { adminTaskReport } from "./tasks.report.controller.js";
 
+import { submitTaskForReview, reviewTask } from "./tasks.review.js";
+
 import {
   listTaskComments,
   addTaskComment,
   deleteTaskComment,
+  getTaskCommentUnreadCount,
+  markTaskCommentsRead,
 } from "./tasks.comments.js";
 
 const router = Router();
@@ -68,6 +72,13 @@ router.post(
   employeeDailyUpdate
 );
 
+/* Submit finished work for review (description is required) */
+router.post(
+  "/employee/:taskId/submit-review",
+  allowRoles(ROLES.EMPLOYEE),
+  submitTaskForReview
+);
+
 router.patch(
   "/employee/:taskId/status",
   allowRoles(ROLES.EMPLOYEE),
@@ -82,6 +93,9 @@ router.get("/admin/report", allowRoles(ROLES.ADMIN), adminTaskReport);
 
 router.post("/", allowTaskAssigners, adminCreateTask);
 
+/* Approve or disapprove a task that is in review */
+router.post("/admin/:taskId/review", allowTaskAssigners, reviewTask);
+
 router.patch(
   "/admin/:taskId/status",
   allowTaskAssigners,
@@ -91,7 +105,10 @@ router.patch(
 router.patch("/admin/:taskId", allowTaskAssigners, adminUpdateTask);
 router.delete("/admin/:taskId", allowTaskAssigners, adminDeleteTask);
 
-/* Comments: admin, assignee, creator and the assignee's leaders */
+/* Task chat (comments): admin, assignee, creator and the assignee's leaders */
+router.get("/:taskId/comments/unread-count", getTaskCommentUnreadCount);
+router.post("/:taskId/comments/read", markTaskCommentsRead);
+
 router.get("/:taskId/comments", listTaskComments);
 router.post("/:taskId/comments", addTaskComment);
 router.delete("/:taskId/comments/:commentId", deleteTaskComment);
