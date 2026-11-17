@@ -1,3 +1,4 @@
+
 import { prisma } from "../../config/db.js";
 import { emitToAll } from "../../sockets/index.js";
 import { todayStr } from "./attendance.service.js";
@@ -7,7 +8,6 @@ import {
   summarizeMember,
 } from "./attendanceTeam.utils.js";
 
-// Only these user fields are ever sent to other people.
 const MEMBER_SELECT = {
   id: true,
   name: true,
@@ -16,19 +16,26 @@ const MEMBER_SELECT = {
   designation: true,
   avatarUrl: true,
   timeZone: true,
+  profile: {
+    select: {
+      avatarUrl: true,
+    },
+  },
 };
 
-// Builds the board entry for each given user using only 2 database queries.
+function getMemberAvatar(user) {
+  return user.avatarUrl || user.profile?.avatarUrl || "";
+}
+
 async function buildMembers(users, now) {
   if (users.length === 0) return [];
 
   const userIds = users.map((user) => user.id);
 
-  // "Today" is calculated in each user's own time zone, exactly like the
-  // existing clock in code does.
   const dateKeyByUser = new Map(
     users.map((user) => [user.id, todayStr(now, user.timeZone)])
   );
+
   const dateKeys = [...new Set(dateKeyByUser.values())];
 
   const [sessions, dayRecords] = await Promise.all([
@@ -37,11 +44,21 @@ async function buildMembers(users, now) {
         userId: { in: userIds },
         OR: [{ dateKey: { in: dateKeys } }, { clockOutAt: null }],
       },
-      include: { breaks: { orderBy: { startAt: "asc" } } },
-      orderBy: { clockInAt: "asc" },
+      include: {
+        breaks: {
+          orderBy: { startAt: "asc" },
+        },
+      },
+      orderBy: {
+        clockInAt: "asc",
+      },
     }),
+
     prisma.attendance.findMany({
-      where: { userId: { in: userIds }, dateKey: { in: dateKeys } },
+      where: {
+        userId: { in: userIds },
+        dateKey: { in: dateKeys },
+      },
     }),
   ]);
 
@@ -50,7 +67,6 @@ async function buildMembers(users, now) {
   for (const session of sessions) {
     const todayKey = dateKeyByUser.get(session.userId);
 
-    // Keep today's sessions and any session that is still open.
     if (session.dateKey !== todayKey && session.clockOutAt) continue;
 
     const list = sessionsByUser.get(session.userId) || [];
@@ -69,7 +85,6 @@ async function buildMembers(users, now) {
   return users.map((user) => {
     let userSessions = sessionsByUser.get(user.id) || [];
 
-    // Older records that have no session rows yet.
     if (userSessions.length === 0) {
       const record = recordByUser.get(user.id);
 
@@ -85,19 +100,27 @@ async function buildMembers(users, now) {
       }
     }
 
-    return summarizeMember(user, userSessions, now);
+    const memberUser = {
+      ...user,
+      avatarUrl: getMemberAvatar(user),
+    };
+
+    return summarizeMember(memberUser, userSessions, now);
   });
 }
 
-// GET /attendance/team/today
-// Everyone who is logged in (admin and employee) can read it.
 export async function getTeamToday(currentUserId) {
   const now = new Date();
 
   const users = await prisma.user.findMany({
-    where: { isDeleted: false, status: "active" },
+    where: {
+      isDeleted: false,
+      status: "active",
+    },
     select: MEMBER_SELECT,
-    orderBy: { name: "asc" },
+    orderBy: {
+      name: "asc",
+    },
   });
 
   const members = (await buildMembers(users, now)).filter(shouldShowMember);
@@ -110,13 +133,14 @@ export async function getTeamToday(currentUserId) {
   };
 }
 
-// Tells every connected user that one person's status changed, so all
-// open Clock In pages update instantly without a refresh.
-// It never throws: a failed broadcast must not break clock in or clock out.
 export async function broadcastMemberUpdate(userId) {
   try {
     const user = await prisma.user.findFirst({
-      where: { id: String(userId), isDeleted: false, status: "active" },
+      where: {
+        id: String(userId),
+        isDeleted: false,
+        status: "active",
+      },
       select: MEMBER_SELECT,
     });
 
@@ -124,8 +148,13 @@ export async function broadcastMemberUpdate(userId) {
 
     const [member] = await buildMembers([user], new Date());
 
-    if (member) emitToAll("attendance:team-update", member);
+    if (member) {
+      emitToAll("attendance:team-update", member);
+    }
   } catch (error) {
-    console.error("[ATTENDANCE] team broadcast failed:", error?.message);
+    console.error(
+      "[ATTENDANCE] team broadcast failed:",
+      error?.message
+    );
   }
 }

@@ -763,7 +763,7 @@ export default function useChat() {
           status: "failed",
           error:
             exception?.message ||
-            "Message send nahi hua. Dobara try karein.",
+            "Message was not sent. Please try again.",
         }));
 
         setError(

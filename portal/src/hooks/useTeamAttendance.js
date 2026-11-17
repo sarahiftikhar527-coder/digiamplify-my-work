@@ -1,24 +1,57 @@
+
 import { useCallback, useEffect, useState } from "react";
 import { clockInService } from "../services/clockInService.js";
+import apiClient from "../services/api/apiClient.js";
 import { getSocket } from "../services/socket.js";
 
-// If the live connection is down, the board still refreshes this often.
 const POLL_INTERVAL_MS = 30000;
 
-// Adds or replaces one member in the list.
-const upsertMember = (list, member) => {
-  const index = list.findIndex((item) => item.userId === member.userId);
+const resolveAvatarUrl = (avatarUrl) => {
+  if (!avatarUrl || typeof avatarUrl !== "string") return "";
 
-  if (index === -1) return [...list, member];
+  const value = avatarUrl.trim();
+
+  if (!value) return "";
+
+  try {
+    return new URL(
+      value,
+      apiClient.defaults.baseURL || window.location.origin
+    ).href;
+  } catch {
+    return value;
+  }
+};
+
+const upsertMember = (list, member) => {
+  const index = list.findIndex(
+    (item) => item.userId === member.userId
+  );
+
+  if (index === -1) {
+    return [
+      ...list,
+      {
+        ...member,
+        avatarUrl: resolveAvatarUrl(member.avatarUrl),
+      },
+    ];
+  }
 
   const next = [...list];
-  next[index] = member;
+  const existingMember = next[index];
+
+  next[index] = {
+    ...existingMember,
+    ...member,
+    avatarUrl: resolveAvatarUrl(
+      member.avatarUrl || existingMember.avatarUrl
+    ),
+  };
+
   return next;
 };
 
-// Loads today's team attendance and keeps it live.
-// Every member carries `receivedAt` (browser time when the data arrived),
-// which the card uses to keep the "worked" timers ticking.
 export default function useTeamAttendance() {
   const [members, setMembers] = useState([]);
   const [meId, setMeId] = useState("");
@@ -32,11 +65,15 @@ export default function useTeamAttendance() {
         .then((data) => {
           const receivedAt = Date.now();
 
-          setMembers(
-            (Array.isArray(data?.members) ? data.members : []).map(
-              (member) => ({ ...member, receivedAt })
-            )
-          );
+          const nextMembers = (
+            Array.isArray(data?.members) ? data.members : []
+          ).map((member) => ({
+            ...member,
+            avatarUrl: resolveAvatarUrl(member.avatarUrl),
+            receivedAt,
+          }));
+
+          setMembers(nextMembers);
           setMeId(data?.meId || "");
           setError("");
         })
@@ -51,17 +88,17 @@ export default function useTeamAttendance() {
     []
   );
 
-  // First load.
   useEffect(() => {
     load();
   }, [load]);
 
-  // Fallback refresh, and refresh when the tab becomes visible again.
   useEffect(() => {
     const timer = setInterval(load, POLL_INTERVAL_MS);
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") {
+        load();
+      }
     };
 
     document.addEventListener("visibilitychange", onVisible);
@@ -72,8 +109,6 @@ export default function useTeamAttendance() {
     };
   }, [load]);
 
-  // Real-time updates: when anybody clocks in, clocks out or takes a break,
-  // the server pushes that person's new status to everyone.
   useEffect(() => {
     let socket;
 
@@ -87,11 +122,13 @@ export default function useTeamAttendance() {
       if (!member?.userId) return;
 
       setMembers((prev) =>
-        upsertMember(prev, { ...member, receivedAt: Date.now() })
+        upsertMember(prev, {
+          ...member,
+          receivedAt: Date.now(),
+        })
       );
     };
 
-    // After a reconnect, reload everything to catch what was missed.
     const onConnect = () => {
       load();
     };
@@ -105,5 +142,11 @@ export default function useTeamAttendance() {
     };
   }, [load]);
 
-  return { members, meId, loading, error, reload: load };
+  return {
+    members,
+    meId,
+    loading,
+    error,
+    reload: load,
+  };
 }

@@ -249,7 +249,7 @@ const RequestForm = ({
     const validationErrors = {};
 
     if (!type) {
-      validationErrors.type = "Leave type select karo";
+      validationErrors.type = "Select a leave type.";
     }
 
     if (!from) {

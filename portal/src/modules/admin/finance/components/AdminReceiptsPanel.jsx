@@ -220,7 +220,7 @@ export default function AdminReceiptsPanel() {
               <tr><td colSpan={8} className="px-3 py-8 text-center text-neutral-400">Loading receipts...</td></tr>
             )}
             {!loading && data.receipts.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-neutral-400">Koi receipt nahi mili.</td></tr>
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-neutral-400">No receipt received..</td></tr>
             )}
             {!loading && data.receipts.map((r) => (
               <tr key={r.id} className="border-b border-[#1a1a1a] last:border-0 hover:bg-white/[0.02]">

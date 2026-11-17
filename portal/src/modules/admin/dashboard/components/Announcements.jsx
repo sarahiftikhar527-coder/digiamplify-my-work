@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Megaphone,
@@ -100,7 +99,7 @@ export default function Announcements() {
       );
     } catch (err) {
       setEmployeeError(
-        err?.message || "Employees database se load nahi ho sake."
+        err?.message || "Failed to load employees from the database."
       );
       setEmployees([]);
     } finally {
@@ -118,7 +117,7 @@ export default function Announcements() {
         loadEmployees(),
       ]);
     } catch (err) {
-      setError(err?.message || "Announcements load nahi ho sake.");
+      setError(err?.message || "Failed to load announcements.");
     } finally {
       setLoading(false);
     }
@@ -247,7 +246,7 @@ export default function Announcements() {
     setError("");
 
     if (!form.title.trim() || !form.message.trim()) {
-      setError("Title aur message dono required hain.");
+      setError("Both title and message are required.");
       return;
     }
 
@@ -255,7 +254,7 @@ export default function Announcements() {
       form.audience === "selected" &&
       form.employeeIds.length === 0
     ) {
-      setError("Kam az kam ek employee select karein.");
+      setError("Please select at least one employee.");
       return;
     }
 
@@ -284,7 +283,7 @@ export default function Announcements() {
 
       await loadAnnouncements();
     } catch (err) {
-      setError(err?.message || "Announcement save nahi ho saka.");
+      setError(err?.message || "Failed to save the announcement.");
     } finally {
       setSaving(false);
     }
@@ -317,7 +316,7 @@ export default function Announcements() {
 
       setSuccess("Announcement deleted successfully.");
     } catch (err) {
-      setError(err?.message || "Announcement delete nahi ho saka.");
+      setError(err?.message || "Failed to delete the announcement.");
     } finally {
       setDeletingId("");
     }

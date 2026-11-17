@@ -1,17 +1,8 @@
+
 import { prisma } from "../../config/db.js";
 
-/*
-|--------------------------------------------------------------------------
-| Attendance rules (fixed break limits, daily hours) and employee schedules
-| + weekly / monthly hour tracking.
-|
-| Hours are calculated from the TOTAL time worked, never from fixed
-| start / end times. Starting late simply means finishing later.
-|--------------------------------------------------------------------------
-*/
-
 export const DEFAULT_TIME_ZONE = "Asia/Karachi";
-export const BREAK_TYPES = ["tea", "lunch", "prayer", "other"];
+export const BREAK_TYPES = ["break"];
 
 const DEFAULT_RULES = {
   teaMinutes: 15,
@@ -25,10 +16,16 @@ const DEFAULT_RULES = {
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const fail = (status, message, code = "ATTENDANCE_RULES_ERROR") =>
-  Object.assign(new Error(message), { status, statusCode: status, code });
+  Object.assign(new Error(message), {
+    status,
+    statusCode: status,
+    code,
+  });
 
 export function normalizeTimeZone(timeZone) {
-  if (!timeZone || typeof timeZone !== "string") return DEFAULT_TIME_ZONE;
+  if (!timeZone || typeof timeZone !== "string") {
+    return DEFAULT_TIME_ZONE;
+  }
 
   try {
     new Intl.DateTimeFormat("en-US", { timeZone });
@@ -39,7 +36,9 @@ export function normalizeTimeZone(timeZone) {
 }
 
 const parseDays = (value, fallback = [1, 2, 3, 4, 5]) => {
-  const list = (Array.isArray(value) ? value : String(value ?? "").split(","))
+  const list = (
+    Array.isArray(value) ? value : String(value ?? "").split(",")
+  )
     .map(Number)
     .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
 
@@ -61,12 +60,6 @@ const whole = (value, label, min, max) => {
 
   return number;
 };
-
-const minutesBetween = (from, to) =>
-  Math.max(
-    0,
-    Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60000)
-  );
 
 /*
 |--------------------------------------------------------------------------
@@ -92,7 +85,9 @@ const shapeRules = (row) => {
 export async function getRules() {
   try {
     return shapeRules(
-      await prisma.attendanceRule.findUnique({ where: { id: "default" } })
+      await prisma.attendanceRule.findUnique({
+        where: { id: "default" },
+      })
     );
   } catch (error) {
     console.error(
@@ -127,32 +122,44 @@ export async function updateRules(body = {}) {
     update: data,
   });
 
-  return { ...(await getRules()), message: "Attendance rules saved." };
+  return {
+    ...(await getRules()),
+    message: "Attendance rules saved.",
+  };
 }
 
 /*
 |--------------------------------------------------------------------------
-| Employee schedule (optional override of the company default)
+| Employee schedule
 |--------------------------------------------------------------------------
 */
 
 const shapeSchedule = (row, rules) => ({
   startTime: row?.startTime || "",
   endTime: row?.endTime || "",
-  dailyTargetMinutes: row?.dailyTargetMinutes ?? rules.dailyTargetMinutes,
-  workDays: row?.workDays ? parseDays(row.workDays, rules.workDays) : rules.workDays,
+  dailyTargetMinutes:
+    row?.dailyTargetMinutes ?? rules.dailyTargetMinutes,
+  breakDurationMinutes: row?.breakDurationMinutes ?? null,
+  workDays: row?.workDays
+    ? parseDays(row.workDays, rules.workDays)
+    : rules.workDays,
   custom: Boolean(row),
 });
 
 async function loadSchedules(userIds) {
   try {
     const rows = await prisma.employeeSchedule.findMany({
-      where: { userId: { in: userIds } },
+      where: {
+        userId: { in: userIds },
+      },
     });
 
     return new Map(rows.map((row) => [row.userId, row]));
   } catch (error) {
-    console.error("[ATTENDANCE] schedules unavailable:", error?.message);
+    console.error(
+      "[ATTENDANCE] schedules unavailable:",
+      error?.message
+    );
 
     return new Map();
   }
@@ -160,18 +167,31 @@ async function loadSchedules(userIds) {
 
 export async function setSchedule(userId, body = {}) {
   const user = await prisma.user.findFirst({
-    where: { id: String(userId), isDeleted: false },
-    select: { id: true },
+    where: {
+      id: String(userId),
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+    },
   });
 
   if (!user) {
-    throw fail(404, "Employee account was not found.", "USER_NOT_FOUND");
+    throw fail(
+      404,
+      "Employee account was not found.",
+      "USER_NOT_FOUND"
+    );
   }
 
   if (body.reset) {
-    await prisma.employeeSchedule.deleteMany({ where: { userId: user.id } });
+    await prisma.employeeSchedule.deleteMany({
+      where: { userId: user.id },
+    });
 
-    return { message: "Schedule reset to the company default." };
+    return {
+      message: "Schedule reset to the company default.",
+    };
   }
 
   const startTime = String(body.startTime ?? "").trim();
@@ -181,7 +201,11 @@ export async function setSchedule(userId, body = {}) {
     (startTime && !TIME_RE.test(startTime)) ||
     (endTime && !TIME_RE.test(endTime))
   ) {
-    throw fail(400, "Use the 24-hour format HH:mm for working times.", "INVALID_TIME");
+    throw fail(
+      400,
+      "Use the 24-hour format HH:mm for working times.",
+      "INVALID_TIME"
+    );
   }
 
   const emptyDaily =
@@ -189,29 +213,62 @@ export async function setSchedule(userId, body = {}) {
     body.dailyTargetMinutes === undefined ||
     body.dailyTargetMinutes === "";
 
+  const emptyBreak =
+    body.breakDurationMinutes === null ||
+    body.breakDurationMinutes === undefined ||
+    body.breakDurationMinutes === "";
+
   const data = {
     startTime,
     endTime,
     dailyTargetMinutes: emptyDaily
       ? null
-      : whole(body.dailyTargetMinutes, "Daily working time (minutes)", 60, 960),
+      : whole(
+          body.dailyTargetMinutes,
+          "Daily working time (minutes)",
+          60,
+          960
+        ),
+    breakDurationMinutes: emptyBreak
+      ? null
+      : whole(
+          body.breakDurationMinutes,
+          "Daily break allowance (minutes)",
+          0,
+          240
+        ),
     workDays: parseDays(body.workDays).join(","),
   };
 
   await prisma.employeeSchedule.upsert({
-    where: { userId: user.id },
-    create: { userId: user.id, ...data },
+    where: {
+      userId: user.id,
+    },
+    create: {
+      userId: user.id,
+      ...data,
+    },
     update: data,
   });
 
-  return { message: "Employee schedule saved." };
+  return {
+    message: "Employee schedule saved.",
+  };
 }
 
 /*
 |--------------------------------------------------------------------------
-| Date helpers (date keys are YYYY-MM-DD in the employee's time zone)
+| Date helpers
 |--------------------------------------------------------------------------
 */
+
+const minutesBetween = (from, to) =>
+  Math.max(
+    0,
+    Math.round(
+      (new Date(to).getTime() - new Date(from).getTime()) / 60000
+    )
+  );
 
 const dateKeyOf = (date, timeZone) =>
   new Intl.DateTimeFormat("en-CA", {
@@ -234,12 +291,15 @@ const utcOf = (key) => {
 };
 
 const addDays = (key, amount) =>
-  new Date(utcOf(key) + amount * 86400000).toISOString().slice(0, 10);
+  new Date(utcOf(key) + amount * 86400000)
+    .toISOString()
+    .slice(0, 10);
 
-const weekday = (key) => new Date(utcOf(key)).getUTCDay();
+const weekday = (key) =>
+  new Date(utcOf(key)).getUTCDay();
 
 function periodRanges(dateKey) {
-  const offset = (weekday(dateKey) + 6) % 7; // week starts on Monday
+  const offset = (weekday(dateKey) + 6) % 7;
   const weekStart = addDays(dateKey, -offset);
   const weekEnd = addDays(weekStart, 6);
 
@@ -258,8 +318,14 @@ function periodRanges(dateKey) {
 function countWorkDays(start, end, workDays) {
   let count = 0;
 
-  for (let key = start; key <= end; key = addDays(key, 1)) {
-    if (workDays.includes(weekday(key))) count += 1;
+  for (
+    let key = start;
+    key <= end;
+    key = addDays(key, 1)
+  ) {
+    if (workDays.includes(weekday(key))) {
+      count += 1;
+    }
   }
 
   return count;
@@ -272,15 +338,23 @@ function countWorkDays(start, end, workDays) {
 */
 
 function sessionMinutes(session, now) {
-  if (session.clockOutAt) return session.workedMinutes || 0;
+  if (session.clockOutAt) {
+    return session.workedMinutes || 0;
+  }
 
   const breaks = (session.breaks || []).reduce(
     (sum, item) =>
-      sum + (item.endAt ? item.minutes : minutesBetween(item.startAt, now)),
+      sum +
+      (item.endAt
+        ? item.minutes
+        : minutesBetween(item.startAt, now)),
     0
   );
 
-  return Math.max(0, minutesBetween(session.clockInAt, now) - breaks);
+  return Math.max(
+    0,
+    minutesBetween(session.clockInAt, now) - breaks
+  );
 }
 
 function rangeWorked(sessions, attendance, start, end, now) {
@@ -288,13 +362,15 @@ function rangeWorked(sessions, attendance, start, end, now) {
   let total = 0;
 
   for (const session of sessions) {
-    if (session.dateKey >= start && session.dateKey <= end) {
+    if (
+      session.dateKey >= start &&
+      session.dateKey <= end
+    ) {
       covered.add(session.dateKey);
       total += sessionMinutes(session, now);
     }
   }
 
-  // Days recorded before sessions existed still count.
   for (const record of attendance) {
     if (
       record.dateKey >= start &&
@@ -313,83 +389,169 @@ const summary = (worked, target, extra = {}) => ({
   targetMinutes: target,
   remainingMinutes: Math.max(0, target - worked),
   overtimeMinutes: Math.max(0, worked - target),
-  percent: target > 0 ? Math.min(100, Math.round((worked / target) * 100)) : 0,
+  percent:
+    target > 0
+      ? Math.min(100, Math.round((worked / target) * 100))
+      : 0,
   ...extra,
 });
 
-function buildHours(plan, schedule, rules, sessions, attendance, now) {
+function buildHours(
+  plan,
+  schedule,
+  rules,
+  sessions,
+  attendance,
+  now
+) {
   const target = schedule.dailyTargetMinutes;
-  const isWorkDay = schedule.workDays.includes(weekday(plan.dateKey));
+  const isWorkDay = schedule.workDays.includes(
+    weekday(plan.dateKey)
+  );
+
+  const breakAllowanceMinutes = schedule.breakDurationMinutes;
 
   let breakMinutes = 0;
-  let breakOverMinutes = 0;
   let onBreak = false;
   let clockedIn = false;
 
   for (const session of sessions) {
     if (session.dateKey !== plan.dateKey) continue;
 
-    if (!session.clockOutAt) clockedIn = true;
+    if (!session.clockOutAt) {
+      clockedIn = true;
+    }
 
     for (const item of session.breaks || []) {
       const minutes = item.endAt
         ? item.minutes
         : minutesBetween(item.startAt, now);
 
-      const allowed =
-        rules.breakAllowances[item.type] ?? rules.breakAllowances.other;
-
-      if (!item.endAt) onBreak = true;
+      if (!item.endAt) {
+        onBreak = true;
+      }
 
       breakMinutes += minutes;
-      breakOverMinutes += Math.max(0, minutes - allowed);
     }
   }
+
+  const breakOverMinutes =
+    breakAllowanceMinutes === null
+      ? 0
+      : Math.max(0, breakMinutes - breakAllowanceMinutes);
+
+  const breakRemainingMinutes =
+    breakAllowanceMinutes === null
+      ? null
+      : Math.max(0, breakAllowanceMinutes - breakMinutes);
 
   return {
     asOf: now.toISOString(),
     dateKey: plan.dateKey,
     schedule,
+
     today: summary(
-      rangeWorked(sessions, attendance, plan.dateKey, plan.dateKey, now),
+      rangeWorked(
+        sessions,
+        attendance,
+        plan.dateKey,
+        plan.dateKey,
+        now
+      ),
       isWorkDay ? target : 0,
-      { isWorkDay, breakMinutes, breakOverMinutes, onBreak, clockedIn }
+      {
+        isWorkDay,
+        breakMinutes,
+        breakUsedMinutes: breakMinutes,
+        breakAllowanceMinutes,
+        breakRemainingMinutes,
+        breakOverMinutes,
+        onBreak,
+        clockedIn,
+      }
     ),
+
     week: summary(
-      rangeWorked(sessions, attendance, plan.weekStart, plan.weekEnd, now),
-      countWorkDays(plan.weekStart, plan.weekEnd, schedule.workDays) * target,
-      { start: plan.weekStart, end: plan.weekEnd }
+      rangeWorked(
+        sessions,
+        attendance,
+        plan.weekStart,
+        plan.weekEnd,
+        now
+      ),
+      countWorkDays(
+        plan.weekStart,
+        plan.weekEnd,
+        schedule.workDays
+      ) * target,
+      {
+        start: plan.weekStart,
+        end: plan.weekEnd,
+      }
     ),
+
     month: summary(
-      rangeWorked(sessions, attendance, plan.monthStart, plan.monthEnd, now),
-      countWorkDays(plan.monthStart, plan.monthEnd, schedule.workDays) * target,
-      { start: plan.monthStart, end: plan.monthEnd }
+      rangeWorked(
+        sessions,
+        attendance,
+        plan.monthStart,
+        plan.monthEnd,
+        now
+      ),
+      countWorkDays(
+        plan.monthStart,
+        plan.monthEnd,
+        schedule.workDays
+      ) * target,
+      {
+        start: plan.monthStart,
+        end: plan.monthEnd,
+      }
     ),
   };
 }
 
-// users: [{ id, timeZone }]  ->  Map(userId -> hours)
-export async function getHoursForUsers(users, now = new Date(), rulesIn = null) {
+export async function getHoursForUsers(
+  users,
+  now = new Date(),
+  rulesIn = null
+) {
   const result = new Map();
 
-  if (!users.length) return result;
+  if (!users.length) {
+    return result;
+  }
 
   const rules = rulesIn || (await getRules());
   const ids = users.map((user) => String(user.id));
   const schedules = await loadSchedules(ids);
 
   const plans = users.map((user) => {
-    const dateKey = dateKeyOf(now, normalizeTimeZone(user.timeZone));
+    const dateKey = dateKeyOf(
+      now,
+      normalizeTimeZone(user.timeZone)
+    );
 
-    return { id: String(user.id), dateKey, ...periodRanges(dateKey) };
+    return {
+      id: String(user.id),
+      dateKey,
+      ...periodRanges(dateKey),
+    };
   });
 
   let from = "";
   let to = "";
 
   for (const plan of plans) {
-    const a = plan.weekStart < plan.monthStart ? plan.weekStart : plan.monthStart;
-    const b = plan.weekEnd > plan.monthEnd ? plan.weekEnd : plan.monthEnd;
+    const a =
+      plan.weekStart < plan.monthStart
+        ? plan.weekStart
+        : plan.monthStart;
+
+    const b =
+      plan.weekEnd > plan.monthEnd
+        ? plan.weekEnd
+        : plan.monthEnd;
 
     if (!from || a < from) from = a;
     if (!to || b > to) to = b;
@@ -397,12 +559,25 @@ export async function getHoursForUsers(users, now = new Date(), rulesIn = null) 
 
   const [sessions, attendance] = await Promise.all([
     prisma.attendanceSession.findMany({
-      where: { userId: { in: ids }, dateKey: { gte: from, lte: to } },
-      include: { breaks: true },
+      where: {
+        userId: { in: ids },
+        dateKey: { gte: from, lte: to },
+      },
+      include: {
+        breaks: true,
+      },
     }),
+
     prisma.attendance.findMany({
-      where: { userId: { in: ids }, dateKey: { gte: from, lte: to } },
-      select: { userId: true, dateKey: true, workedMinutes: true },
+      where: {
+        userId: { in: ids },
+        dateKey: { gte: from, lte: to },
+      },
+      select: {
+        userId: true,
+        dateKey: true,
+        workedMinutes: true,
+      },
     }),
   ]);
 
@@ -410,11 +585,17 @@ export async function getHoursForUsers(users, now = new Date(), rulesIn = null) 
   const attendanceBy = new Map();
 
   for (const item of sessions) {
-    sessionsBy.set(item.userId, [...(sessionsBy.get(item.userId) || []), item]);
+    sessionsBy.set(item.userId, [
+      ...(sessionsBy.get(item.userId) || []),
+      item,
+    ]);
   }
 
   for (const item of attendance) {
-    attendanceBy.set(item.userId, [...(attendanceBy.get(item.userId) || []), item]);
+    attendanceBy.set(item.userId, [
+      ...(attendanceBy.get(item.userId) || []),
+      item,
+    ]);
   }
 
   for (const plan of plans) {
@@ -436,12 +617,21 @@ export async function getHoursForUsers(users, now = new Date(), rulesIn = null) 
 
 export async function getMyHours(userId) {
   const user = await prisma.user.findUnique({
-    where: { id: String(userId) },
-    select: { id: true, timeZone: true },
+    where: {
+      id: String(userId),
+    },
+    select: {
+      id: true,
+      timeZone: true,
+    },
   });
 
   if (!user) {
-    throw fail(404, "Employee account was not found.", "USER_NOT_FOUND");
+    throw fail(
+      404,
+      "Employee account was not found.",
+      "USER_NOT_FOUND"
+    );
   }
 
   const map = await getHoursForUsers([user]);
@@ -449,12 +639,20 @@ export async function getMyHours(userId) {
   return map.get(user.id);
 }
 
-// Admin: every active person with schedule, week / month hours and today's extra break time.
+/*
+|--------------------------------------------------------------------------
+| Admin schedules
+|--------------------------------------------------------------------------
+*/
+
 export async function listSchedules() {
   const rules = await getRules();
 
   const users = await prisma.user.findMany({
-    where: { status: "active", isDeleted: false },
+    where: {
+      status: "active",
+      isDeleted: false,
+    },
     select: {
       id: true,
       name: true,
@@ -463,13 +661,20 @@ export async function listSchedules() {
       role: true,
       timeZone: true,
     },
-    orderBy: { name: "asc" },
+    orderBy: {
+      name: "asc",
+    },
   });
 
-  const hours = await getHoursForUsers(users, new Date(), rules);
+  const hours = await getHoursForUsers(
+    users,
+    new Date(),
+    rules
+  );
 
   return {
     rules,
+
     rows: users.map((user) => {
       const item = hours.get(String(user.id));
 
@@ -481,7 +686,11 @@ export async function listSchedules() {
         role: user.role,
         schedule: item?.schedule || null,
         hours: item
-          ? { today: item.today, week: item.week, month: item.month }
+          ? {
+              today: item.today,
+              week: item.week,
+              month: item.month,
+            }
           : null,
       };
     }),

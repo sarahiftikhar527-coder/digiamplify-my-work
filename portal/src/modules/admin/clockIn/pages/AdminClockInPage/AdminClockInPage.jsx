@@ -1,17 +1,14 @@
+
 import { useState } from "react";
-import { Clock, FileText, Network, SlidersHorizontal } from "lucide-react";
+import { Clock, FileText, SlidersHorizontal } from "lucide-react";
 
 import MyClockIn from "../../components/MyClockIn";
 import AttendanceOverview from "../../components/AttendanceOverview";
 import AttendanceRulesModal from "../../components/AttendanceRulesModal";
-import { TeamLiveBoard } from "@/shared/teamLive";
 import { formatDateLong } from "../../../../../utils/time";
 
-// Three views: the admin's own clock in (with today's live team), the full
-// live hierarchy board, and the attendance reports.
 const TABS = [
   { key: "clockin", label: "Clock In", icon: Clock },
-  { key: "live", label: "Live Hierarchy", icon: Network },
   { key: "attendance", label: "Attendance Reports", icon: FileText },
 ];
 
@@ -73,8 +70,6 @@ const AdminClockInPage = () => {
 
       {view === "attendance" ? (
         <AttendanceOverview onBack={() => setView("clockin")} />
-      ) : view === "live" ? (
-        <TeamLiveBoard mode="admin" embedded />
       ) : (
         <MyClockIn />
       )}

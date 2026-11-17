@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import {
   X,
@@ -54,12 +53,12 @@ export default function SendNotificationModal({ onClose, onSend }) {
     setError("");
 
     if (!title.trim() || !details.trim()) {
-      setError("Title aur message dono required hain.");
+      setError("Both title and message are required.");
       return;
     }
 
     if (audience === "selected" && selected.length === 0) {
-      setError("Kam az kam ek employee select karein.");
+      setError("Please select at least one employee.");
       return;
     }
 
@@ -75,7 +74,7 @@ export default function SendNotificationModal({ onClose, onSend }) {
 
       onClose?.(count);
     } catch (err) {
-      setError(err.message || "Notification send nahi ho saki.");
+      setError(err.message || "Failed to send the notification.");
     } finally {
       setSubmitting(false);
     }

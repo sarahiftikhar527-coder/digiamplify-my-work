@@ -66,7 +66,7 @@ model User {
   profileChangeRequests    ProfileChangeRequest[]   @relation("RequestedProfileChanges")
   reviewedProfileChanges   ProfileChangeRequest[]   @relation("ReviewedProfileChanges")
   organizedMeetings        Meeting[]                @relation("MeetingOrganizer")
-  meetingAttendances       MeetingAttendee[]        @relation("MeetingAttendee")
+  meetingAttendances       MeetingAttendee[]         @relation("MeetingAttendee")
 
   @@index([role])
   @@index([position])
@@ -223,35 +223,33 @@ model Leave {
 }
 
 model Task {
-  id               String            @id @default(uuid())
-  title            String            @db.VarChar(200)
-  subtitle         String            @default("") @db.VarChar(200)
-  description      String?           @db.Text
-  priority         String            @default("Medium") @db.VarChar(50)
-  taskType         String            @default("extra") @db.VarChar(20)
-  startDate        DateTime?
-  isActive         Boolean           @default(true)
-  assignedToId     String
-  assignedTo       User              @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
-  assignedById     String
-  assignedBy       User              @relation("CreatedTasks", fields: [assignedById], references: [id], onDelete: Cascade)
-  status           String            @default("pending") @db.VarChar(50)
-  dueDate          DateTime
-  startedAt        DateTime?
-  completedAt      DateTime?
-  timeSpentMinutes Int               @default(0)
-
-  submissionNote   String?           @db.Text
-  submittedAt      DateTime?
-  reviewNote       String?           @db.Text
-  reviewedAt       DateTime?
-  reviewedById     String?
-  reviewedByName   String?           @db.VarChar(150)
-
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  dailyUpdates     TaskDailyUpdate[]
-  comments         TaskComment[]
+  id                String            @id @default(uuid())
+  title             String            @db.VarChar(200)
+  subtitle          String            @default("") @db.VarChar(200)
+  description       String?           @db.Text
+  priority          String            @default("Medium") @db.VarChar(50)
+  taskType          String            @default("extra") @db.VarChar(20)
+  startDate         DateTime?
+  isActive          Boolean           @default(true)
+  assignedToId      String
+  assignedTo        User              @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedById      String
+  assignedBy        User              @relation("CreatedTasks", fields: [assignedById], references: [id], onDelete: Cascade)
+  status            String            @default("pending") @db.VarChar(50)
+  dueDate           DateTime
+  startedAt         DateTime?
+  completedAt       DateTime?
+  timeSpentMinutes  Int               @default(0)
+  submissionNote    String?           @db.Text
+  submittedAt       DateTime?
+  reviewNote        String?           @db.Text
+  reviewedAt        DateTime?
+  reviewedById      String?
+  reviewedByName    String?           @db.VarChar(150)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  dailyUpdates      TaskDailyUpdate[]
+  comments          TaskComment[]
   commentReadStates TaskCommentReadState[]
 
   @@index([assignedToId, status, dueDate])
@@ -474,7 +472,7 @@ model ProgressReport {
   reviewedBy      User?     @relation("ReviewedProgressReports", fields: [reviewedById], references: [id], onDelete: SetNull)
   reviewedAt      DateTime?
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  updatedAt      DateTime  @updatedAt
 
   @@unique([employeeId, periodStart])
   @@index([status])
@@ -507,6 +505,7 @@ model AttendanceBreak {
   userId    String
   dateKey   String            @db.VarChar(50)
   type      String            @default("other") @db.VarChar(30)
+  reason    String            @default("") @db.VarChar(255)
   startAt   DateTime
   endAt     DateTime?
   minutes   Int               @default(0)
@@ -528,24 +527,24 @@ model Meeting {
   category                  String            @default("general") @db.VarChar(30)
   priority                  String            @default("normal") @db.VarChar(20)
   location                  String            @default("") @db.VarChar(255)
-  meetingLink               String            @default("") @db.VarChar(500)
+  meetingLink               String             @default("") @db.VarChar(500)
   startAt                   DateTime
   endAt                     DateTime
-  tzOffset                  Int               @default(0)
-  recurrence                String            @default("none") @db.VarChar(20)
+  tzOffset                  Int                @default(0)
+  recurrence                String             @default("none") @db.VarChar(20)
   recurrenceUntil           DateTime?
   skippedDates              Json?
-  reminderMinutes           Int               @default(15)
+  reminderMinutes           Int                @default(15)
   lastReminderFor           DateTime?
-  reminderScheduleUpdatedAt DateTime          @default(now())
-  status                    String            @default("scheduled") @db.VarChar(20)
-  cancelReason              String            @default("") @db.VarChar(500)
+  reminderScheduleUpdatedAt DateTime           @default(now())
+  status                    String             @default("scheduled") @db.VarChar(20)
+  cancelReason              String             @default("") @db.VarChar(500)
   organizerId               String
-  organizer                 User              @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  organizer                 User               @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   attendees                 MeetingAttendee[]
   reminderDeliveries        MeetingReminder[]
-  createdAt                 DateTime          @default(now())
-  updatedAt                 DateTime          @updatedAt
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
 
   @@index([startAt, endAt])
   @@index([organizerId, startAt])
@@ -674,8 +673,6 @@ model ChatReaction {
   @@map("chat_reactions")
 }
 
-
-
 model AttendanceRule {
   id                 String   @id @default("default")
   teaMinutes         Int      @default(15)
@@ -690,12 +687,13 @@ model AttendanceRule {
 }
 
 model EmployeeSchedule {
-  userId             String   @id
-  startTime          String   @default("") @db.VarChar(10)
-  endTime            String   @default("") @db.VarChar(10)
-  dailyTargetMinutes Int?
-  workDays           String   @default("1,2,3,4,5") @db.VarChar(20)
-  updatedAt          DateTime @updatedAt
+  userId               String   @id
+  startTime            String   @default("") @db.VarChar(10)
+  endTime              String   @default("") @db.VarChar(10)
+  dailyTargetMinutes   Int?
+  breakDurationMinutes Int?
+  workDays             String   @default("1,2,3,4,5") @db.VarChar(20)
+  updatedAt            DateTime @updatedAt
 
   @@map("employee_schedules")
 }

@@ -98,7 +98,10 @@ export const clockOut = handle(async (req) => {
 export const startBreak = handle(async (req) =>
   afterChange(
     req.user._id,
-    await sessionService.startBreak(req.user._id, req.body?.type)
+    await sessionService.startBreak(
+      req.user._id,
+      req.body?.reason
+    )
   )
 );
 

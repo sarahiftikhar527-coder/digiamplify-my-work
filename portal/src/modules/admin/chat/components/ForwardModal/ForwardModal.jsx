@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Check, X, Forward } from "lucide-react";
 import Avatar from "../Avatar";
@@ -57,7 +56,7 @@ const ForwardModal = ({
     if (busy) return;
 
     if (!message?.id && !message?._id) {
-      setError("Message ID nahi mili. Message dobara select karein.");
+      setError("Message ID not found. Please select the message again.");
       return;
     }
 

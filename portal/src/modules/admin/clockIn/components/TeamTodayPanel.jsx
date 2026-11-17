@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
@@ -8,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 
+import apiClient from "@/services/api/apiClient.js";
 import useTeamLive from "@/hooks/useTeamLive";
 import ActivityFeed from "@/shared/teamLive/ActivityFeed";
 import {
@@ -23,7 +25,6 @@ import {
   sortMembers,
 } from "@/shared/teamLive/teamLiveUtils";
 
-// Keeps running timers and "x minutes ago" texts fresh.
 function useTicker(intervalMs = 10000) {
   const [now, setNow] = useState(() => new Date());
 
@@ -33,6 +34,63 @@ function useTicker(intervalMs = 10000) {
   }, [intervalMs]);
 
   return now;
+}
+
+const avatarCache = new Map();
+
+function useAuthenticatedAvatar(avatarUrl) {
+  const [imageUrl, setImageUrl] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!avatarUrl) {
+      setImageUrl("");
+      setFailed(false);
+      return undefined;
+    }
+
+    let active = true;
+    let objectUrl = "";
+
+    setImageUrl("");
+    setFailed(false);
+
+    const loadAvatar = async () => {
+      try {
+        let blob = avatarCache.get(avatarUrl);
+
+        if (!blob) {
+          const response = await apiClient.get(avatarUrl, {
+            responseType: "blob",
+          });
+
+          blob = response.data;
+          avatarCache.set(avatarUrl, blob);
+        }
+
+        if (!active) return;
+
+        objectUrl = URL.createObjectURL(blob);
+        setImageUrl(objectUrl);
+      } catch {
+        if (active) {
+          setFailed(true);
+        }
+      }
+    };
+
+    loadAvatar();
+
+    return () => {
+      active = false;
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [avatarUrl]);
+
+  return { imageUrl, failed };
 }
 
 const Cell = ({ label, value, strong }) => (
@@ -56,6 +114,8 @@ const PersonRow = ({ person, now, expanded, onToggle }) => {
   const worked = getLiveWorkedMinutes(person, now);
   const hasSessions = (person.sessions || []).length > 0;
 
+  const { imageUrl, failed } = useAuthenticatedAvatar(person.avatarUrl);
+
   return (
     <li className="rounded-lg border border-white/10 bg-[#121212]">
       <button
@@ -64,12 +124,12 @@ const PersonRow = ({ person, now, expanded, onToggle }) => {
         aria-expanded={expanded}
         className="flex w-full flex-wrap items-center gap-x-4 gap-y-3 px-3 py-3 text-left sm:px-4"
       >
-        <span className="relative shrink-0">
-          {person.avatarUrl ? (
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+          {imageUrl && !failed ? (
             <img
-              src={person.avatarUrl}
-              alt=""
-              className="h-10 w-10 rounded-full object-cover"
+              src={imageUrl}
+              alt={`${person.name} profile`}
+              className="h-10 w-10 rounded-full border border-white/10 object-cover"
             />
           ) : (
             <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1a] text-[12px] font-semibold text-white/80">
@@ -161,7 +221,10 @@ const PersonRow = ({ person, now, expanded, onToggle }) => {
                       {formatDuration(
                         session.clockOutAt
                           ? session.workedMinutes
-                          : getLiveWorkedMinutes({ sessions: [session] }, now)
+                          : getLiveWorkedMinutes(
+                              { sessions: [session] },
+                              now
+                            )
                       )}
                     </span>
                   </div>
@@ -190,7 +253,6 @@ const PersonRow = ({ person, now, expanded, onToggle }) => {
   );
 };
 
-// Everybody's clock in / clock out of today, updated live.
 const TeamTodayPanel = () => {
   const { data, loading, refreshing, error, updatedAt, reload } = useTeamLive({
     intervalMs: 20000,
@@ -264,7 +326,6 @@ const TeamTodayPanel = () => {
         </div>
       </div>
 
-      {/* Summary */}
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         {summary.map((card) => (
           <button
@@ -306,7 +367,6 @@ const TeamTodayPanel = () => {
         </div>
       )}
 
-      {/* Search and filters */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {STATUS_FILTERS.map((filter) => (
@@ -336,42 +396,50 @@ const TeamTodayPanel = () => {
         </label>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <div className="min-w-0">
-          {loading && !data ? (
-            <div className="flex items-center gap-2 px-2 py-10 text-[12px] text-white/50">
-              <Loader2 size={16} className="animate-spin" />
-              Loading team attendance...
-            </div>
-          ) : visible.length === 0 ? (
-            <p className="px-2 py-10 text-center text-[12px] text-white/45">
-              No people match the current filters.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {visible.map((person) => (
-                <PersonRow
-                  key={person.id}
-                  person={person}
-                  now={now}
-                  expanded={expanded.has(person.id)}
-                  onToggle={() => toggle(person.id)}
-                />
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="min-w-0 rounded-lg border border-white/10 bg-[#121212] p-3 sm:p-4">
-          <h4 className="mb-1 text-[12px] font-semibold text-white">
-            Recent activity
+      <div className="mt-4 grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="flex h-[480px] min-h-0 min-w-0 flex-col rounded-lg border border-white/10 bg-[#121212] p-3 sm:p-4">
+          <h4 className="mb-3 shrink-0 text-[12px] font-semibold text-white">
+            Team Attendance
           </h4>
 
-          <ActivityFeed
-            events={events.slice(0, 12)}
-            now={now}
-            search={search}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto pr-2 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent]">
+            {loading && !data ? (
+              <div className="flex items-center gap-2 py-10 text-[12px] text-white/50">
+                <Loader2 size={16} className="animate-spin" />
+                Loading team attendance...
+              </div>
+            ) : visible.length === 0 ? (
+              <p className="py-10 text-center text-[12px] text-white/45">
+                No people match the current filters.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {visible.map((person) => (
+                  <PersonRow
+                    key={person.id}
+                    person={person}
+                    now={now}
+                    expanded={expanded.has(person.id)}
+                    onToggle={() => toggle(person.id)}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div className="flex h-[480px] min-h-0 min-w-0 flex-col rounded-lg border border-white/10 bg-[#121212] p-3 sm:p-4">
+          <h4 className="mb-3 shrink-0 text-[12px] font-semibold text-white">
+            Recent Activity
+          </h4>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-2 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent]">
+            <ActivityFeed
+              events={events.slice(0, 12)}
+              now={now}
+              search={search}
+            />
+          </div>
         </div>
       </div>
     </section>

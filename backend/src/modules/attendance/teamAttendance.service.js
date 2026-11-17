@@ -1,18 +1,6 @@
+
 import { prisma } from "../../config/db.js";
 import { todayStr } from "./attendance.service.js";
-
-/*
-|--------------------------------------------------------------------------
-| Team live attendance
-|--------------------------------------------------------------------------
-| Returns every active person (admins and employees) together with all of
-| their clock-in sessions and breaks for a day, plus a chronological feed
-| of clock events.
-|
-| - Admins can request any past date with ?date=YYYY-MM-DD.
-| - Employees always see "today" (each person's own time zone).
-| - Work descriptions, e-mail addresses and sign-in state are admin only.
-*/
 
 const DEFAULT_TIME_ZONE = "Asia/Karachi";
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -42,11 +30,9 @@ const diffMinutes = (from, to) =>
     Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60000)
   );
 
-/*
-|--------------------------------------------------------------------------
-| Serializers
-|--------------------------------------------------------------------------
-*/
+function getMemberAvatar(user) {
+  return user.avatarUrl || user.profile?.avatarUrl || "";
+}
 
 function serializeBreak(item, now) {
   return {
@@ -84,7 +70,6 @@ function serializeSession(session, now, includeNotes) {
   };
 }
 
-// Sessions that exist only in the old single-record attendance table.
 function serializeLegacySession(record, now, includeNotes) {
   const open = !record.clockOutAt;
 
@@ -112,8 +97,6 @@ function getStatus(sessions) {
   return sessions.length > 0 ? "out" : "not_in";
 }
 
-// Maps the new status names to the "in / break / out" state used by the
-// older team card, so both screens can read the same response.
 const LEGACY_STATE = {
   working: "in",
   break: "break",
@@ -121,7 +104,6 @@ const LEGACY_STATE = {
   not_in: "out",
 };
 
-// Shape expected by the older useTeamAttendance hook (data.members).
 function toLegacyMember(person) {
   return {
     ...person,
@@ -131,12 +113,6 @@ function toLegacyMember(person) {
     clockOutAt: person.lastClockOutAt,
   };
 }
-
-/*
-|--------------------------------------------------------------------------
-| Event feed
-|--------------------------------------------------------------------------
-*/
 
 function buildEvents(people) {
   const events = [];
@@ -195,17 +171,10 @@ function buildEvents(people) {
     .slice(0, MAX_EVENTS);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Main query
-|--------------------------------------------------------------------------
-*/
-
 export async function getTeamLive(viewer, query = {}) {
   const viewerIsAdmin = String(viewer?.role || "").toLowerCase() === "admin";
   const now = new Date();
 
-  // Only admins may look at another date.
   const requestedDate = String(query?.date ?? "").trim();
   const dateOverride =
     viewerIsAdmin && DATE_KEY_PATTERN.test(requestedDate)
@@ -227,6 +196,11 @@ export async function getTeamLive(viewer, query = {}) {
       designation: true,
       avatarUrl: true,
       timeZone: true,
+      profile: {
+        select: {
+          avatarUrl: true,
+        },
+      },
     },
     orderBy: { name: "asc" },
   });
@@ -252,7 +226,6 @@ export async function getTeamLive(viewer, query = {}) {
     };
   }
 
-  // "Today" can differ per person because every user has a time zone.
   const keyByUser = new Map(
     users.map((user) => [
       user.id,
@@ -263,7 +236,6 @@ export async function getTeamLive(viewer, query = {}) {
   const dateKeys = [...new Set(keyByUser.values())];
   const userIds = users.map((user) => user.id);
 
-  // Open sessions from a previous day (overnight shifts) stay visible.
   const sessionWhere = dateOverride
     ? { userId: { in: userIds }, dateKey: dateOverride }
     : {
@@ -286,7 +258,6 @@ export async function getTeamLive(viewer, query = {}) {
     }),
   ]);
 
-  // Sign-in state (valid refresh token) is only shown to admins.
   let signedInIds = new Set();
 
   if (viewerIsAdmin) {
@@ -298,7 +269,6 @@ export async function getTeamLive(viewer, query = {}) {
 
       signedInIds = new Set(tokens.map((token) => token.userId));
     } catch {
-      // Sign-in info is optional: continue without it.
     }
   }
 
@@ -339,7 +309,6 @@ export async function getTeamLive(viewer, query = {}) {
         ? null
         : closed[closed.length - 1]?.clockOutAt || null;
 
-    // Most recent thing the person did: used for "last seen" text.
     const lastActivityAt = sessions.reduce((latest, session) => {
       const stamps = [
         session.clockInAt,
@@ -361,7 +330,7 @@ export async function getTeamLive(viewer, query = {}) {
       role: user.role,
       department: (user.department || "").trim(),
       designation: user.designation || "",
-      avatarUrl: user.avatarUrl || "",
+      avatarUrl: getMemberAvatar(user),
       isMe: user.id === viewerId,
       signedIn: viewerIsAdmin ? signedInIds.has(user.id) : null,
       status,
@@ -397,7 +366,6 @@ export async function getTeamLive(viewer, query = {}) {
     summary,
     people,
     events: buildEvents(people),
-    // Backward compatible fields for the older team card / hook.
     meId: viewerId,
     members: people.map(toLegacyMember),
   };

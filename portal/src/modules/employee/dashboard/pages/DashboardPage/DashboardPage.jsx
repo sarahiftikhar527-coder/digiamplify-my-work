@@ -1,8 +1,16 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarClock, LayoutDashboard, Megaphone, Target } from "lucide-react";
+import {
+  CalendarClock,
+  LayoutDashboard,
+  Megaphone,
+  Target,
+} from "lucide-react";
+
 import useDashboardView from "../../../../../hooks/useDashboardView";
 import DashboardViewTabs from "../../../../../layouts/shared/DashboardViewTabs";
+
 import {
   WelcomeHeader,
   TaskStatsCards,
@@ -20,6 +28,7 @@ import {
   StatusMix,
   PriorityMix,
 } from "../../components";
+
 import { mockDashboard } from "./mockData";
 import apiClient from "../../../../../services/api/apiClient";
 
@@ -363,7 +372,7 @@ const DashboardPage = () => {
 
   const handleCancelLeave = async (id) => {
     if (!id || String(id).startsWith("local-")) {
-      throw new Error("Leave request ki valid database ID nahi mili.");
+      throw new Error("A valid database ID for this leave request was not found.");
     }
 
     setLeaveActionLoading(true);
